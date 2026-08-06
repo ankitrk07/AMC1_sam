@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', function () {
   if (video) {
     video.preload = 'auto';
     var startVideo = function () {
-      video.play().catch(function () {});
+      video.play().catch(function () { });
     };
     if (video.readyState >= 2) {
       startVideo();
@@ -44,6 +44,16 @@ document.addEventListener('DOMContentLoaded', function () {
       video.addEventListener('canplay', startVideo, { once: true });
       video.addEventListener('loadedmetadata', startVideo, { once: true });
     }
+
+    var unmuteOverlay = document.getElementById('vslUnmuteOverlay');
+    var hasUnmuted = false;
+
+    var dismissOverlay = function () {
+      if (unmuteOverlay && !hasUnmuted) {
+        unmuteOverlay.classList.add('is-hidden');
+        hasUnmuted = true;
+      }
+    };
 
     var updatePlayUI = function () {
       if (!playBtn) return;
@@ -59,6 +69,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var updateSoundUI = function () {
       var isMuted = video.muted;
+      if (!isMuted) {
+        dismissOverlay();
+      }
       if (soundBtn) {
         soundBtn.setAttribute('aria-pressed', String(!isMuted));
         if (isMuted) {
@@ -80,7 +93,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var togglePlay = function (e) {
       if (e) e.stopPropagation();
       if (video.paused) {
-        video.play().catch(function () {});
+        video.play().catch(function () { });
       } else {
         video.pause();
       }
@@ -91,7 +104,7 @@ document.addEventListener('DOMContentLoaded', function () {
       video.muted = !video.muted;
       if (!video.muted) {
         video.volume = 1.0;
-        video.play().catch(function () {});
+        video.play().catch(function () { });
       }
       updateSoundUI();
     };
@@ -99,10 +112,21 @@ document.addEventListener('DOMContentLoaded', function () {
     if (playBtn) playBtn.addEventListener('click', togglePlay);
     if (soundBtn) soundBtn.addEventListener('click', toggleSound);
 
+    if (unmuteOverlay) {
+      unmuteOverlay.addEventListener('click', function (e) {
+        if (e) e.stopPropagation();
+        video.muted = false;
+        video.volume = 1.0;
+        video.play().catch(function () { });
+        dismissOverlay();
+        updateSoundUI();
+      });
+    }
+
     var vslFrame = document.getElementById('vslFrame');
     if (vslFrame) {
       vslFrame.addEventListener('click', function (e) {
-        if ((playBtn && playBtn.contains(e.target)) || (soundBtn && soundBtn.contains(e.target))) return;
+        if ((playBtn && playBtn.contains(e.target)) || (soundBtn && soundBtn.contains(e.target)) || (unmuteOverlay && unmuteOverlay.contains(e.target))) return;
         togglePlay(e);
       });
     }
@@ -112,6 +136,11 @@ document.addEventListener('DOMContentLoaded', function () {
     video.addEventListener('volumechange', updateSoundUI);
     updatePlayUI();
     updateSoundUI();
+
+    // Show overlay if video is muted on play start
+    if (video.muted && unmuteOverlay) {
+      unmuteOverlay.classList.remove('is-hidden');
+    }
   }
 
   /* ---- 4-number accordion ---- */
@@ -147,7 +176,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function updateCTAsToConfirmed(data) {
     data = data || currentBookingState || {};
-    
+
     // 1. Fill exact Name into form
     if (data.name) {
       var nameEl = document.getElementById('fullName');
@@ -271,7 +300,7 @@ document.addEventListener('DOMContentLoaded', function () {
   function validateCounsellingInputs() {
     var name = document.getElementById('fullName').value.trim();
     var phone = document.getElementById('phone').value.trim();
-    
+
     if (!name) {
       counsellingFine.textContent = 'Please enter your Full Name first.';
       counsellingFine.classList.add('is-error');
@@ -286,7 +315,7 @@ document.addEventListener('DOMContentLoaded', function () {
       document.getElementById('phone').focus();
       return false;
     }
-    
+
     counsellingFine.textContent = '';
     counsellingFine.classList.remove('is-error');
     return { name: name, phone: phone };
@@ -296,16 +325,16 @@ document.addEventListener('DOMContentLoaded', function () {
     currentBookingState = { name: name, phone: phone, date: date, slot: slot };
     document.body.style.overflow = 'hidden';
     lastActiveElement = document.activeElement;
-    
+
     calendlyModal.setAttribute('aria-hidden', 'false');
-    
+
     calendlyShimmer.style.display = 'flex';
     calendlyFallback.style.display = 'none';
     calendlyWidgetContainer.style.display = 'none';
-    calendlyWidgetContainer.innerHTML = ''; 
+    calendlyWidgetContainer.innerHTML = '';
 
     var isLoaded = false;
-    var loadTimeout = setTimeout(function() {
+    var loadTimeout = setTimeout(function () {
       if (!isLoaded) {
         calendlyShimmer.style.display = 'none';
         calendlyFallback.style.display = 'flex';
@@ -315,7 +344,7 @@ document.addEventListener('DOMContentLoaded', function () {
     Promise.all([
       loadExternalResource(sdkCssUrl, 'css'),
       loadExternalResource(sdkScriptUrl, 'script')
-    ]).then(function() {
+    ]).then(function () {
       if (typeof Calendly === 'undefined') {
         throw new Error('Calendly SDK not found');
       }
@@ -334,11 +363,11 @@ document.addEventListener('DOMContentLoaded', function () {
         }
       });
 
-      var checkIframeInterval = setInterval(function() {
+      var checkIframeInterval = setInterval(function () {
         var iframe = calendlyWidgetContainer.querySelector('iframe');
         if (iframe) {
           clearInterval(checkIframeInterval);
-          iframe.addEventListener('load', function() {
+          iframe.addEventListener('load', function () {
             isLoaded = true;
             clearTimeout(loadTimeout);
             calendlyShimmer.style.display = 'none';
@@ -349,7 +378,7 @@ document.addEventListener('DOMContentLoaded', function () {
       }, 100);
 
       // Backup load trigger
-      setTimeout(function() {
+      setTimeout(function () {
         if (!isLoaded) {
           isLoaded = true;
           clearTimeout(loadTimeout);
@@ -358,7 +387,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
       }, 3500);
 
-    }).catch(function(err) {
+    }).catch(function (err) {
       console.error(err);
       clearTimeout(loadTimeout);
       calendlyShimmer.style.display = 'none';
@@ -385,16 +414,16 @@ document.addEventListener('DOMContentLoaded', function () {
     closeCalendlyModal.addEventListener('click', handleCloseBtn);
     closeCalendlyModal.addEventListener('touchstart', handleCloseBtn);
   }
-  
+
   if (calendlyModal) {
-    calendlyModal.addEventListener('click', function(e) {
+    calendlyModal.addEventListener('click', function (e) {
       if (e.target === calendlyModal) {
         closeCalendlyModalFlow();
       }
     });
   }
 
-  document.addEventListener('keydown', function(e) {
+  document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && calendlyModal && calendlyModal.getAttribute('aria-hidden') === 'false') {
       closeCalendlyModalFlow();
     }
@@ -406,7 +435,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var firstFocusable = focusableElements[0];
     var lastFocusable = focusableElements[focusableElements.length - 1];
 
-    modal.addEventListener('keydown', function(e) {
+    modal.addEventListener('keydown', function (e) {
       if (e.key === 'Tab') {
         if (e.shiftKey) {
           if (document.activeElement === firstFocusable) {
@@ -430,16 +459,16 @@ document.addEventListener('DOMContentLoaded', function () {
   function handleDateOrTimeSelection() {
     var validation = validateCounsellingInputs();
     if (!validation) return;
-    
+
     var date = document.getElementById('prefDate').value;
     var slotInput = counsellingForm.querySelector('input[name="slot"]:checked');
     var slot = slotInput ? slotInput.value : 'Before lunch';
-    
+
     var prettyDate = 'Not specified';
     if (date) {
       prettyDate = new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
     }
-    
+
     openCalendlyModalFlow(validation.name, validation.phone, prettyDate, slot);
   }
 
@@ -480,56 +509,56 @@ document.addEventListener('DOMContentLoaded', function () {
   window.addEventListener('message', function (e) {
     if (e.data && e.data.event === 'calendly.event_scheduled') {
       setTimeout(closeCalendlyModalFlow, 1500);
-      
+
       var eventUri = e.data.payload && e.data.payload.event && e.data.payload.event.uri;
-      
+
       if (eventUri) {
         fetch('/api/calendly/confirm', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ eventUri: eventUri })
         })
-        .then(function(res) { return res.json(); })
-        .then(function(result) {
-          if (result.success && result.start_time) {
-            var startDate = new Date(result.start_time);
-            var year = startDate.getFullYear();
-            var month = String(startDate.getMonth() + 1).padStart(2, '0');
-            var day = String(startDate.getDate()).padStart(2, '0');
-            var isoDate = year + '-' + month + '-' + day;
+          .then(function (res) { return res.json(); })
+          .then(function (result) {
+            if (result.success && result.start_time) {
+              var startDate = new Date(result.start_time);
+              var year = startDate.getFullYear();
+              var month = String(startDate.getMonth() + 1).padStart(2, '0');
+              var day = String(startDate.getDate()).padStart(2, '0');
+              var isoDate = year + '-' + month + '-' + day;
 
-            var formattedDate = startDate.toLocaleDateString('en-IN', {
-              day: 'numeric',
-              month: 'long',
-              year: 'numeric'
-            });
-            var formattedTime = startDate.toLocaleTimeString('en-IN', {
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: true
-            });
-            
-            var exactScheduledText = formattedDate + ' at ' + formattedTime;
-            var isAfternoon = startDate.getHours() >= 12;
-            
-            var updatedState = Object.assign({}, currentBookingState || {}, {
-              date: exactScheduledText,
-              isoDate: isoDate,
-              formattedTime: formattedTime,
-              isAfternoon: isAfternoon,
-              slot: isAfternoon ? 'After lunch' : 'Before lunch'
-            });
-            
-            updateCTAsToConfirmed(updatedState);
-          } else {
-            console.warn('[Calendly Confirmation API Fallback]', result.error || 'No start_time in response');
+              var formattedDate = startDate.toLocaleDateString('en-IN', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+              });
+              var formattedTime = startDate.toLocaleTimeString('en-IN', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+              });
+
+              var exactScheduledText = formattedDate + ' at ' + formattedTime;
+              var isAfternoon = startDate.getHours() >= 12;
+
+              var updatedState = Object.assign({}, currentBookingState || {}, {
+                date: exactScheduledText,
+                isoDate: isoDate,
+                formattedTime: formattedTime,
+                isAfternoon: isAfternoon,
+                slot: isAfternoon ? 'After lunch' : 'Before lunch'
+              });
+
+              updateCTAsToConfirmed(updatedState);
+            } else {
+              console.warn('[Calendly Confirmation API Fallback]', result.error || 'No start_time in response');
+              updateCTAsToConfirmed(currentBookingState);
+            }
+          })
+          .catch(function (err) {
+            console.error('[Calendly Confirmation Fetch Error]', err);
             updateCTAsToConfirmed(currentBookingState);
-          }
-        })
-        .catch(function(err) {
-          console.error('[Calendly Confirmation Fetch Error]', err);
-          updateCTAsToConfirmed(currentBookingState);
-        });
+          });
       } else {
         updateCTAsToConfirmed(currentBookingState);
       }
@@ -543,7 +572,7 @@ document.addEventListener('DOMContentLoaded', function () {
       var target = document.getElementById(id);
       if (target) {
         e.preventDefault();
-        
+
         // Target the form card for centering when clicking #counselling
         var elementToCenter = target;
         if (id === 'counselling') {
@@ -555,7 +584,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var elementTop = rect.top + window.pageYOffset;
         var elementHeight = rect.height;
         var windowHeight = window.innerHeight;
-        
+
         // Calculate scroll top position that centers the element vertically in the viewport
         var centerTop = elementTop - (windowHeight / 2) + (elementHeight / 2);
         if (centerTop < 0) centerTop = 0;
