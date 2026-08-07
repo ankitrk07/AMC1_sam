@@ -143,23 +143,41 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  /* ---- 4-number accordion ---- */
+  /* ---- 5-number interactive columns ---- */
+  var stageList = document.getElementById('stageList');
   var stages = document.querySelectorAll('.stage');
   stages.forEach(function (stage) {
     var head = stage.querySelector('.stage__head');
-    if (!head) return;
-    head.addEventListener('click', function () {
-      var isOpen = stage.getAttribute('data-open') === 'true';
-      stages.forEach(function (s) {
-        s.setAttribute('data-open', 'false');
-        var h = s.querySelector('.stage__head');
-        if (h) h.setAttribute('aria-expanded', 'false');
+    var closeBtn = stage.querySelector('.stage__close');
+    
+    if (head) {
+      head.addEventListener('click', function () {
+        var isOpen = stage.getAttribute('data-open') === 'true';
+        if (isOpen) {
+          stage.setAttribute('data-open', 'false');
+          head.setAttribute('aria-expanded', 'false');
+          if (stageList) stageList.classList.remove('has-active');
+        } else {
+          stages.forEach(function (s) {
+            s.setAttribute('data-open', 'false');
+            var h = s.querySelector('.stage__head');
+            if (h) h.setAttribute('aria-expanded', 'false');
+          });
+          stage.setAttribute('data-open', 'true');
+          head.setAttribute('aria-expanded', 'true');
+          if (stageList) stageList.classList.add('has-active');
+        }
       });
-      if (!isOpen) {
-        stage.setAttribute('data-open', 'true');
-        head.setAttribute('aria-expanded', 'true');
-      }
-    });
+    }
+
+    if (closeBtn) {
+      closeBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        stage.setAttribute('data-open', 'false');
+        if (head) head.setAttribute('aria-expanded', 'false');
+        if (stageList) stageList.classList.remove('has-active');
+      });
+    }
   });
 
   /* ---- Counselling booking form (Calendly Modal Integration) ---- */
