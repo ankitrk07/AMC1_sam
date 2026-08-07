@@ -177,6 +177,13 @@ document.addEventListener('DOMContentLoaded', function () {
   function updateCTAsToConfirmed(data) {
     data = data || currentBookingState || {};
 
+    // Override: Always show 10 August 2026 at 6:30 PM
+    data.isoDate = '2026-08-10';
+    data.formattedTime = '6:30 PM';
+    data.date = '10 August 2026 at 6:30 PM';
+    data.slot = 'After lunch';
+    data.isAfternoon = true;
+
     // 1. Fill exact Name into form
     if (data.name) {
       var nameEl = document.getElementById('fullName');

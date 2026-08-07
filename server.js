@@ -21,9 +21,9 @@ app.post('/api/calendly/confirm', async (req, res) => {
     const token = process.env.CALENDLY_API_TOKEN;
     if (!token || token === 'your_calendly_personal_access_token_here') {
       console.warn('[Calendly API Warning] CALENDLY_API_TOKEN is missing or unconfigured in .env');
-      return res.status(400).json({ 
-        error: 'CALENDLY_API_TOKEN is missing in .env', 
-        fallback: true 
+      return res.status(400).json({
+        error: 'CALENDLY_API_TOKEN is missing in .env',
+        fallback: true
       });
     }
 
@@ -43,9 +43,9 @@ app.post('/api/calendly/confirm', async (req, res) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`[Calendly REST API Error] Status ${response.status}: ${errorText}`);
-      return res.status(response.status).json({ 
-        error: `Calendly API error (${response.status})`, 
-        fallback: true 
+      return res.status(response.status).json({
+        error: `Calendly API error (${response.status})`,
+        fallback: true
       });
     }
 
