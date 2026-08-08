@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calendly Side-by-Side Dual Calendar Audit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@600;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: #111827;
+      --card-border: #1f2937;
+      --text-main: #f9fafb;
+      --text-muted: #9ca3af;
+      --accent-green: #10b981;
+      --accent-green-bg: rgba(16, 185, 129, 0.15);
+      --accent-blue: #3b82f6;
+      --brand: #a94665;
+      --font-main: 'Plus Jakarta Sans', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      font-family: var(--font-main);
+      min-height: 100vh;
+      padding: 24px 16px;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .header-title h1 {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header-title p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      text-decoration: none;
+    }
+
+    .btn:hover {
+      border-color: #374151;
+      background: #1f2937;
+    }
+
+    .btn-primary {
+      background: var(--brand);
+      border-color: var(--brand);
+      color: #fff;
+    }
+
+    /* SIDE-BY-SIDE DUAL CALENDARS GRID */
+    .dual-calendars-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 1024px) {
+      .dual-calendars-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .calendar-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.3);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .counsellor-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .counsellor-info h2 {
+      font-size: 17px;
+      font-weight: 800;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .counsellor-info a {
+      font-size: 12px;
+      color: #60a5fa;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .counsellor-info a:hover {
+      text-decoration: underline;
+    }
+
+    .slot-counter-badge {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 800;
+      padding: 4px 10px;
+      border-radius: 20px;
+    }
+
+    .cal-nav-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .month-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .nav-buttons {
+      display: flex;
+      gap: 6px;
+    }
+
+    .nav-btn {
+      background: #1f2937;
+      border: 1px solid #374151;
+      color: #fff;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .weekdays-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      text-align: center;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .days-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+    }
+
+    .day-cell {
+      min-height: 85px;
+      background: #0d1322;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: all 0.2s ease;
+    }
+
+    .day-cell.empty {
+      background: transparent;
+      border-color: transparent;
+    }
+
+    .day-num {
+      font-size: 13px;
+      font-weight: 700;
+      color: #9ca3af;
+    }
+
+    /* GREEN AVAILABLE DAY TILE STYLING */
+    .day-cell.available {
+      background: linear-gradient(145deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.08));
+      border: 1.5px solid var(--accent-green);
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+    }
+
+    .day-cell.available:hover {
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
+      border-color: #34d399;
+      background: linear-gradient(145deg, rgba(16, 185, 129, 0.3), rgba(5, 150, 105, 0.15));
+    }
+
+    .day-cell.available .day-num {
+      color: #34d399;
+      font-weight: 800;
+    }
+
+    .slot-badge {
+      display: inline-block;
+      background: var(--accent-green);
+      color: #042f2e;
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 5px;
+      margin-top: 4px;
+    }
+
+    .day-cell.disabled {
+      opacity: 0.35;
+      background: #090d16;
+    }
+
+    .no-slots-tag {
+      font-size: 9.5px;
+      color: #6b7280;
+      font-weight: 600;
+    }
+
+    /* DRAWER MODAL */
+    .drawer-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+    }
+
+    .drawer-overlay.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .drawer-content {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      width: 90%;
+      max-width: 480px;
+      padding: 24px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    }
+
+    .drawer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .drawer-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .drawer-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 22px;
+      cursor: pointer;
+    }
+
+    .chips-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 12px;
+    }
+
+    .time-chip-item {
+      background: #1f2937;
+      border: 1px solid #374151;
+      color: #34d399;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-title">
+        <h1>📅 Dual Calendly Accounts Side-by-Side Live Audit</h1>
+        <p>Direct REST API availability inspection for Counsellor 1 &amp; Counsellor 2</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn" onclick="initAuditData(true)">🔄 Refresh Live API</button>
+        <a href="/" class="btn btn-primary">🌐 Back to Main Website</a>
+      </div>
+    </div>
+
+    <!-- DUAL CALENDARS SIDE BY SIDE -->
+    <div class="dual-calendars-grid">
+      
+      <!-- COUNSELLOR 1 CALENDAR -->
+      <div class="calendar-card">
+        <div class="counsellor-header">
+          <div class="counsellor-info">
+            <h2>👤 Counsellor 1</h2>
+            <a href="https://calendly.com/harshraj1603/15-minute-consultation" target="_blank" rel="noopener">🔗 harshraj1603 (15-min)</a>
+          </div>
+          <div class="slot-counter-badge" id="c1TotalSlots">-- Slots</div>
+        </div>
+
+        <div class="cal-nav-bar">
+          <div class="month-title" id="c1MonthTitle">August 2026</div>
+          <div class="nav-buttons">
+            <button class="nav-btn" onclick="prevMonth1()">&lt;</button>
+            <button class="nav-btn" onclick="nextMonth1()">&gt;</button>
+          </div>
+        </div>
+
+        <div class="weekdays-grid">
+          <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+        </div>
+
+        <div class="days-grid" id="c1DaysGrid">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
+      <!-- COUNSELLOR 2 CALENDAR -->
+      <div class="calendar-card">
+        <div class="counsellor-header">
+          <div class="counsellor-info">
+            <h2>👤 Counsellor 2</h2>
+            <a href="https://calendly.com/aryanraj0316/30min" target="_blank" rel="noopener">🔗 aryanraj0316 (30-min)</a>
+          </div>
+          <div class="slot-counter-badge" id="c2TotalSlots">-- Slots</div>
+        </div>
+
+        <div class="cal-nav-bar">
+          <div class="month-title" id="c2MonthTitle">August 2026</div>
+          <div class="nav-buttons">
+            <button class="nav-btn" onclick="prevMonth2()">&lt;</button>
+            <button class="nav-btn" onclick="nextMonth2()">&gt;</button>
+          </div>
+        </div>
+
+        <div class="weekdays-grid">
+          <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+        </div>
+
+        <div class="days-grid" id="c2DaysGrid">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- DETAIL DRAWER MODAL -->
+  <div class="drawer-overlay" id="detailDrawer" onclick="closeDrawer(event)">
+    <div class="drawer-content" onclick="event.stopPropagation()">
+      <div class="drawer-header">
+        <div class="drawer-title" id="drawerDateTitle">Selected Date</div>
+        <button class="drawer-close" onclick="closeDrawer()">&times;</button>
+      </div>
+      <div id="drawerBody"></div>
+    </div>
+  </div>
+
+  <script>
+    let rawData = null;
+    let year1 = new Date().getFullYear();
+    let month1 = new Date().getMonth();
+
+    let year2 = new Date().getFullYear();
+    let month2 = new Date().getMonth();
+
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+    function initAuditData(force) {
+      document.getElementById('c1DaysGrid').innerHTML = '<div style="grid-column: span 7; text-align:center; padding:30px; color:#9ca3af;">⏳ Querying Counsellor 1 API...</div>';
+      document.getElementById('c2DaysGrid').innerHTML = '<div style="grid-column: span 7; text-align:center; padding:30px; color:#9ca3af;">⏳ Querying Counsellor 2 API...</div>';
+
+      fetch('/api/calendly/debug-availability?format=json' + (force ? '&refresh=true' : ''))
+        .then(res => res.json())
+        .then(data => {
+          rawData = data;
+          document.getElementById('c1TotalSlots').textContent = (data.counsellor1?.totalSlots || 0) + ' Live Slots';
+          document.getElementById('c2TotalSlots').textContent = (data.counsellor2?.totalSlots || 0) + ' Live Slots';
+          renderC1();
+          renderC2();
+        })
+        .catch(err => {
+          document.getElementById('c1DaysGrid').innerHTML = '<div style="grid-column: span 7; color:#ef4444; text-align:center;">Failed: ' + err.message + '</div>';
+          document.getElementById('c2DaysGrid').innerHTML = '<div style="grid-column: span 7; color:#ef4444; text-align:center;">Failed: ' + err.message + '</div>';
+        });
+    }
+
+    function renderC1() {
+      if (!rawData || !rawData.counsellor1) return;
+      const grid = document.getElementById('c1DaysGrid');
+      document.getElementById('c1MonthTitle').textContent = monthNames[month1] + ' ' + year1;
+      grid.innerHTML = '';
+
+      const firstDay = new Date(year1, month1, 1);
+      const startingDay = (firstDay.getDay() + 6) % 7;
+      const daysInMonth = new Date(year1, month1 + 1, 0).getDate();
+
+      for (let i = 0; i < startingDay; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'day-cell empty';
+        grid.appendChild(cell);
+      }
+
+      const c1Map = rawData.counsellor1.availableDates || {};
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const mStr = String(month1 + 1).padStart(2, '0');
+        const dStr = String(day).padStart(2, '0');
+        const fullDateStr = `${year1}-${mStr}-${dStr}`;
+
+        const slotsCount = c1Map[fullDateStr] || 0;
+        const cell = document.createElement('div');
+        cell.className = 'day-cell';
+
+        const numEl = document.createElement('div');
+        numEl.className = 'day-num';
+        numEl.textContent = day;
+        cell.appendChild(numEl);
+
+        if (slotsCount > 0) {
+          cell.classList.add('available');
+          const badge = document.createElement('div');
+          badge.className = 'slot-badge';
+          badge.textContent = `${slotsCount} Slots`;
+          cell.appendChild(badge);
+
+          cell.onclick = () => openDayDetails(fullDateStr, 'Counsellor 1 (Harsh Raj)', 'counsellor1');
+        } else {
+          cell.classList.add('disabled');
+          const noTag = document.createElement('div');
+          noTag.className = 'no-slots-tag';
+          noTag.textContent = 'No slots';
+          cell.appendChild(noTag);
+        }
+
+        grid.appendChild(cell);
+      }
+    }
+
+    function renderC2() {
+      if (!rawData || !rawData.counsellor2) return;
+      const grid = document.getElementById('c2DaysGrid');
+      document.getElementById('c2MonthTitle').textContent = monthNames[month2] + ' ' + year2;
+      grid.innerHTML = '';
+
+      const firstDay = new Date(year2, month2, 1);
+      const startingDay = (firstDay.getDay() + 6) % 7;
+      const daysInMonth = new Date(year2, month2 + 1, 0).getDate();
+
+      for (let i = 0; i < startingDay; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'day-cell empty';
+        grid.appendChild(cell);
+      }
+
+      const c2Map = rawData.counsellor2.availableDates || {};
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const mStr = String(month2 + 1).padStart(2, '0');
+        const dStr = String(day).padStart(2, '0');
+        const fullDateStr = `${year2}-${mStr}-${dStr}`;
+
+        const slotsCount = c2Map[fullDateStr] || 0;
+        const cell = document.createElement('div');
+        cell.className = 'day-cell';
+
+        const numEl = document.createElement('div');
+        numEl.className = 'day-num';
+        numEl.textContent = day;
+        cell.appendChild(numEl);
+
+        if (slotsCount > 0) {
+          cell.classList.add('available');
+          const badge = document.createElement('div');
+          badge.className = 'slot-badge';
+          badge.textContent = `${slotsCount} Slots`;
+          cell.appendChild(badge);
+
+          cell.onclick = () => openDayDetails(fullDateStr, 'Counsellor 2 (Aryan Raj)', 'counsellor2');
+        } else {
+          cell.classList.add('disabled');
+          const noTag = document.createElement('div');
+          noTag.className = 'no-slots-tag';
+          noTag.textContent = 'No slots';
+          cell.appendChild(noTag);
+        }
+
+        grid.appendChild(cell);
+      }
+    }
+
+    function prevMonth1() { month1--; if (month1 < 0) { month1 = 11; year1--; } renderC1(); }
+    function nextMonth1() { month1++; if (month1 > 11) { month1 = 0; year1++; } renderC1(); }
+
+    function prevMonth2() { month2--; if (month2 < 0) { month2 = 11; year2--; } renderC2(); }
+    function nextMonth2() { month2++; if (month2 > 11) { month2 = 0; year2++; } renderC2(); }
+
+    function openDayDetails(dateStr, counsellorTitle, counsellorKey) {
+      document.getElementById('drawerDateTitle').textContent = `${counsellorTitle} - ${dateStr}`;
+      const body = document.getElementById('drawerBody');
+      body.innerHTML = `⏳ Querying live time slots for ${dateStr}...`;
+      document.getElementById('detailDrawer').classList.add('active');
+
+      fetch('/api/calendly/availability?date=' + dateStr)
+        .then(res => res.json())
+        .then(data => {
+          const matchingSlots = (data.timeSlots || []).filter(s => s.counsellors && s.counsellors.includes(counsellorKey));
+          if (matchingSlots.length === 0) {
+            body.innerHTML = '<p style="color:#ef4444;">No available slots for this counsellor on this date.</p>';
+            return;
+          }
+
+          let html = `<p style="color:#34d399; font-weight:700; margin-bottom:12px;">🟢 ${matchingSlots.length} Open Slots on ${dateStr}:</p>`;
+          html += '<div class="chips-grid">';
+          matchingSlots.forEach(s => {
+            html += `<span class="time-chip-item">${s.time}</span>`;
+          });
+          html += '</div>';
+
+          body.innerHTML = html;
+        })
+        .catch(err => {
+          body.innerHTML = '<p style="color:#ef4444;">Failed to fetch slots: ' + err.message + '</p>';
+        });
+    }
+
+    function closeDrawer(e) {
+      document.getElementById('detailDrawer').classList.remove('active');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => initAuditData(false));
+  </script>
+</body>
+</html>

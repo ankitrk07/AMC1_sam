@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
-    href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..900;1,9..144,400..900&family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=IBM+Plex+Mono:wght@500;600&display=swap"
     rel="stylesheet">
 
   <link rel="stylesheet" href="css/style.css">
@@ -44,7 +44,7 @@
     <!-- ============ HERO ============ -->
     <section class="hero">
       <div class="wrap hero__inner">
-        <h1 class="hero__headline">From Aspirant to <span>Australian Doctor</span></h1>
+        <h1 class="hero__headline">From Aspirant to <span class="highlight-metallic-spark">Australian Doctor</span></h1>
         <p class="hero__sub">Discover the proven AMC strategy that has helped hundreds of medical graduates move closer
           to their dream career in Australia.</p>
       </div>
@@ -227,9 +227,16 @@
                 AMC 1 journey.</p>
             </div>
 
-            <div class="payment-card__price-box">
-              <div class="payment-card__price">₹60,000</div>
-              <div class="payment-card__price-label">Full Course Fee</div>
+            <div class="payment-card__price-row">
+              <div class="payment-card__price-box">
+                <div class="payment-card__price">₹60,000</div>
+                <div class="payment-card__price-label">Full Course Fee</div>
+              </div>
+
+              <div class="payment-card__price-box payment-card__installment-box">
+                <div class="payment-card__installment-title">50% Installments Available</div>
+                <div class="payment-card__installment-desc">Pay 50% during enrollment and another 50% after 30 days.</div>
+              </div>
             </div>
 
             <p class="payment-card__sub-note">Not sure if the timing or investment is right for you? That's exactly what
@@ -413,6 +420,166 @@
       </div>
     </section>
 
+    <!-- ============ MINIMAL & ELEGANT OVERLAPPING PROOF SHOWCASE ============ -->
+    <section class="proof-gallery" id="communityProof">
+      <div class="wrap">
+        <div class="section-head section-head--center">
+          <span class="proof-eyebrow">VERIFIED ASPIRANT RESULTS &amp; ANALYTICS</span>
+          <h2><span class="text-metallic-purple">Authentic AMC Reports</span> &amp; Live Proof</h2>
+          <p>Official candidate scorecards, verified payout receipts, reach analytics, and chat logs.</p>
+        </div>
+
+        <!-- CATEGORY TABS -->
+        <div class="proof-filters" id="proofFilters">
+          <button type="button" class="proof-filter-btn active" data-filter="all">All Proofs (12)</button>
+          <button type="button" class="proof-filter-btn" data-filter="scorecard">Scorecards &amp; Letters</button>
+          <button type="button" class="proof-filter-btn" data-filter="analytics">Analytics &amp; Dashboards</button>
+          <button type="button" class="proof-filter-btn" data-filter="payout">Payouts &amp; Community Proof</button>
+        </div>
+
+        <!-- 3D ROTARY COVER FLOW CAROUSEL SHOWCASE -->
+        <div class="proof-3d-carousel-wrapper">
+          <button type="button" class="proof-scroll-arrow arrow-left" id="scrollLeftBtn" aria-label="Previous screenshot">‹</button>
+
+          <div class="proof-3d-stage" id="proofGrid">
+
+            <!-- Card 1 -->
+            <div class="proof-card card-landscape" data-index="0" data-category="scorecard" data-title="AMC Examination Result Scorecard" data-img="assets/img/pro_scorecard.png">
+              <div class="proof-card__img-box">
+                <img src="assets/img/pro_scorecard.png" alt="AMC Scorecard" loading="lazy">
+              </div>
+            </div>
+
+            <!-- Card 2 -->
+            <div class="proof-card card-portrait-tall" data-index="1" data-category="analytics" data-title="1.7M Post Views Analytics" data-img="assets/img/user_analytics.png">
+              <div class="proof-card__img-box">
+                <img src="assets/img/user_analytics.png" alt="Analytics Overview" loading="lazy">
+              </div>
+            </div>
+
+            <!-- Card 3 -->
+            <div class="proof-card card-portrait-tall" data-index="2" data-category="analytics" data-title="2.3M Viral Content Reach" data-img="assets/img/user_reels.png">
+              <div class="proof-card__img-box">
+                <img src="assets/img/user_reels.png" alt="Instagram Reels Grid" loading="lazy">
+              </div>
+            </div>
+
+            <!-- Card 4 -->
+            <div class="proof-card card-landscape" data-index="3" data-category="analytics" data-title="$957 Confirmed Revenue Analytics Chart" data-img="assets/img/user_chart_dark.png">
+              <div class="proof-card__img-box">
+                <img src="assets/img/user_chart_dark.png" alt="Confirmed Analytics Chart" loading="lazy">
+              </div>
+            </div>
+
+            <!-- Card 5 -->
+            <div class="proof-card card-landscape" data-index="4" data-category="scorecard" data-title="AMC Qualification Certificate" data-img="assets/img/pro_certificate.png">
+              <div class="proof-card__img-box">
+                <img src="assets/img/pro_certificate.png" alt="AMC Qualification Certificate" loading="lazy">
+              </div>
+            </div>
+
+            <!-- Card 6 -->
+            <div class="proof-card card-portrait-medium" data-index="5" data-category="payout" data-title="+$245.26 Payout Receipt" data-img="assets/img/user_payout.png">
+              <div class="proof-card__img-box">
+                <img src="assets/img/user_payout.png" alt="Money Received Payout" loading="lazy">
+              </div>
+            </div>
+
+            <!-- Card 7 -->
+            <div class="proof-card card-wide-banner" data-index="6" data-category="analytics" data-title="Google Analytics Home Dashboard" data-img="assets/img/user_ga_dashboard.png">
+              <div class="proof-card__img-box">
+                <img src="assets/img/user_ga_dashboard.png" alt="Google Analytics Dashboard" loading="lazy">
+              </div>
+            </div>
+
+            <!-- Card 8 -->
+            <div class="proof-card card-portrait-medium" data-index="7" data-category="analytics" data-title="2.16M Views Analytics Chart" data-img="assets/img/user_views.png">
+              <div class="proof-card__img-box">
+                <img src="assets/img/user_views.png" alt="Views Chart" loading="lazy">
+              </div>
+            </div>
+
+            <!-- Card 9 -->
+            <div class="proof-card card-wide-banner" data-index="8" data-category="payout" data-title="Discord Video Views Proof (Francis)" data-img="assets/img/user_discord_francis.png">
+              <div class="proof-card__img-box">
+                <img src="assets/img/user_discord_francis.png" alt="Discord Video Proof" loading="lazy">
+              </div>
+            </div>
+
+            <!-- Card 10 -->
+            <div class="proof-card card-wide-banner" data-index="9" data-category="payout" data-title="Discord Community Payout Confirmation ($730.32)" data-img="assets/img/user_discord.png">
+              <div class="proof-card__img-box">
+                <img src="assets/img/user_discord.png" alt="Discord Payout Proof" loading="lazy">
+              </div>
+            </div>
+
+            <!-- Card 11 -->
+            <div class="proof-card card-portrait-tall" data-index="10" data-category="payout" data-title="WhatsApp Result Chat" data-img="assets/img/pro_whatsapp.png">
+              <div class="proof-card__img-box">
+                <img src="assets/img/pro_whatsapp.png" alt="WhatsApp Result Chat" loading="lazy">
+              </div>
+            </div>
+
+            <!-- Card 12 -->
+            <div class="proof-card card-portrait-medium" data-index="11" data-category="scorecard" data-title="AMC Pass Notification Letter" data-img="assets/img/pro_letter.png">
+              <div class="proof-card__img-box">
+                <img src="assets/img/pro_letter.png" alt="AMC Pass Notification Letter" loading="lazy">
+              </div>
+            </div>
+
+          </div>
+
+          <button type="button" class="proof-scroll-arrow arrow-right" id="scrollRightBtn" aria-label="Next screenshot">›</button>
+        </div>
+
+        <div class="proof-actions">
+          <button type="button" class="btn btn--outline" id="openUploadModalBtn">
+            📸 Submit Your Result / Scorecard
+          </button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- UPLOAD SCREENSHOT & REVIEW MODAL -->
+    <div class="modal-overlay" id="uploadModal">
+      <div class="modal-card">
+        <button type="button" class="modal-close" id="closeUploadModalBtn">&times;</button>
+        <div class="modal-head">
+          <h3>📸 Upload Your Screenshot &amp; Review</h3>
+          <p>Share your AMC 1 score report, chat screenshot, or study experience with future candidates.</p>
+        </div>
+        <form id="uploadReviewForm" class="modal-form">
+          <div class="field">
+            <label for="uploaderName">Full Name</label>
+            <input type="text" id="uploaderName" required placeholder="e.g. Dr. Rahul Verma">
+          </div>
+          <div class="field">
+            <label for="uploaderBatch">Exam Batch / Score</label>
+            <input type="text" id="uploaderBatch" required placeholder="e.g. Passed July 2025 (Score 305)">
+          </div>
+          <div class="field">
+            <label for="uploaderReview">Your Review / Message</label>
+            <textarea id="uploaderReview" rows="3" required placeholder="Share how the program helped your prep..."></textarea>
+          </div>
+          <div class="field">
+            <label for="uploaderFile">Attach Screenshot / Scorecard (Optional)</label>
+            <input type="file" id="uploaderFile" accept="image/*">
+          </div>
+          <button type="submit" class="btn btn--primary btn--full">Submit Review &amp; Screenshot</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- LIGHTBOX PREVIEW MODAL FOR ENLARGING SCREENSHOTS -->
+    <div class="lightbox-overlay" id="lightboxModal">
+      <div class="lightbox-content">
+        <button type="button" class="lightbox-close" id="closeLightboxBtn">&times;</button>
+        <img id="lightboxImg" src="" alt="Enlarged Proof Screenshot">
+        <div class="lightbox-caption" id="lightboxCaption"></div>
+      </div>
+    </div>
+
     <!-- ============ PROGRAM NUMBERS (ACCORDION) ============ -->
     <section class="stages" id="details">
       <div class="wrap">
@@ -518,8 +685,33 @@
                 <label>Preferred Date & Lunch Window</label>
               </div>
               <div class="unified-datetime-controls">
-                <div class="date-input-wrapper">
-                  <input type="date" id="prefDate" name="prefDate" required>
+                <div class="custom-date-picker" id="customDatePicker">
+                  <div class="custom-date-trigger" id="customDateTrigger" tabindex="0">
+                    <span class="custom-date-text" id="customDateText">Select Preferred Date</span>
+                    <span class="custom-date-arrow">▼</span>
+                  </div>
+                  <input type="hidden" id="prefDate" name="prefDate" required>
+                  
+                  <!-- Custom Calendar Modal Backdrop & Centered Card -->
+                  <div class="custom-calendar-overlay" id="customCalendarOverlay"></div>
+                  <div class="custom-calendar-popover" id="customCalendarPopover">
+                    <button type="button" class="cal-close-btn" id="calCloseBtn" aria-label="Close Calendar">&times;</button>
+                    <div class="cal-header">
+                      <button type="button" class="cal-nav-btn" id="calPrevMonth" aria-label="Previous Month">&lt;</button>
+                      <div class="cal-month-title" id="calMonthTitle">August 2026</div>
+                      <button type="button" class="cal-nav-btn" id="calNextMonth" aria-label="Next Month">&gt;</button>
+                    </div>
+                    <div class="cal-weekdays">
+                      <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+                    </div>
+                    <div class="cal-days-grid" id="calDaysGrid">
+                      <!-- Dynamically rendered -->
+                    </div>
+                    <div class="cal-legend">
+                      <span class="legend-item"><span class="legend-dot green"></span> Available Meeting Date</span>
+                      <span class="legend-item"><span class="legend-dot disabled"></span> No Slots</span>
+                    </div>
+                  </div>
                 </div>
                 <div class="lunch-window-wrapper">
                   <input type="radio" name="slot" id="slot-before-lunch" value="Before lunch" checked>
