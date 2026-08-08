@@ -69,12 +69,12 @@ em, i {
 }
 
 .text-cursive {
-  font-family: 'Caveat', cursive !important;
-  font-size: 1.25em !important;
-  font-weight: 700 !important;
+  font-family: var(--font-display) !important;
+  font-style: italic !important;
+  font-size: 1.1em !important;
+  font-weight: 600 !important;
   color: var(--brand-primary) !important;
-  font-style: normal !important;
-  margin: 0 6px !important;
+  margin: 0 4px !important;
 }
 
 body {
