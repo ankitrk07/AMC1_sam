@@ -1051,7 +1051,8 @@ document.addEventListener('DOMContentLoaded', function () {
     var validateEntryForm = function () {
       var name = document.getElementById('entryName').value.trim();
       var email = document.getElementById('entryEmail').value.trim();
-      var phone = document.getElementById('entryPhone').value.trim();
+      var countryCode = document.getElementById('entryCountryCode').value.trim();
+      var rawPhone = document.getElementById('entryPhone').value.trim();
       var source = document.getElementById('entrySource').value;
       var sourceOther = otherInput ? otherInput.value.trim() : '';
 
@@ -1061,9 +1062,9 @@ document.addEventListener('DOMContentLoaded', function () {
       if (!email || !/\S+@\S+\.\S+/.test(email)) {
         return 'Please enter a valid email address.';
       }
-      var digits = phone.replace(/\D/g, '');
-      if (digits.length !== 10) {
-        return 'Please enter a valid 10-digit phone number.';
+      var digits = rawPhone.replace(/\D/g, '');
+      if (digits.length < 8) {
+        return 'Please enter a valid phone number.';
       }
       if (!source) {
         return 'Please tell us where you heard about us.';
@@ -1161,7 +1162,16 @@ document.addEventListener('DOMContentLoaded', function () {
       }
       if (entryError) entryError.textContent = '';
       entryForm.reset();
-      if (sourceValue) sourceValue.textContent = 'Select a platform';
+      
+      // Reset country code picker flags/codes to default
+      var entryFlag = document.getElementById('entrySelectedCountryFlag');
+      var entryCode = document.getElementById('entrySelectedCountryCode');
+      var entryHidden = document.getElementById('entryCountryCode');
+      if (entryFlag) entryFlag.innerHTML = '<img src="https://flagcdn.com/w20/in.png" width="18" style="border-radius:2px; box-shadow: 0 1px 2px rgba(0,0,0,0.15); display:inline-block; vertical-align:middle; margin-right:4px;" alt="India Flag">';
+      if (entryCode) entryCode.textContent = '+91';
+      if (entryHidden) entryHidden.value = '+91';
+
+      if (sourceValue) sourceValue.innerHTML = '<span>Select a platform</span>';
       closeSourceList();
       closeModal();
     });
@@ -1252,6 +1262,27 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     });
 
+    // CLOSE LIGHTBOX HANDLERS
+    if (closeLightboxBtn && lightboxModal) {
+      closeLightboxBtn.addEventListener('click', function () {
+        lightboxModal.classList.remove('is-active');
+      });
+    }
+
+    if (lightboxModal) {
+      lightboxModal.addEventListener('click', function (e) {
+        if (e.target === lightboxModal) {
+          lightboxModal.classList.remove('is-active');
+        }
+      });
+    }
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && lightboxModal && lightboxModal.classList.contains('is-active')) {
+        lightboxModal.classList.remove('is-active');
+      }
+    });
+
     if (scrollLeftBtn) {
       scrollLeftBtn.addEventListener('click', function () {
         prev3DCard();
@@ -1310,37 +1341,37 @@ document.addEventListener('DOMContentLoaded', function () {
     startAutoPlay();
   }
 
-  // --- SEARCHABLE COUNTRY CODE PICKER ---
-  (function () {
-    var countries = [
-      { name: "Australia", code: "+61", flag: "🇦🇺" },
-      { name: "India", code: "+91", flag: "🇮🇳" },
-      { name: "United Kingdom", code: "+44", flag: "🇬🇧" },
-      { name: "United States", code: "+1", flag: "🇺🇸" },
-      { name: "Canada", code: "+1", flag: "🇨🇦" },
-      { name: "New Zealand", code: "+64", flag: "🇳🇿" },
-      { name: "Ireland", code: "+353", flag: "🇮🇪" },
-      { name: "South Africa", code: "+27", flag: "🇿🇦" },
-      { name: "Singapore", code: "+65", flag: "🇸🇬" },
-      { name: "Malaysia", code: "+60", flag: "🇲🇾" },
-      { name: "United Arab Emirates", code: "+971", flag: "🇦🇪" },
-      { name: "Saudi Arabia", code: "+966", flag: "🇸🇦" },
-      { name: "Pakistan", code: "+92", flag: "🇵🇰" },
-      { name: "Nepal", code: "+977", flag: "🇳🇵" },
-      { name: "Bangladesh", code: "+880", flag: "🇧🇩" },
-      { name: "Sri Lanka", code: "+94", flag: "🇱🇰" }
-    ];
-
-    var picker = document.getElementById('countryCodePicker');
-    var trigger = document.getElementById('countryCodeTrigger');
-    var dropdown = document.getElementById('countryCodeDropdown');
-    var searchInput = document.getElementById('countrySearchInput');
-    var list = document.getElementById('countryOptionsList');
-    var flagEl = document.getElementById('selectedCountryFlag');
-    var codeEl = document.getElementById('selectedCountryCode');
-    var hiddenInput = document.getElementById('countryCode');
+  // --- SEARCHABLE COUNTRY CODE PICKERS ---
+  function initCountryCodePicker(config) {
+    var picker = document.getElementById(config.pickerId);
+    var trigger = document.getElementById(config.triggerId);
+    var dropdown = document.getElementById(config.dropdownId);
+    var searchInput = document.getElementById(config.searchInputId);
+    var list = document.getElementById(config.listId);
+    var flagEl = document.getElementById(config.flagElId);
+    var codeEl = document.getElementById(config.codeElId);
+    var hiddenInput = document.getElementById(config.hiddenInputId);
 
     if (!picker || !trigger || !list) return;
+
+    var countries = [
+      { name: "Australia", code: "+61", iso: "au" },
+      { name: "India", code: "+91", iso: "in" },
+      { name: "United Kingdom", code: "+44", iso: "gb" },
+      { name: "United States", code: "+1", iso: "us" },
+      { name: "Canada", code: "+1", iso: "ca" },
+      { name: "New Zealand", code: "+64", iso: "nz" },
+      { name: "Ireland", code: "+353", iso: "ie" },
+      { name: "South Africa", code: "+27", iso: "za" },
+      { name: "Singapore", code: "+65", iso: "sg" },
+      { name: "Malaysia", code: "+60", iso: "my" },
+      { name: "United Arab Emirates", code: "+971", iso: "ae" },
+      { name: "Saudi Arabia", code: "+966", iso: "sa" },
+      { name: "Pakistan", code: "+92", iso: "pk" },
+      { name: "Nepal", code: "+977", iso: "np" },
+      { name: "Bangladesh", code: "+880", iso: "bd" },
+      { name: "Sri Lanka", code: "+94", iso: "lk" }
+    ];
 
     function renderList(filterText) {
       list.innerHTML = '';
@@ -1355,7 +1386,7 @@ document.addEventListener('DOMContentLoaded', function () {
         li.className = 'country-option';
         li.innerHTML = `
           <div class="country-option__name-flag">
-            <span class="country-option__flag">${c.flag}</span>
+            <span class="country-option__flag"><img src="https://flagcdn.com/w20/${c.iso}.png" width="18" style="border-radius:1px; vertical-align:middle; display:inline-block;" alt="${c.name} Flag"></span>
             <span class="country-option__name">${c.name}</span>
           </div>
           <span class="country-option__code">${c.code}</span>
@@ -1363,11 +1394,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         li.addEventListener('click', function (e) {
           e.stopPropagation();
-          flagEl.textContent = c.flag;
+          flagEl.innerHTML = `<img src="https://flagcdn.com/w20/${c.iso}.png" width="18" style="border-radius:2px; box-shadow: 0 1px 2px rgba(0,0,0,0.15); display:inline-block; vertical-align:middle; margin-right:4px;" alt="${c.name} Flag">`;
           codeEl.textContent = c.code;
           hiddenInput.value = c.code;
           picker.classList.remove('is-open');
-          searchInput.value = '';
+          if (searchInput) searchInput.value = '';
           renderList('');
         });
 
@@ -1381,6 +1412,10 @@ document.addEventListener('DOMContentLoaded', function () {
       if (isOpen) {
         picker.classList.remove('is-open');
       } else {
+        // Close other open pickers
+        document.querySelectorAll('.country-code-picker').forEach(function (p) {
+          p.classList.remove('is-open');
+        });
         picker.classList.add('is-open');
         setTimeout(function () {
           if (searchInput) searchInput.focus();
@@ -1404,4 +1439,28 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     renderList('');
-  })();
+  }
+
+  // Initialize main form country code picker
+  initCountryCodePicker({
+    pickerId: 'countryCodePicker',
+    triggerId: 'countryCodeTrigger',
+    dropdownId: 'countryCodeDropdown',
+    searchInputId: 'countrySearchInput',
+    listId: 'countryOptionsList',
+    flagElId: 'selectedCountryFlag',
+    codeElId: 'selectedCountryCode',
+    hiddenInputId: 'countryCode'
+  });
+
+  // Initialize entry modal country code picker
+  initCountryCodePicker({
+    pickerId: 'entryCountryCodePicker',
+    triggerId: 'entryCountryCodeTrigger',
+    dropdownId: 'entryCountryCodeDropdown',
+    searchInputId: 'entryCountrySearchInput',
+    listId: 'entryCountryOptionsList',
+    flagElId: 'entrySelectedCountryFlag',
+    codeElId: 'entrySelectedCountryCode',
+    hiddenInputId: 'entryCountryCode'
+  });
