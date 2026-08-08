@@ -190,17 +190,375 @@ document.addEventListener('DOMContentLoaded', function () {
     prefDateInput.setAttribute('min', today.toISOString().split('T')[0]);
   }
 
+  // --- API URL HELPER ---
+  function getApiUrl(endpoint) {
+    if (window.location.protocol === 'file:' || (window.location.port && window.location.port !== '3000')) {
+      return 'http://localhost:3000' + endpoint;
+    }
+    return endpoint;
+  }
+
+  // --- AVAILABILITY CHECK ---
+  var counsellorUrls = {};
+  var fetchedTimeSlots = [];
+  var selectedCounsellorUrl = '';
+
+  function checkAvailability() {
+    if (!prefDateInput) return;
+    var date = prefDateInput.value;
+    if (!date) return;
+
+    var container = document.getElementById('timeSlotsContainer');
+    if (container) {
+      container.innerHTML = '<div class="time-slots-placeholder">Checking available timings...</div>';
+    }
+
+    if (counsellingFine) {
+      counsellingFine.textContent = 'Checking slot availability...';
+      counsellingFine.classList.remove('is-error', 'is-success');
+    }
+
+    var apiUrl = getApiUrl('/api/calendly/availability?date=' + encodeURIComponent(date));
+    fetch(apiUrl)
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data.success) {
+          if (data.urls) {
+            counsellorUrls['counsellor1'] = data.urls.counsellor1 || '';
+            counsellorUrls['counsellor2'] = data.urls.counsellor2 || '';
+          }
+          fetchedTimeSlots = data.timeSlots || [];
+
+          renderTimeSlots(fetchedTimeSlots, data.nextAvailable);
+        } else {
+          renderTimeSlots([], null);
+        }
+      })
+      .catch(function (err) {
+        console.error('[Availability Check Error]', err);
+        renderTimeSlots([], null);
+      });
+  }
+
+  function renderTimeSlots(slots, nextAvailable) {
+    var container = document.getElementById('timeSlotsContainer');
+    if (!container) return;
+
+    container.innerHTML = '';
+    selectedCounsellorUrl = '';
+
+    if (!slots || slots.length === 0) {
+      var msgHtml = '<div class="time-slots-placeholder" style="width:100%;">';
+      msgHtml += '<p style="margin:0 0 10px; font-weight:600; color:#dc2626;">No available slots on the selected date.</p>';
+      if (nextAvailable && nextAvailable.date) {
+        msgHtml += '<button type="button" id="jumpNextDateBtn" style="background:#BF1D4B; color:#ffffff; border:none; padding:10px 18px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; box-shadow:0 4px 12px rgba(191,29,75,0.25); transition:all 0.2s ease;">';
+        msgHtml += '📅 Switch to Next Available Date: <strong>' + (nextAvailable.formattedDate || nextAvailable.date) + '</strong> (' + nextAvailable.count + ' slots open)';
+        msgHtml += '</button>';
+      } else {
+        msgHtml += '<span style="color:#94a3b8; font-size:13px;">Please select another date in the calendar.</span>';
+      }
+      msgHtml += '</div>';
+      container.innerHTML = msgHtml;
+
+      if (counsellingFine) {
+        counsellingFine.textContent = nextAvailable ? ('No slots on this date. Next available date is ' + (nextAvailable.formattedDate || nextAvailable.date)) : 'No available counselling slots on this date. Please select another date.';
+        counsellingFine.classList.add('is-error');
+        counsellingFine.classList.remove('is-success');
+      }
+
+      var jumpBtn = document.getElementById('jumpNextDateBtn');
+      if (jumpBtn && nextAvailable) {
+        jumpBtn.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (window.selectDateAndCheck) {
+            window.selectDateAndCheck(nextAvailable.date);
+          }
+        });
+      }
+      return;
+    }
+
+    if (counsellingFine) {
+      counsellingFine.textContent = 'Slots available! Please select a preferred time slot below.';
+      counsellingFine.classList.add('is-success');
+      counsellingFine.classList.remove('is-error');
+    }
+
+    var categories = {
+      'Morning': [],
+      'Afternoon': [],
+      'Evening': []
+    };
+
+    slots.forEach(function (slot) {
+      var h = slot.localHour !== undefined ? slot.localHour : 12;
+      if (h < 12) {
+        categories['Morning'].push(slot);
+      } else if (h >= 12 && h < 17) {
+        categories['Afternoon'].push(slot);
+      } else {
+        categories['Evening'].push(slot);
+      }
+    });
+
+    var globalIndex = 0;
+    var firstRadioChecked = false;
+
+    Object.keys(categories).forEach(function (catName) {
+      var catSlots = categories[catName];
+      if (catSlots.length === 0) return;
+
+      var groupEl = document.createElement('div');
+      groupEl.className = 'time-slots-group';
+
+      var titleEl = document.createElement('div');
+      titleEl.className = 'time-group-title';
+      titleEl.textContent = catName;
+      groupEl.appendChild(titleEl);
+
+      var gridEl = document.createElement('div');
+      gridEl.className = 'time-chips-grid';
+
+      catSlots.forEach(function (slot) {
+        var wrapper = document.createElement('div');
+        wrapper.className = 'time-chip-wrapper';
+
+        var radio = document.createElement('input');
+        radio.type = 'radio';
+        radio.name = 'slot';
+        radio.id = 'slot-' + globalIndex;
+        radio.value = slot.time;
+        if (!firstRadioChecked) {
+          radio.checked = true;
+          firstRadioChecked = true;
+          var firstCounsellor = slot.counsellors[0] || 'counsellor1';
+          selectedCounsellorUrl = slot.slotUrls[firstCounsellor] || counsellorUrls[firstCounsellor] || '';
+        }
+
+        var label = document.createElement('label');
+        label.htmlFor = 'slot-' + globalIndex;
+        label.className = 'time-chip';
+        label.textContent = slot.time;
+
+        (function (sObj, rObj) {
+          label.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            rObj.checked = true;
+            var counsellorId = sObj.counsellors[0] || 'counsellor1';
+            selectedCounsellorUrl = sObj.slotUrls[counsellorId] || counsellorUrls[counsellorId] || '';
+            handleDateOrTimeSelection();
+          });
+        })(slot, radio);
+
+        wrapper.appendChild(radio);
+        wrapper.appendChild(label);
+        gridEl.appendChild(wrapper);
+
+        globalIndex++;
+      });
+
+      groupEl.appendChild(gridEl);
+      container.appendChild(groupEl);
+    });
+  }
+
+  // --- CUSTOM CALENDAR PICKER & LIVE AVAILABILITY INTEGRATION ---
+  var customDatePicker = document.getElementById('customDatePicker');
+  var customDateTrigger = document.getElementById('customDateTrigger');
+  var customDateText = document.getElementById('customDateText');
+  var customCalendarPopover = document.getElementById('customCalendarPopover');
+  var calMonthTitle = document.getElementById('calMonthTitle');
+  var calDaysGrid = document.getElementById('calDaysGrid');
+  var calPrevMonth = document.getElementById('calPrevMonth');
+  var calNextMonth = document.getElementById('calNextMonth');
+  var calCloseBtn = document.getElementById('calCloseBtn');
+  var customCalendarOverlay = document.getElementById('customCalendarOverlay');
+
+  var availableDateSet = new Set();
+  var todayObj = new Date();
+  var currentCalYear = todayObj.getFullYear();
+  var currentCalMonth = todayObj.getMonth();
+  var selectedDateStr = '';
+
+  var monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+  function formatDisplayDate(dateStr) {
+    if (!dateStr) return 'Select Preferred Date';
+    var d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  function fallbackWeekdayDates() {
+    var dateSet = new Set();
+    var now = new Date();
+    for (var i = 0; i < 60; i++) {
+      var d = new Date(now.getTime() + i * 86400000);
+      var dayOfWeek = d.getDay();
+      if (dayOfWeek !== 0) {
+        var y = d.getFullYear();
+        var m = String(d.getMonth() + 1).padStart(2, '0');
+        var day = String(d.getDate()).padStart(2, '0');
+        dateSet.add(y + '-' + m + '-' + day);
+      }
+    }
+    availableDateSet = dateSet;
+  }
+
+  function fetchMonthAvailability(callback) {
+    var apiUrl = getApiUrl('/api/calendly/month-availability?refresh=true');
+    fetch(apiUrl)
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data.success && Array.isArray(data.availableDates) && data.availableDates.length > 0) {
+          availableDateSet = new Set(data.availableDates);
+        } else {
+          fallbackWeekdayDates();
+        }
+        if (callback) callback();
+      })
+      .catch(function (err) {
+        console.warn('[Month Availability Fetch Error]', err);
+        fallbackWeekdayDates();
+        if (callback) callback();
+      });
+  }
+
+  function renderCalendarGrid(year, month) {
+    if (!calMonthTitle || !calDaysGrid) return;
+
+    calMonthTitle.textContent = monthNames[month] + ' ' + year;
+    calDaysGrid.innerHTML = '';
+
+    var firstDay = new Date(year, month, 1);
+    var startingDayOfWeek = (firstDay.getDay() + 6) % 7;
+    var daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    for (var e = 0; e < startingDayOfWeek; e++) {
+      var emptyCell = document.createElement('div');
+      emptyCell.className = 'cal-day-cell empty';
+      calDaysGrid.appendChild(emptyCell);
+    }
+
+    for (var day = 1; day <= daysInMonth; day++) {
+      var cell = document.createElement('div');
+      cell.className = 'cal-day-cell';
+      cell.textContent = day;
+
+      var monthStr = String(month + 1).padStart(2, '0');
+      var dayStr = String(day).padStart(2, '0');
+      var fullDateStr = year + '-' + monthStr + '-' + dayStr;
+
+      var isAvailable = availableDateSet.has(fullDateStr);
+      var isPast = new Date(fullDateStr + 'T23:59:59') < new Date();
+
+      if (isAvailable && !isPast) {
+        cell.classList.add('is-available');
+        (function (dStr) {
+          cell.addEventListener('click', function (e) {
+            e.stopPropagation();
+            selectDate(dStr);
+          });
+        })(fullDateStr);
+      } else {
+        cell.classList.add('is-disabled');
+      }
+
+      if (fullDateStr === selectedDateStr) {
+        cell.classList.add('is-selected');
+      }
+
+      calDaysGrid.appendChild(cell);
+    }
+  }
+
+  function selectDate(dateStr) {
+    selectedDateStr = dateStr;
+    if (prefDateInput) {
+      prefDateInput.value = dateStr;
+    }
+    if (customDateText) {
+      customDateText.textContent = formatDisplayDate(dateStr);
+    }
+    if (customDatePicker) {
+      customDatePicker.classList.remove('is-open');
+    }
+    renderCalendarGrid(currentCalYear, currentCalMonth);
+    checkAvailability();
+  }
+
+  window.selectDateAndCheck = selectDate;
+
+  // Calendar open/close handlers
+  if (calCloseBtn) {
+    calCloseBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (customDatePicker) customDatePicker.classList.remove('is-open');
+    });
+  }
+
+  if (customCalendarOverlay) {
+    customCalendarOverlay.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (customDatePicker) customDatePicker.classList.remove('is-open');
+    });
+  }
+
+  if (customDateTrigger) {
+    customDateTrigger.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var isOpen = customDatePicker.classList.contains('is-open');
+      if (!isOpen) {
+        customDatePicker.classList.add('is-open');
+        fetchMonthAvailability(function () {
+          renderCalendarGrid(currentCalYear, currentCalMonth);
+        });
+      } else {
+        customDatePicker.classList.remove('is-open');
+      }
+    });
+
+    document.addEventListener('click', function (e) {
+      if (customDatePicker && !customDatePicker.contains(e.target)) {
+        customDatePicker.classList.remove('is-open');
+      }
+    });
+  }
+
+  if (calPrevMonth) {
+    calPrevMonth.addEventListener('click', function (e) {
+      e.stopPropagation();
+      currentCalMonth--;
+      if (currentCalMonth < 0) {
+        currentCalMonth = 11;
+        currentCalYear--;
+      }
+      renderCalendarGrid(currentCalYear, currentCalMonth);
+    });
+  }
+
+  if (calNextMonth) {
+    calNextMonth.addEventListener('click', function (e) {
+      e.stopPropagation();
+      currentCalMonth++;
+      if (currentCalMonth > 11) {
+        currentCalMonth = 0;
+        currentCalYear++;
+      }
+      renderCalendarGrid(currentCalYear, currentCalMonth);
+    });
+  }
+
+  // Pre-fetch availability on load
+  fetchMonthAvailability(function () {
+    renderCalendarGrid(currentCalYear, currentCalMonth);
+  });
+
   var currentBookingState = null;
 
   function updateCTAsToConfirmed(data) {
     data = data || currentBookingState || {};
-
-    // Override: Always show 10 August 2026 at 6:30 PM
-    data.isoDate = '2026-08-10';
-    data.formattedTime = '6:30 PM';
-    data.date = '10 August 2026 at 6:30 PM';
-    data.slot = 'After lunch';
-    data.isAfternoon = true;
 
     // 1. Fill exact Name into form
     if (data.name) {
@@ -226,21 +584,23 @@ document.addEventListener('DOMContentLoaded', function () {
       prefDateEl.classList.add('is-booked');
     }
 
-    // 4. Fill exact Time slot into the time box & highlight it
-    var isAfternoon = data.isAfternoon || (data.slot && data.slot.toLowerCase().indexOf('after') !== -1);
-    var targetRadioId = isAfternoon ? 'slot-after-lunch' : 'slot-before-lunch';
-    var targetLabelId = isAfternoon ? 'label-after-lunch' : 'label-before-lunch';
-    var targetSpanId = isAfternoon ? 'span-after-lunch' : 'span-before-lunch';
+    // Update customDateText to show the confirmed date & time
+    var dateTextEl = document.getElementById('customDateText');
+    if (dateTextEl && data.date) {
+      dateTextEl.textContent = data.date;
+    }
 
-    var radioEl = document.getElementById(targetRadioId);
-    if (radioEl) radioEl.checked = true;
-
-    var labelEl = document.getElementById(targetLabelId);
-    if (labelEl) labelEl.classList.add('is-booked');
-
-    if (data.formattedTime) {
-      var spanEl = document.getElementById(targetSpanId);
-      if (spanEl) spanEl.textContent = data.formattedTime;
+    // Render a single confirmed time slot chip in the container
+    var container = document.getElementById('timeSlotsContainer');
+    if (container && data.formattedTime) {
+      container.innerHTML = `
+        <div class="time-chip-wrapper">
+          <input type="radio" name="slot" id="slot-confirmed" value="${data.slot || data.formattedTime}" checked disabled>
+          <label for="slot-confirmed" class="time-chip is-confirmed" style="border-color: var(--brand-primary); background: var(--brand-light); color: var(--brand-primary-deep); font-weight: 700;">
+            ✓ ${data.formattedTime}
+          </label>
+        </div>
+      `;
     }
 
     // Mark dateTimeSection as booked & show reschedule button
@@ -256,8 +616,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // 5. Form status message
     if (counsellingFine) {
       var dateInfo = data.date && data.date !== 'Not specified' ? ' for ' + data.date : '';
-      var slotInfo = data.slot ? ' (' + data.slot + ')' : '';
-      counsellingFine.textContent = '✓ Counselling Session Confirmed' + dateInfo + slotInfo + '!';
+      counsellingFine.textContent = '✓ Counselling Session Confirmed' + dateInfo + '!';
       counsellingFine.classList.add('is-success');
       counsellingFine.classList.remove('is-error');
     }
@@ -294,20 +653,38 @@ document.addEventListener('DOMContentLoaded', function () {
   var calendlyFallback = document.getElementById('calendlyFallback');
   var lastActiveElement = null;
 
+  var calendlyLoadPromise = null;
+
   function loadExternalResource(url, type) {
-    return new Promise(function (resolve, reject) {
-      if (type === 'script') {
+    if (type === 'script') {
+      if (window.Calendly) {
+        return Promise.resolve();
+      }
+      if (calendlyLoadPromise) {
+        return calendlyLoadPromise;
+      }
+      calendlyLoadPromise = new Promise(function (resolve, reject) {
         if (document.querySelector('script[src="' + url + '"]')) {
-          resolve();
+          var checkInterval = setInterval(function () {
+            if (window.Calendly) {
+              clearInterval(checkInterval);
+              resolve();
+            }
+          }, 50);
           return;
         }
         var script = document.createElement('script');
         script.src = url;
         script.async = true;
-        script.onload = resolve;
+        script.onload = function () {
+          resolve();
+        };
         script.onerror = reject;
         document.head.appendChild(script);
-      } else if (type === 'css') {
+      });
+      return calendlyLoadPromise;
+    } else {
+      return new Promise(function (resolve, reject) {
         if (document.querySelector('link[href="' + url + '"]')) {
           resolve();
           return;
@@ -318,8 +695,8 @@ document.addEventListener('DOMContentLoaded', function () {
         link.onload = resolve;
         link.onerror = reject;
         document.head.appendChild(link);
-      }
-    });
+      });
+    }
   }
 
   function validateCounsellingInputs() {
@@ -346,7 +723,7 @@ document.addEventListener('DOMContentLoaded', function () {
     return { name: name, phone: phone };
   }
 
-  function openCalendlyModalFlow(name, phone, date, slot) {
+  function openCalendlyModalFlow(name, phone, date, slot, targetUrl) {
     currentBookingState = { name: name, phone: phone, date: date, slot: slot };
     document.body.style.overflow = 'hidden';
     lastActiveElement = document.activeElement;
@@ -374,8 +751,9 @@ document.addEventListener('DOMContentLoaded', function () {
         throw new Error('Calendly SDK not found');
       }
 
+      var bookingUrl = targetUrl || calendlyUrl;
       Calendly.initInlineWidget({
-        url: calendlyUrl,
+        url: bookingUrl,
         parentElement: calendlyWidgetContainer,
         prefill: {
           name: name,
@@ -487,14 +865,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var date = document.getElementById('prefDate').value;
     var slotInput = counsellingForm.querySelector('input[name="slot"]:checked');
-    var slot = slotInput ? slotInput.value : 'Before lunch';
+    if (!slotInput) {
+      if (counsellingFine) {
+        counsellingFine.textContent = 'Please select a preferred time slot first.';
+        counsellingFine.classList.add('is-error');
+        counsellingFine.classList.remove('is-success');
+      }
+      return;
+    }
+    var slot = slotInput.value;
 
     var prettyDate = 'Not specified';
     if (date) {
       prettyDate = new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
     }
 
-    openCalendlyModalFlow(validation.name, validation.phone, prettyDate, slot);
+    var targetUrl = selectedCounsellorUrl || counsellorUrls['counsellor1'] || 'https://calendly.com/harshraj1603/15-minute-consultation';
+
+    openCalendlyModalFlow(validation.name, validation.phone, prettyDate, slot, targetUrl);
   }
 
   if (counsellingForm) {
@@ -509,7 +897,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (dateTimeSection.classList.contains('is-booked')) {
           return;
         }
-        var clickedBox = e.target.closest('#prefDate, .slot-chip, input[name="slot"]');
+        var clickedBox = e.target.closest('#prefDate');
         if (!clickedBox) return;
 
         if (e.target.id === 'prefDate') {

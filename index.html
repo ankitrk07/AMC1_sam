@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
-    href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..900;1,9..144,400..900&family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=IBM+Plex+Mono:wght@500;600&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..900;1,9..144,400..900&family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=IBM+Plex+Mono:wght@500;600&display=swap"
     rel="stylesheet">
 
   <link rel="stylesheet" href="css/style.css">
@@ -59,7 +59,7 @@
           </div>
         </div>
         <p class="vsl__subline">
-          <i><strong>Dr. Rajat Gupta</strong> breaks down the <strong>complete AMC 1</strong> preparation strategy, and
+          <i><strong>Dr. Rajat Gupta</strong> breaks down the <strong>complete AMC 1</strong>, and
             how the in-depth course takes you from first revision to exam-ready.</i>
         </p>
         <div class="vsl__frame" id="vslFrame">
@@ -682,7 +682,7 @@
             </div>
             <div class="field unified-datetime-group" id="dateTimeSection">
               <div class="field-label-row">
-                <label>Preferred Date & Lunch Window</label>
+                <label>Preferred Date & Time Slot</label>
               </div>
               <div class="unified-datetime-controls">
                 <div class="custom-date-picker" id="customDatePicker">
@@ -713,17 +713,8 @@
                     </div>
                   </div>
                 </div>
-                <div class="lunch-window-wrapper">
-                  <input type="radio" name="slot" id="slot-before-lunch" value="Before lunch" checked>
-                  <label for="slot-before-lunch" class="slot-chip" id="label-before-lunch">
-                    Before lunch
-                    <span id="span-before-lunch">9:00 AM – 12:00 PM</span>
-                  </label>
-                  <input type="radio" name="slot" id="slot-after-lunch" value="After lunch">
-                  <label for="slot-after-lunch" class="slot-chip" id="label-after-lunch">
-                    After lunch
-                    <span id="span-after-lunch">1:00 PM – 6:00 PM</span>
-                  </label>
+                <div class="time-slots-container" id="timeSlotsContainer">
+                  <!-- Dynamically rendered actual available time slot chips -->
                 </div>
               </div>
             </div>
