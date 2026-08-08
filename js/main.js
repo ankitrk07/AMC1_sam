@@ -701,7 +701,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function validateCounsellingInputs() {
     var name = document.getElementById('fullName').value.trim();
-    var phone = document.getElementById('phone').value.trim();
+    var countryCode = document.getElementById('countryCode').value;
+    var rawPhone = document.getElementById('phone').value.trim();
+    var phone = countryCode + ' ' + rawPhone;
 
     if (!name) {
       counsellingFine.textContent = 'Please enter your Full Name first.';
@@ -710,7 +712,7 @@ document.addEventListener('DOMContentLoaded', function () {
       document.getElementById('fullName').focus();
       return false;
     }
-    if (!phone || phone.replace(/\D/g, '').length < 8) {
+    if (!rawPhone || rawPhone.replace(/\D/g, '').length < 8) {
       counsellingFine.textContent = 'Please enter a valid Phone / WhatsApp Number first.';
       counsellingFine.classList.add('is-error');
       counsellingFine.classList.remove('is-success');
@@ -1307,3 +1309,99 @@ document.addEventListener('DOMContentLoaded', function () {
     update3DCarousel();
     startAutoPlay();
   }
+
+  // --- SEARCHABLE COUNTRY CODE PICKER ---
+  (function () {
+    var countries = [
+      { name: "Australia", code: "+61", flag: "🇦🇺" },
+      { name: "India", code: "+91", flag: "🇮🇳" },
+      { name: "United Kingdom", code: "+44", flag: "🇬🇧" },
+      { name: "United States", code: "+1", flag: "🇺🇸" },
+      { name: "Canada", code: "+1", flag: "🇨🇦" },
+      { name: "New Zealand", code: "+64", flag: "🇳🇿" },
+      { name: "Ireland", code: "+353", flag: "🇮🇪" },
+      { name: "South Africa", code: "+27", flag: "🇿🇦" },
+      { name: "Singapore", code: "+65", flag: "🇸🇬" },
+      { name: "Malaysia", code: "+60", flag: "🇲🇾" },
+      { name: "United Arab Emirates", code: "+971", flag: "🇦🇪" },
+      { name: "Saudi Arabia", code: "+966", flag: "🇸🇦" },
+      { name: "Pakistan", code: "+92", flag: "🇵🇰" },
+      { name: "Nepal", code: "+977", flag: "🇳🇵" },
+      { name: "Bangladesh", code: "+880", flag: "🇧🇩" },
+      { name: "Sri Lanka", code: "+94", flag: "🇱🇰" }
+    ];
+
+    var picker = document.getElementById('countryCodePicker');
+    var trigger = document.getElementById('countryCodeTrigger');
+    var dropdown = document.getElementById('countryCodeDropdown');
+    var searchInput = document.getElementById('countrySearchInput');
+    var list = document.getElementById('countryOptionsList');
+    var flagEl = document.getElementById('selectedCountryFlag');
+    var codeEl = document.getElementById('selectedCountryCode');
+    var hiddenInput = document.getElementById('countryCode');
+
+    if (!picker || !trigger || !list) return;
+
+    function renderList(filterText) {
+      list.innerHTML = '';
+      var query = (filterText || '').toLowerCase().trim();
+
+      countries.forEach(function (c) {
+        if (query && c.name.toLowerCase().indexOf(query) === -1 && c.code.indexOf(query) === -1) {
+          return;
+        }
+
+        var li = document.createElement('li');
+        li.className = 'country-option';
+        li.innerHTML = `
+          <div class="country-option__name-flag">
+            <span class="country-option__flag">${c.flag}</span>
+            <span class="country-option__name">${c.name}</span>
+          </div>
+          <span class="country-option__code">${c.code}</span>
+        `;
+
+        li.addEventListener('click', function (e) {
+          e.stopPropagation();
+          flagEl.textContent = c.flag;
+          codeEl.textContent = c.code;
+          hiddenInput.value = c.code;
+          picker.classList.remove('is-open');
+          searchInput.value = '';
+          renderList('');
+        });
+
+        list.appendChild(li);
+      });
+    }
+
+    trigger.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var isOpen = picker.classList.contains('is-open');
+      if (isOpen) {
+        picker.classList.remove('is-open');
+      } else {
+        picker.classList.add('is-open');
+        setTimeout(function () {
+          if (searchInput) searchInput.focus();
+        }, 50);
+      }
+    });
+
+    if (searchInput) {
+      searchInput.addEventListener('input', function (e) {
+        renderList(e.target.value);
+      });
+      searchInput.addEventListener('click', function (e) {
+        e.stopPropagation();
+      });
+    }
+
+    document.addEventListener('click', function (e) {
+      if (!picker.contains(e.target)) {
+        picker.classList.remove('is-open');
+      }
+    });
+
+    renderList('');
+  })();

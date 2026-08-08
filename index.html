@@ -251,7 +251,7 @@
               <li><span class="check-icon">✓</span> No interest, no additional charge</li>
             </ul>
             <hr class="payment-card__divider" />
-            <p class="payment-card__policy-text">Second instalment due within 30 days of the first. Fees are non-refundable.</p>
+            <p class="payment-card__policy-text">Fees are non-refundable.</p>
           </div>
         </div>
       </div>
@@ -532,44 +532,10 @@
           <button type="button" class="proof-scroll-arrow arrow-right" id="scrollRightBtn" aria-label="Next screenshot">›</button>
         </div>
 
-        <div class="proof-actions">
-          <button type="button" class="btn btn--outline" id="openUploadModalBtn">
-            📸 Submit Your Result / Scorecard
-          </button>
-        </div>
-
       </div>
     </section>
 
-    <!-- UPLOAD SCREENSHOT & REVIEW MODAL -->
-    <div class="modal-overlay" id="uploadModal">
-      <div class="modal-card">
-        <button type="button" class="modal-close" id="closeUploadModalBtn">&times;</button>
-        <div class="modal-head">
-          <h3>📸 Upload Your Screenshot &amp; Review</h3>
-          <p>Share your AMC 1 score report, chat screenshot, or study experience with future candidates.</p>
-        </div>
-        <form id="uploadReviewForm" class="modal-form">
-          <div class="field">
-            <label for="uploaderName">Full Name</label>
-            <input type="text" id="uploaderName" required placeholder="e.g. Dr. Rahul Verma">
-          </div>
-          <div class="field">
-            <label for="uploaderBatch">Exam Batch / Score</label>
-            <input type="text" id="uploaderBatch" required placeholder="e.g. Passed July 2025 (Score 305)">
-          </div>
-          <div class="field">
-            <label for="uploaderReview">Your Review / Message</label>
-            <textarea id="uploaderReview" rows="3" required placeholder="Share how the program helped your prep..."></textarea>
-          </div>
-          <div class="field">
-            <label for="uploaderFile">Attach Screenshot / Scorecard (Optional)</label>
-            <input type="file" id="uploaderFile" accept="image/*">
-          </div>
-          <button type="submit" class="btn btn--primary btn--full">Submit Review &amp; Screenshot</button>
-        </form>
-      </div>
-    </div>
+
 
     <!-- LIGHTBOX PREVIEW MODAL FOR ENLARGING SCREENSHOTS -->
     <div class="lightbox-overlay" id="lightboxModal">
@@ -677,7 +643,23 @@
             <div class="field">
               <label for="phone">Phone / WhatsApp Number</label>
               <div class="phone-input-group">
-                <input type="tel" id="phone" name="phone" placeholder="+91 00000 00000" required>
+                <div class="country-code-picker" id="countryCodePicker">
+                  <div class="country-code-trigger" id="countryCodeTrigger" tabindex="0">
+                    <span id="selectedCountryFlag">🇮🇳</span>
+                    <span id="selectedCountryCode">+91</span>
+                    <span class="country-code-arrow">▼</span>
+                  </div>
+                  <div class="country-code-dropdown" id="countryCodeDropdown">
+                    <div class="country-search-box">
+                      <input type="text" id="countrySearchInput" placeholder="Search country name or code...">
+                    </div>
+                    <ul class="country-options-list" id="countryOptionsList">
+                      <!-- Rendered by JS -->
+                    </ul>
+                  </div>
+                </div>
+                <input type="hidden" id="countryCode" name="countryCode" value="+91">
+                <input type="tel" id="phone" name="phone" placeholder="00000 00000" required>
               </div>
             </div>
             <div class="field unified-datetime-group" id="dateTimeSection">
