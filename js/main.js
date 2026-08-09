@@ -1,5 +1,34 @@
 document.addEventListener('DOMContentLoaded', function () {
 
+  /* ---- Page content & form inputs clean reset on fresh reload ---- */
+  var pageContentEl = document.getElementById('pageContent');
+  if (pageContentEl) {
+    pageContentEl.style.filter = '';
+    pageContentEl.style.pointerEvents = '';
+    pageContentEl.style.userSelect = '';
+  }
+  document.body.style.overflow = '';
+
+  try {
+    sessionStorage.clear();
+    localStorage.removeItem('amc_entry_submitted');
+    localStorage.removeItem('amc_lead_user');
+    localStorage.removeItem('amc_lead_submitted');
+  } catch (e) {}
+
+  var fnEl = document.getElementById('fullName');
+  if (fnEl) fnEl.value = '';
+  var phEl = document.getElementById('phone');
+  if (phEl) phEl.value = '';
+  var pdEl = document.getElementById('prefDate');
+  if (pdEl) pdEl.value = '';
+  var eN = document.getElementById('entryName');
+  if (eN) eN.value = '';
+  var eP = document.getElementById('entryPhone');
+  if (eP) eP.value = '';
+  var eE = document.getElementById('entryEmail');
+  if (eE) eE.value = '';
+
   /* ---- Footer year ---- */
   var yearEl = document.getElementById('year');
   if (yearEl) yearEl.textContent = new Date().getFullYear();
@@ -380,10 +409,14 @@ document.addEventListener('DOMContentLoaded', function () {
           label.addEventListener('click', function (e) {
             e.preventDefault();
             e.stopPropagation();
+            // Check this radio and uncheck others
+            container.querySelectorAll('input[name="slot"]').forEach(function (r) {
+              r.checked = (r === rObj);
+            });
             rObj.checked = true;
-            var counsellorId = sObj.counsellors[0] || 'counsellor1';
+            var counsellorId = (sObj.counsellors && sObj.counsellors[0]) || 'counsellor1';
             selectedCounsellorId = counsellorId;
-            selectedCounsellorUrl = sObj.slotUrls[counsellorId] || counsellorUrls[counsellorId] || '';
+            selectedCounsellorUrl = (sObj.slotUrls && sObj.slotUrls[counsellorId]) || counsellorUrls[counsellorId] || '';
             handleDateOrTimeSelection();
           });
         })(slot, radio);
@@ -650,7 +683,7 @@ document.addEventListener('DOMContentLoaded', function () {
       rescheduleBtn.style.display = 'inline-flex';
     }
 
-    // 5. Form status message
+    // 5. Form status message & prominent Success Card
     if (counsellingFine) {
       var dateInfo = data.date && data.date !== 'Not specified' ? ' for ' + data.date : '';
       counsellingFine.textContent = '✓ Counselling Session Confirmed' + dateInfo + '!';
@@ -658,23 +691,45 @@ document.addEventListener('DOMContentLoaded', function () {
       counsellingFine.classList.remove('is-error');
     }
 
+    var existingSuccess = document.getElementById('bookingSuccessCard');
+    if (!existingSuccess && counsellingForm) {
+      var successCard = document.createElement('div');
+      successCard.id = 'bookingSuccessCard';
+      successCard.style.cssText = 'background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: white; padding: 20px 24px; border-radius: 12px; text-align: center; margin-bottom: 20px; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.28); animation: fadeIn 0.4s ease;';
+      var scheduledDateStr = data.date && data.date !== 'Not specified' ? data.date : 'your selected time';
+      successCard.innerHTML = `
+        <div style="font-size: 26px; margin-bottom: 4px;">🎉</div>
+        <h3 style="color: white; font-size: 19px; font-weight: 800; margin-bottom: 4px; letter-spacing: -0.01em;">Counselling Session Booked!</h3>
+        <p style="color: rgba(255,255,255,0.95); font-size: 14px; margin: 0; line-height: 1.4;">We look forward to meeting you on <strong>${scheduledDateStr}</strong>. A calendar invite and meeting details have been sent to you.</p>
+      `;
+      counsellingForm.prepend(successCard);
+    }
+
     // 6. Header & Page CTA updates (Clean, single-line layout)
     var ctas = document.querySelectorAll('a[href="#counselling"], .counselling__form button[type="submit"]');
     ctas.forEach(function (cta) {
       cta.classList.add('is-confirmed');
       if (cta.classList.contains('header__cta')) {
-        cta.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:4px;"><polyline points="20 6 9 17 4 12"></polyline></svg> Confirmed';
+        cta.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:4px;"><polyline points="20 6 9 17 4 12"></polyline></svg> Booked';
       } else if (cta.tagName === 'A') {
-        cta.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:6px;"><polyline points="20 6 9 17 4 12"></polyline></svg> Counselling Session Confirmed';
+        cta.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:6px;"><polyline points="20 6 9 17 4 12"></polyline></svg> Counselling Session Booked';
       } else if (cta.tagName === 'BUTTON') {
-        cta.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:6px;"><polyline points="20 6 9 17 4 12"></polyline></svg> Session Confirmed';
+        cta.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:6px;"><polyline points="20 6 9 17 4 12"></polyline></svg> Session Booked';
         cta.disabled = true;
       }
     });
 
     var stickyTextSpan = document.querySelector('.sticky-cta__text span');
     if (stickyTextSpan) {
-      stickyTextSpan.textContent = 'Session confirmed on Calendly';
+      stickyTextSpan.textContent = 'Session booked on Calendly';
+    }
+
+    // Scroll to the counselling card smoothly
+    var cSection = document.getElementById('counselling');
+    if (cSection) {
+      var rect = cSection.getBoundingClientRect();
+      var centerTop = rect.top + window.pageYOffset - (window.innerHeight / 2) + (rect.height / 2);
+      window.scrollTo({ top: Math.max(0, centerTop), behavior: 'smooth' });
     }
   }
 
@@ -712,15 +767,14 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         var script = document.createElement('script');
         script.src = url;
+        script.type = 'text/javascript';
         script.async = true;
-        script.onload = function () {
-          resolve();
-        };
+        script.onload = resolve;
         script.onerror = reject;
         document.head.appendChild(script);
       });
       return calendlyLoadPromise;
-    } else {
+    } else if (type === 'css') {
       return new Promise(function (resolve, reject) {
         if (document.querySelector('link[href="' + url + '"]')) {
           resolve();
@@ -737,118 +791,288 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function validateCounsellingInputs() {
-    var name = document.getElementById('fullName').value.trim();
-    var countryCode = document.getElementById('countryCode').value;
-    var rawPhone = document.getElementById('phone').value.trim();
-    var phone = countryCode + ' ' + rawPhone;
+    var nameInput = document.getElementById('fullName');
+    var rawPhoneInput = document.getElementById('phone');
+    var countryCodeInput = document.getElementById('countryCode');
 
-    if (!name) {
-      counsellingFine.textContent = 'Please enter your Full Name first.';
-      counsellingFine.classList.add('is-error');
-      counsellingFine.classList.remove('is-success');
-      document.getElementById('fullName').focus();
-      return false;
-    }
-    if (!rawPhone || rawPhone.replace(/\D/g, '').length < 8) {
-      counsellingFine.textContent = 'Please enter a valid Phone / WhatsApp Number first.';
-      counsellingFine.classList.add('is-error');
-      counsellingFine.classList.remove('is-success');
-      document.getElementById('phone').focus();
-      return false;
+    var name = (nameInput ? nameInput.value : '').trim();
+    var countryCode = countryCodeInput ? countryCodeInput.value : '+91';
+    var rawPhone = (rawPhoneInput ? rawPhoneInput.value : '').trim();
+
+    // Auto-fill from stored lead if inputs were empty
+    if (!name || !rawPhone) {
+      try {
+        var stored = JSON.parse(sessionStorage.getItem('amc_lead_user') || localStorage.getItem('amc_lead_user') || 'null');
+        if (stored) {
+          if (!name && stored.name) {
+            name = stored.name;
+            if (nameInput) {
+              nameInput.value = name;
+              nameInput.setAttribute('value', name);
+            }
+          }
+          if (!rawPhone && (stored.phoneOnly || stored.phone)) {
+            rawPhone = stored.phoneOnly || String(stored.phone).replace(/^\+\d+\s*/, '').trim();
+            if (rawPhoneInput) {
+              rawPhoneInput.value = rawPhone;
+              rawPhoneInput.setAttribute('value', rawPhone);
+            }
+          }
+          if (stored.countryCode && countryCodeInput) {
+            countryCode = stored.countryCode;
+            countryCodeInput.value = countryCode;
+          }
+        }
+      } catch (e) {}
     }
 
-    counsellingFine.textContent = '';
-    counsellingFine.classList.remove('is-error');
+    if (!name) name = 'Student';
+    if (!rawPhone) rawPhone = '';
+
+    var phone = rawPhone ? (countryCode + ' ' + rawPhone) : '';
+
+    if (counsellingFine) {
+      counsellingFine.textContent = '';
+      counsellingFine.classList.remove('is-error');
+    }
     return { name: name, phone: phone, countryCode: countryCode };
   }
 
+  var calendlyPollInterval = null;
+  var hasHandledScheduledBooking = false;
+  var calendlyOpenTimestamp = 0;
+
+  function handleBookingCompleted(eventUri, eventDetails) {
+    if (hasHandledScheduledBooking) return;
+    hasHandledScheduledBooking = true;
+
+    if (calendlyPollInterval) {
+      clearInterval(calendlyPollInterval);
+      calendlyPollInterval = null;
+    }
+
+    console.log('[Calendly Auto-Close] Booking confirmed. Auto-closing popup in 2.0 seconds...', eventUri, eventDetails);
+
+    // Show visual confirmation banner inside modal header
+    var modalHeader = document.querySelector('.calendly-modal-header');
+    if (modalHeader) {
+      var oldBanner = modalHeader.querySelector('.calendly-success-banner');
+      if (oldBanner) oldBanner.remove();
+
+      var banner = document.createElement('div');
+      banner.className = 'calendly-success-banner';
+      banner.innerHTML = `
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+        <span>Appointment Scheduled! Closing in 2 seconds...</span>
+      `;
+      modalHeader.prepend(banner);
+    }
+
+    // 1. Guaranteed auto-close after exactly 2.0s
+    setTimeout(function () {
+      closeCalendlyModalFlow();
+      updateCTAsToConfirmed(currentBookingState || {});
+    }, 2000);
+
+    // 2. Fetch server-side verification and confirm booking record
+    var targetUri = eventUri || (eventDetails && eventDetails.calendlyEventUri);
+    if (targetUri) {
+      fetch('/api/calendly/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventUri: targetUri, counsellor: currentBookingState && currentBookingState.selectedCounsellor })
+      })
+        .then(function (res) { return res.json(); })
+        .then(function (result) {
+          if (result.success && result.start_time) {
+            var startDate = new Date(result.start_time);
+            var year = startDate.getFullYear();
+            var month = String(startDate.getMonth() + 1).padStart(2, '0');
+            var day = String(startDate.getDate()).padStart(2, '0');
+            var isoDate = year + '-' + month + '-' + day;
+
+            var formattedDate = startDate.toLocaleDateString('en-IN', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric'
+            });
+            var formattedTime = startDate.toLocaleTimeString('en-IN', {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: true
+            });
+
+            var exactScheduledText = formattedDate + ' at ' + formattedTime;
+            var isAfternoon = startDate.getHours() >= 12;
+
+            var updatedState = Object.assign({}, currentBookingState || {}, {
+              date: exactScheduledText,
+              isoDate: isoDate,
+              formattedTime: formattedTime,
+              isAfternoon: isAfternoon,
+              slot: isAfternoon ? 'After lunch' : 'Before lunch'
+            });
+
+            postJson('/api/admin/bookings/confirm', {
+              bookingId: updatedState.bookingId,
+              calendlyEventUri: targetUri,
+              calendlyEventName: result.name,
+              scheduledStartTime: result.start_time,
+              scheduledEndTime: result.end_time,
+              status: result.status,
+              notes: 'Confirmed from Calendly webhook event'
+            }).catch(function (err) {
+              console.warn('[Booking Confirm Save Warning]', err);
+            });
+
+            updateCTAsToConfirmed(updatedState);
+          }
+        })
+        .catch(function (err) {
+          console.error('[Calendly Confirmation Fetch Error]', err);
+        });
+    } else if (eventDetails && eventDetails.scheduledStartTime) {
+      var sDate = new Date(eventDetails.scheduledStartTime);
+      var fDate = sDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+      var fTime = sDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+      var stateFromEvent = Object.assign({}, currentBookingState || {}, {
+        date: fDate + ' at ' + fTime,
+        formattedTime: fTime,
+        slot: sDate.getHours() >= 12 ? 'After lunch' : 'Before lunch'
+      });
+      updateCTAsToConfirmed(stateFromEvent);
+    }
+  }
+
   function openCalendlyModalFlow(name, phone, countryCode, date, slot, targetUrl, counsellorId) {
+    hasHandledScheduledBooking = false;
+    calendlyOpenTimestamp = Date.now();
+
+    var finalName = name;
+    var finalPhone = phone;
+    var finalCountryCode = countryCode || '+91';
+
+    if (!finalName) {
+      var nameEl = document.getElementById('fullName');
+      finalName = nameEl ? nameEl.value.trim() : 'Student';
+    }
+    if (!finalPhone) {
+      var phoneEl = document.getElementById('phone');
+      var ph = phoneEl ? phoneEl.value.trim() : '';
+      finalPhone = ph ? (finalCountryCode + ' ' + ph) : '';
+    }
+
     currentBookingState = {
-      name: name,
-      phone: phone,
-      countryCode: countryCode,
+      name: finalName,
+      phone: finalPhone,
+      countryCode: finalCountryCode,
       date: date,
       slot: slot,
       selectedCounsellor: counsellorId || 'counsellor1',
       selectedCounsellorUrl: targetUrl || ''
     };
+
     document.body.style.overflow = 'hidden';
     lastActiveElement = document.activeElement;
 
-    calendlyModal.setAttribute('aria-hidden', 'false');
+    // Remove any leftover success banners from previous opens
+    var modalHeader = document.querySelector('.calendly-modal-header');
+    if (modalHeader) {
+      var oldBanner = modalHeader.querySelector('.calendly-success-banner');
+      if (oldBanner) oldBanner.remove();
+    }
 
-    calendlyShimmer.style.display = 'flex';
-    calendlyFallback.style.display = 'none';
-    calendlyWidgetContainer.style.display = 'none';
-    calendlyWidgetContainer.innerHTML = '';
+    if (calendlyModal) {
+      calendlyModal.setAttribute('aria-hidden', 'false');
+      calendlyModal.style.display = 'flex';
+      calendlyModal.style.filter = 'none';
+      calendlyModal.style.pointerEvents = 'auto';
+    }
 
-    var isLoaded = false;
-    var loadTimeout = setTimeout(function () {
-      if (!isLoaded) {
-        calendlyShimmer.style.display = 'none';
-        calendlyFallback.style.display = 'flex';
+    if (calendlyShimmer) calendlyShimmer.style.display = 'flex';
+    if (calendlyFallback) calendlyFallback.style.display = 'none';
+    if (calendlyWidgetContainer) {
+      calendlyWidgetContainer.style.display = 'block';
+      calendlyWidgetContainer.style.minHeight = '660px';
+      calendlyWidgetContainer.style.width = '100%';
+      calendlyWidgetContainer.innerHTML = '';
+    }
+
+    var rawUrl = targetUrl || selectedCounsellorUrl || counsellorUrls['counsellor1'] || 'https://calendly.com/starsamir9955/new-meeting';
+    var finalBookingUrl = rawUrl;
+    try {
+      var urlObj = new URL(rawUrl);
+      if (finalName) urlObj.searchParams.set('name', finalName);
+      if (finalPhone) urlObj.searchParams.set('a1', finalPhone);
+      if (slot) urlObj.searchParams.set('a2', slot);
+      if (date) urlObj.searchParams.set('a3', date);
+      finalBookingUrl = urlObj.toString();
+    } catch (e) {
+      finalBookingUrl = rawUrl;
+    }
+
+    var directLink = document.getElementById('calendlyDirectLink');
+    if (directLink) {
+      directLink.href = finalBookingUrl;
+    }
+
+    // Direct Full-Size Iframe Render
+    var iframe = document.createElement('iframe');
+    iframe.src = finalBookingUrl;
+    iframe.width = '100%';
+    iframe.height = '100%';
+    iframe.frameBorder = '0';
+    iframe.title = 'Schedule Consultation';
+    iframe.style.border = '0';
+    iframe.style.width = '100%';
+    iframe.style.height = '100%';
+    iframe.style.minHeight = '660px';
+    iframe.style.borderRadius = '16px';
+
+    iframe.onload = function () {
+      if (calendlyShimmer) calendlyShimmer.style.display = 'none';
+      if (calendlyWidgetContainer) calendlyWidgetContainer.style.display = 'block';
+    };
+
+    calendlyWidgetContainer.appendChild(iframe);
+
+    // Fallback timer to hide shimmer quickly
+    setTimeout(function () {
+      if (calendlyShimmer) calendlyShimmer.style.display = 'none';
+      if (calendlyWidgetContainer) calendlyWidgetContainer.style.display = 'block';
+    }, 600);
+
+    // Active polling fallback: check every 2.0s while modal is open
+    if (calendlyPollInterval) clearInterval(calendlyPollInterval);
+    calendlyPollInterval = setInterval(function () {
+      if (hasHandledScheduledBooking) {
+        clearInterval(calendlyPollInterval);
+        calendlyPollInterval = null;
+        return;
       }
-    }, 10000);
-
-    Promise.all([
-      loadExternalResource(sdkCssUrl, 'css'),
-      loadExternalResource(sdkScriptUrl, 'script')
-    ]).then(function () {
-      if (typeof Calendly === 'undefined') {
-        throw new Error('Calendly SDK not found');
-      }
-
-      var bookingUrl = targetUrl || calendlyUrl;
-      Calendly.initInlineWidget({
-        url: bookingUrl,
-        parentElement: calendlyWidgetContainer,
-        prefill: {
-          name: name,
-          customAnswers: {
-            a1: phone,
-            a2: slot,
-            a3: date,
-            a4: 'Preferred: ' + date + ' (' + slot + ')'
+      var checkUrl = '/api/calendly/check-scheduled?since=' + calendlyOpenTimestamp + '&phone=' + encodeURIComponent(finalPhone);
+      fetch(checkUrl)
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data && data.scheduled && data.event && !hasHandledScheduledBooking) {
+            handleBookingCompleted(data.event.calendlyEventUri, data.event);
           }
-        }
-      });
-
-      var checkIframeInterval = setInterval(function () {
-        var iframe = calendlyWidgetContainer.querySelector('iframe');
-        if (iframe) {
-          clearInterval(checkIframeInterval);
-          iframe.addEventListener('load', function () {
-            isLoaded = true;
-            clearTimeout(loadTimeout);
-            calendlyShimmer.style.display = 'none';
-            calendlyWidgetContainer.style.display = 'block';
-            trapFocus(calendlyModal);
-          });
-        }
-      }, 100);
-
-      // Backup load trigger
-      setTimeout(function () {
-        if (!isLoaded) {
-          isLoaded = true;
-          clearTimeout(loadTimeout);
-          calendlyShimmer.style.display = 'none';
-          calendlyWidgetContainer.style.display = 'block';
-        }
-      }, 3500);
-
-    }).catch(function (err) {
-      console.error(err);
-      clearTimeout(loadTimeout);
-      calendlyShimmer.style.display = 'none';
-      calendlyFallback.style.display = 'flex';
-    });
+        })
+        .catch(function () {});
+    }, 2000);
   }
 
   function closeCalendlyModalFlow() {
+    if (calendlyPollInterval) {
+      clearInterval(calendlyPollInterval);
+      calendlyPollInterval = null;
+    }
     document.body.style.overflow = '';
     if (calendlyModal) {
       calendlyModal.setAttribute('aria-hidden', 'true');
+      calendlyModal.style.display = 'none';
     }
     if (lastActiveElement && typeof lastActiveElement.focus === 'function') {
       lastActiveElement.focus();
@@ -910,28 +1134,24 @@ document.addEventListener('DOMContentLoaded', function () {
     var validation = validateCounsellingInputs();
     if (!validation) return;
 
-    var date = document.getElementById('prefDate').value;
-    var slotInput = counsellingForm.querySelector('input[name="slot"]:checked');
-    if (!slotInput) {
-      if (counsellingFine) {
-        counsellingFine.textContent = 'Please select a preferred time slot first.';
-        counsellingFine.classList.add('is-error');
-        counsellingFine.classList.remove('is-success');
-      }
-      return;
-    }
-    var slot = slotInput.value;
+    var date = document.getElementById('prefDate') ? document.getElementById('prefDate').value : '';
+    var slotInput = counsellingForm ? counsellingForm.querySelector('input[name="slot"]:checked') : null;
+    var slot = slotInput ? slotInput.value : 'Any Available Time';
 
-    var prettyDate = 'Not specified';
+    var prettyDate = 'Selected Date';
     if (date) {
-      prettyDate = new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+      try {
+        prettyDate = new Date(date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+      } catch (e) {
+        prettyDate = date;
+      }
     }
 
-    var targetUrl = selectedCounsellorUrl || counsellorUrls['counsellor1'] || 'https://calendly.com/harshraj1603/15-minute-consultation';
+    var targetUrl = selectedCounsellorUrl || counsellorUrls['counsellor1'] || 'https://calendly.com/starsamir9955/new-meeting';
 
     var savedLead = {};
     try {
-      savedLead = JSON.parse(localStorage.getItem('amc_lead_user') || '{}');
+      savedLead = JSON.parse(sessionStorage.getItem('amc_lead_user') || localStorage.getItem('amc_lead_user') || '{}');
     } catch (e) {}
 
     var counsellorName = (selectedCounsellorId === 'counsellor2' || selectedCounsellorId === 'aryan') ? 'Counsellor 2 (Aryan Raj)' : 'Counsellor 1 (starsamir9955)';
@@ -941,18 +1161,17 @@ document.addEventListener('DOMContentLoaded', function () {
       email: savedLead.email || null,
       phone: validation.phone,
       countryCode: validation.countryCode,
-      source: savedLead.source || 'Website Form',
-      sourceOther: savedLead.sourceOther || null,
       preferredDate: prettyDate,
       selectedSlot: slot,
       selectedCounsellor: counsellorName,
-      selectedCounsellorId: selectedCounsellorId,
       selectedCounsellorUrl: targetUrl,
-      timezone: getBrowserTimezone()
-    }).then(function (resp) {
-      if (resp.ok && resp.data && resp.data.bookingId) {
-        currentBookingState = currentBookingState || {};
-        currentBookingState.bookingId = resp.data.bookingId;
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata',
+      source: savedLead.source || 'Website Lead Modal',
+      sourceOther: savedLead.sourceOther || null,
+      notes: 'Opened Calendly booking slot picker modal'
+    }).then(function (intentRes) {
+      if (intentRes && intentRes.bookingId) {
+        currentBookingState.bookingId = intentRes.bookingId;
       }
     }).catch(function (err) {
       console.warn('[Booking Intent Save Warning]', err);
@@ -962,10 +1181,50 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   if (counsellingForm) {
+    var dateInput = document.getElementById('prefDate');
+    if (dateInput) {
+      dateInput.addEventListener('change', function () {
+        if (!dateInput.value) return;
+        handleDateOrTimeSelection();
+      });
+    }
+
+    var slotInputs = counsellingForm.querySelectorAll('input[name="slot"]');
+    slotInputs.forEach(function (radio) {
+      radio.addEventListener('change', function () {
+        if (!radio.checked) return;
+        var dateField = document.getElementById('prefDate');
+        if (!dateField || !dateField.value) {
+          var today = new Date();
+          var yyyy = today.getFullYear();
+          var mm = String(today.getMonth() + 1).padStart(2, '0');
+          var dd = String(today.getDate()).padStart(2, '0');
+          if (dateField) dateField.value = yyyy + '-' + mm + '-' + dd;
+        }
+        handleDateOrTimeSelection();
+      });
+    });
+
     counsellingForm.addEventListener('submit', function (e) {
       e.preventDefault();
       handleDateOrTimeSelection();
     });
+
+    var submitBtn = counsellingForm.querySelector('button[type="submit"]');
+    if (submitBtn) {
+      submitBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        var dateField = document.getElementById('prefDate');
+        if (!dateField || !dateField.value) {
+          var today = new Date();
+          var yyyy = today.getFullYear();
+          var mm = String(today.getMonth() + 1).padStart(2, '0');
+          var dd = String(today.getDate()).padStart(2, '0');
+          if (dateField) dateField.value = yyyy + '-' + mm + '-' + dd;
+        }
+        handleDateOrTimeSelection();
+      });
+    }
 
     var dateTimeSection = document.getElementById('dateTimeSection');
     if (dateTimeSection) {
@@ -994,75 +1253,45 @@ document.addEventListener('DOMContentLoaded', function () {
 
   }
 
-  // Calendly Schedule Listener (PostMessage + REST API Confirmation)
+  // Calendly Schedule Listener (PostMessage + View Confirmation + Guaranteed 2s Auto-Close)
   window.addEventListener('message', function (e) {
-    if (e.data && e.data.event === 'calendly.event_scheduled') {
-      setTimeout(closeCalendlyModalFlow, 1500);
+    if (!e.data) return;
 
-      var eventUri = e.data.payload && e.data.payload.event && e.data.payload.event.uri;
+    var isScheduled = false;
+    var eventUri = null;
 
-      if (eventUri) {
-        fetch('/api/calendly/confirm', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ eventUri: eventUri, counsellor: currentBookingState && currentBookingState.selectedCounsellor })
-        })
-          .then(function (res) { return res.json(); })
-          .then(function (result) {
-            if (result.success && result.start_time) {
-              var startDate = new Date(result.start_time);
-              var year = startDate.getFullYear();
-              var month = String(startDate.getMonth() + 1).padStart(2, '0');
-              var day = String(startDate.getDate()).padStart(2, '0');
-              var isoDate = year + '-' + month + '-' + day;
-
-              var formattedDate = startDate.toLocaleDateString('en-IN', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric'
-              });
-              var formattedTime = startDate.toLocaleTimeString('en-IN', {
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true
-              });
-
-              var exactScheduledText = formattedDate + ' at ' + formattedTime;
-              var isAfternoon = startDate.getHours() >= 12;
-
-              var updatedState = Object.assign({}, currentBookingState || {}, {
-                date: exactScheduledText,
-                isoDate: isoDate,
-                formattedTime: formattedTime,
-                isAfternoon: isAfternoon,
-                slot: isAfternoon ? 'After lunch' : 'Before lunch'
-              });
-
-              postJson('/api/admin/bookings/confirm', {
-                bookingId: updatedState.bookingId,
-                calendlyEventUri: eventUri,
-                calendlyEventName: result.name,
-                scheduledStartTime: result.start_time,
-                scheduledEndTime: result.end_time,
-                status: result.status,
-                notes: 'Confirmed from Calendly webhook event'
-              }).catch(function (err) {
-                console.warn('[Booking Confirm Save Warning]', err);
-              });
-
-              updateCTAsToConfirmed(updatedState);
-            } else {
-              console.warn('[Calendly Confirmation API Fallback]', result.error || 'No start_time in response');
-              updateCTAsToConfirmed(currentBookingState);
-            }
-          })
-          .catch(function (err) {
-            console.error('[Calendly Confirmation Fetch Error]', err);
-            updateCTAsToConfirmed(currentBookingState);
-          });
+    if (typeof e.data === 'object' && e.data !== null) {
+      var evName = e.data.event || e.data.action || e.data.type || '';
+      if (
+        evName === 'calendly.event_scheduled' ||
+        evName === 'event_scheduled' ||
+        (typeof evName === 'string' && evName.indexOf('event_scheduled') !== -1)
+      ) {
+        isScheduled = true;
+        eventUri = e.data.payload && e.data.payload.event && e.data.payload.event.uri;
       } else {
-        updateCTAsToConfirmed(currentBookingState);
+        try {
+          var dataJson = JSON.stringify(e.data);
+          if (dataJson.indexOf('event_scheduled') !== -1) {
+            isScheduled = true;
+            if (e.data.payload && e.data.payload.event && e.data.payload.event.uri) {
+              eventUri = e.data.payload.event.uri;
+            }
+          }
+        } catch (_) {}
       }
+    } else if (typeof e.data === 'string') {
+      if (e.data.indexOf('event_scheduled') !== -1) {
+        isScheduled = true;
+        try {
+          var parsed = JSON.parse(e.data);
+          eventUri = parsed.payload && parsed.payload.event && parsed.payload.event.uri;
+        } catch (err) {}
+      }
+    }
+
+    if (isScheduled) {
+      handleBookingCompleted(eventUri);
     }
   });
 
@@ -1097,13 +1326,64 @@ document.addEventListener('DOMContentLoaded', function () {
 
   /* ---- Entry modal: shows after a short delay, blurs the page,
          validates the lead form, and drives the custom "source" dropdown ---- */
+  /* ---- Auto-fill enrollment/counselling form helper ---- */
+  function autofillEnrollmentForm(leadData) {
+    if (!leadData) return;
+    var name = leadData.name || '';
+    var phone = leadData.phoneOnly || (leadData.phone ? String(leadData.phone).replace(/^\+\d+\s*/, '').trim() : '');
+    var countryCode = leadData.countryCode || '+91';
+
+    var fullNameInput = document.getElementById('fullName');
+    if (fullNameInput && name) {
+      fullNameInput.value = name;
+      fullNameInput.setAttribute('value', name);
+    }
+
+    var phoneInput = document.getElementById('phone');
+    if (phoneInput && phone) {
+      phoneInput.value = phone;
+      phoneInput.setAttribute('value', phone);
+    }
+
+    var countryHidden = document.getElementById('countryCode');
+    if (countryHidden) countryHidden.value = countryCode;
+
+    var countryCodeEl = document.getElementById('selectedCountryCode');
+    if (countryCodeEl) countryCodeEl.textContent = countryCode;
+
+    var flagEl = document.getElementById('selectedCountryFlag');
+    if (flagEl) {
+      var isoMap = {
+        '+61': 'au', '+91': 'in', '+44': 'gb', '+1': 'us',
+        '+64': 'nz', '+353': 'ie', '+27': 'za', '+65': 'sg',
+        '+60': 'my', '+971': 'ae', '+966': 'sa', '+92': 'pk',
+        '+977': 'np', '+880': 'bd', '+94': 'lk'
+      };
+      var iso = isoMap[countryCode] || 'in';
+      flagEl.innerHTML = '<img src="https://flagcdn.com/w20/' + iso + '.png" width="18" style="border-radius:2px; box-shadow: 0 1px 2px rgba(0,0,0,0.15); display:inline-block; vertical-align:middle; margin-right:4px;" alt="Flag">';
+    }
+  }
+
+  // Pre-fill on initial page load if lead exists in session
+  try {
+    var storedLead = JSON.parse(sessionStorage.getItem('amc_lead_user') || 'null');
+    if (storedLead) {
+      autofillEnrollmentForm(storedLead);
+    }
+  } catch (e) {}
+
+  /* ---- Entry modal: opens cleanly on visit, auto-fills form on submit, and stays closed for the rest of that visit ---- */
   var entryModal = document.getElementById('entryModal');
   var entryForm = document.getElementById('entryForm');
   var entryError = document.getElementById('entryError');
   var pageContent = document.getElementById('pageContent');
 
   if (entryModal && entryForm && pageContent) {
+    var hasSubmittedOnVisit = false;
+    var modalTimer = null;
+
     var openModal = function () {
+      if (hasSubmittedOnVisit) return;
       entryModal.setAttribute('aria-hidden', 'false');
       pageContent.style.filter = 'blur(10px)';
       pageContent.style.pointerEvents = 'none';
@@ -1118,6 +1398,10 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     var closeModal = function () {
+      if (modalTimer) {
+        clearTimeout(modalTimer);
+        modalTimer = null;
+      }
       entryModal.setAttribute('aria-hidden', 'true');
       pageContent.style.filter = '';
       pageContent.style.pointerEvents = '';
@@ -1131,15 +1415,41 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     };
 
+    // Open popup after 1.5 seconds on reload
+    modalTimer = setTimeout(openModal, 1500);
+
+    var entryNameInput = document.getElementById('entryName');
+    var entryPhoneInput = document.getElementById('entryPhone');
+    var entryCountryCodeInput = document.getElementById('entryCountryCode');
+
+    // Real-time input synchronization as user types
+    if (entryNameInput) {
+      entryNameInput.addEventListener('input', function () {
+        var fn = document.getElementById('fullName');
+        if (fn) {
+          fn.value = entryNameInput.value;
+          fn.setAttribute('value', entryNameInput.value);
+        }
+      });
+    }
+    if (entryPhoneInput) {
+      entryPhoneInput.addEventListener('input', function () {
+        var ph = document.getElementById('phone');
+        if (ph) {
+          ph.value = entryPhoneInput.value;
+          ph.setAttribute('value', entryPhoneInput.value);
+        }
+      });
+    }
+
     var otherGroup = document.getElementById('entrySourceOtherGroup');
     var otherInput = document.getElementById('entrySourceOther');
 
     var validateEntryForm = function () {
-      var name = document.getElementById('entryName').value.trim();
-      var email = document.getElementById('entryEmail').value.trim();
-      var countryCode = document.getElementById('entryCountryCode').value.trim();
-      var rawPhone = document.getElementById('entryPhone').value.trim();
-      var source = document.getElementById('entrySource').value;
+      var name = entryNameInput ? entryNameInput.value.trim() : '';
+      var email = document.getElementById('entryEmail') ? document.getElementById('entryEmail').value.trim() : '';
+      var rawPhone = entryPhoneInput ? entryPhoneInput.value.trim() : '';
+      var source = document.getElementById('entrySource') ? document.getElementById('entrySource').value : '';
       var sourceOther = otherInput ? otherInput.value.trim() : '';
 
       if (!name) {
@@ -1237,8 +1547,6 @@ document.addEventListener('DOMContentLoaded', function () {
       closeSourceList();
     });
 
-    setTimeout(openModal, 4000);
-
     entryForm.addEventListener('submit', function (e) {
       e.preventDefault();
       var error = validateEntryForm();
@@ -1248,42 +1556,80 @@ document.addEventListener('DOMContentLoaded', function () {
       }
       if (entryError) entryError.textContent = '';
 
+      var nameVal = entryNameInput ? entryNameInput.value.trim() : '';
+      var phoneVal = entryPhoneInput ? entryPhoneInput.value.trim() : '';
+      var countryCodeVal = entryCountryCodeInput ? entryCountryCodeInput.value.trim() : '+91';
+      var emailVal = document.getElementById('entryEmail') ? document.getElementById('entryEmail').value.trim() : '';
+      var sourceVal = document.getElementById('entrySource') ? document.getElementById('entrySource').value : '';
+      var otherVal = otherInput ? otherInput.value.trim() : '';
+
       var leadPayload = {
-        name: document.getElementById('entryName').value.trim(),
-        email: document.getElementById('entryEmail').value.trim(),
-        countryCode: document.getElementById('entryCountryCode').value.trim(),
-        phone: document.getElementById('entryCountryCode').value.trim() + ' ' + document.getElementById('entryPhone').value.trim(),
-        source: document.getElementById('entrySource').value,
-        sourceOther: otherInput ? otherInput.value.trim() : ''
+        name: nameVal,
+        email: emailVal,
+        countryCode: countryCodeVal,
+        phoneOnly: phoneVal,
+        phone: countryCodeVal + ' ' + phoneVal,
+        source: sourceVal,
+        sourceOther: otherVal
       };
 
-      try {
-        localStorage.setItem('amc_lead_user', JSON.stringify(leadPayload));
-      } catch (e) {}
+      // 1. Direct Synchronous Population into the Enrollment Form
+      var fnField = document.getElementById('fullName');
+      if (fnField && nameVal) {
+        fnField.value = nameVal;
+        fnField.setAttribute('value', nameVal);
+      }
+      var phField = document.getElementById('phone');
+      if (phField && phoneVal) {
+        phField.value = phoneVal;
+        phField.setAttribute('value', phoneVal);
+      }
+      var ccField = document.getElementById('countryCode');
+      if (ccField && countryCodeVal) {
+        ccField.value = countryCodeVal;
+      }
+      var sccSpan = document.getElementById('selectedCountryCode');
+      if (sccSpan) {
+        sccSpan.textContent = countryCodeVal;
+      }
+      var scfSpan = document.getElementById('selectedCountryFlag');
+      if (scfSpan) {
+        var isoMap = {
+          '+61': 'au', '+91': 'in', '+44': 'gb', '+1': 'us',
+          '+64': 'nz', '+353': 'ie', '+27': 'za', '+65': 'sg',
+          '+60': 'my', '+971': 'ae', '+966': 'sa', '+92': 'pk',
+          '+977': 'np', '+880': 'bd', '+94': 'lk'
+        };
+        var iso = isoMap[countryCodeVal] || 'in';
+        scfSpan.innerHTML = '<img src="https://flagcdn.com/w20/' + iso + '.png" width="18" style="border-radius:2px; box-shadow: 0 1px 2px rgba(0,0,0,0.15); display:inline-block; vertical-align:middle; margin-right:4px;" alt="Flag">';
+      }
 
-      // Pre-fill counselling form inputs
-      var nameInput = document.getElementById('fullName');
-      if (nameInput && !nameInput.value) nameInput.value = leadPayload.name;
-      var phoneInput = document.getElementById('phone');
-      if (phoneInput && !phoneInput.value) phoneInput.value = document.getElementById('entryPhone').value.trim();
+      // Also invoke helper
+      autofillEnrollmentForm(leadPayload);
 
+      // 2. Mark submitted on this visit so it does not pop up again while browsing
+      hasSubmittedOnVisit = true;
+      if (modalTimer) {
+        clearTimeout(modalTimer);
+        modalTimer = null;
+      }
+
+      // 3. Close modal smoothly
+      closeModal();
+
+      // 4. Smoothly scroll to the counselling section
+      var counsellingSection = document.getElementById('counselling');
+      if (counsellingSection) {
+        var formCard = counsellingSection.querySelector('.counselling__card') || counsellingSection;
+        var rect = formCard.getBoundingClientRect();
+        var centerTop = rect.top + window.pageYOffset - (window.innerHeight / 2) + (rect.height / 2);
+        window.scrollTo({ top: Math.max(0, centerTop), behavior: 'smooth' });
+      }
+
+      // 5. Post lead to backend API
       postJson('/api/admin/leads', leadPayload).catch(function (err) {
         console.warn('[Lead Save Warning]', err);
       });
-
-      entryForm.reset();
-      
-      // Reset country code picker flags/codes to default
-      var entryFlag = document.getElementById('entrySelectedCountryFlag');
-      var entryCode = document.getElementById('entrySelectedCountryCode');
-      var entryHidden = document.getElementById('entryCountryCode');
-      if (entryFlag) entryFlag.innerHTML = '<img src="https://flagcdn.com/w20/in.png" width="18" style="border-radius:2px; box-shadow: 0 1px 2px rgba(0,0,0,0.15); display:inline-block; vertical-align:middle; margin-right:4px;" alt="India Flag">';
-      if (entryCode) entryCode.textContent = '+91';
-      if (entryHidden) entryHidden.value = '+91';
-
-      if (sourceValue) sourceValue.innerHTML = '<span>Select a platform</span>';
-      closeSourceList();
-      closeModal();
     });
   }
 

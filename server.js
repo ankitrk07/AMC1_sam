@@ -58,7 +58,24 @@ function writeLocalStore(data) {
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname)));
+
+// Ensure all HTML, JS, CSS, and API requests bypass stale browser caches
+app.use((req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
+});
+
+app.use(express.static(path.join(__dirname), {
+  etag: false,
+  maxAge: 0,
+  setHeaders: (res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }
+}));
 
 // Cache for event type URIs
 const eventTypeCache = {
@@ -1453,6 +1470,43 @@ app.get('/api/calendly/availability', async (req, res) => {
   } catch (error) {
     console.error('[Availability API Error]', error);
     return res.status(500).json({ error: 'Internal server error fetching availability' });
+  }
+});
+
+// GET /api/calendly/check-scheduled endpoint (real-time poll fallback)
+app.get('/api/calendly/check-scheduled', async (req, res) => {
+  try {
+    const sinceTime = req.query.since ? parseInt(req.query.since, 10) : (Date.now() - 120000);
+    const phone = req.query.phone ? String(req.query.phone).replace(/\D/g, '').slice(-10) : '';
+
+    // Fetch live scheduled events from Calendly
+    const events = await fetchCalendlyScheduledEvents(true);
+
+    const match = events.find(ev => {
+      const isConfirmed = ev.status === 'CONFIRMED' || ev.status === 'active';
+      if (!isConfirmed) return false;
+      const createdTime = new Date(ev.createdAt || ev.updatedAt || 0).getTime();
+      const isRecent = createdTime >= (sinceTime - 30000);
+
+      if (phone && ev.phone) {
+        const evPhone = String(ev.phone).replace(/\D/g, '').slice(-10);
+        if (evPhone && evPhone === phone) return true;
+      }
+      return isRecent;
+    });
+
+    if (match) {
+      return res.json({
+        success: true,
+        scheduled: true,
+        event: match
+      });
+    }
+
+    return res.json({ success: true, scheduled: false });
+  } catch (error) {
+    console.error('[Check Scheduled API Error]', error);
+    return res.status(500).json({ success: false, scheduled: false, error: error.message });
   }
 });
 

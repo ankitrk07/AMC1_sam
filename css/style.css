@@ -2106,36 +2106,38 @@ mark.purple-mark {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(20, 24, 28, 0.4);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  z-index: 1100;
+  background: rgba(20, 24, 28, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 10000;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.25s ease, visibility 0.25s ease;
 }
 
 .calendly-modal-overlay[aria-hidden="false"] {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  display: flex !important;
 }
 
 .calendly-modal-panel {
-  width: min(92vw, 1000px);
-  /* max-height: min(95vh, 1100px); */
+  width: min(96vw, 1080px);
+  max-width: 1080px;
+  height: min(94vh, 880px);
   margin: 0 auto;
   background: var(--bg);
-  border-radius: var(--radius-l);
-  box-shadow: var(--shadow-lift), 0 30px 60px -15px rgba(0, 0, 0, 0.15);
-  padding: 24px 28px;
+  border-radius: 22px;
+  box-shadow: 0 40px 90px -15px rgba(0, 0, 0, 0.5);
+  padding: 24px 32px 26px;
   display: flex;
   flex-direction: column;
   position: relative;
   overflow: hidden;
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  transform: translateY(20px) scale(0.98);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translateY(15px) scale(0.98);
   opacity: 0;
 }
 
@@ -2148,8 +2150,8 @@ mark.purple-mark {
   position: absolute;
   top: 18px;
   right: 18px;
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   background: var(--bg-soft);
   border: 1px solid var(--line);
@@ -2170,22 +2172,78 @@ mark.purple-mark {
 }
 
 .calendly-modal-header {
-  margin-bottom: 12px;
-  padding-right: 40px;
+  margin-bottom: 14px;
+  padding-right: 50px;
 }
 
 .calendly-modal-header h2 {
   font-family: var(--font-display);
-  font-size: 20px;
+  font-size: 21px;
   color: var(--ink);
   font-weight: 700;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .calendly-modal-header p {
   color: var(--ink-soft);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.4;
+}
+
+.calendly-success-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  color: #ffffff;
+  padding: 10px 18px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+  animation: slideDownToast 0.35s ease forwards;
+  position: relative;
+  overflow: hidden;
+}
+
+.calendly-success-banner::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.85);
+  width: 100%;
+  animation: progressBarCountdown 2s linear forwards;
+}
+
+@keyframes slideDownToast {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes progressBarCountdown {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+#calendlyWidgetContainer {
+  width: 100%;
+  flex-grow: 1;
+  min-height: 660px;
+  border-radius: 16px;
+  overflow: hidden;
 }
 
 /* Shimmer skeleton loader */
@@ -2469,18 +2527,19 @@ mark.purple-mark {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%) scale(0.96);
-  width: 92%;
-  max-width: 400px;
+  width: min(94vw, 440px);
   background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18), 0 4px 12px rgba(0, 0, 0, 0.08);
-  padding: 24px;
+  border: 1px solid #cbd5e1;
+  border-radius: 20px;
+  box-shadow: 0 25px 65px rgba(0, 0, 0, 0.25), 0 6px 16px rgba(0, 0, 0, 0.08);
+  padding: 26px 22px 24px;
   z-index: 9999;
   color: #0f172a;
   font-family: var(--font-body);
   opacity: 0;
   transition: all 0.2s ease;
+  max-height: 92vh;
+  overflow-y: auto;
 }
 
 .custom-date-picker.is-open .custom-calendar-popover {
@@ -2492,8 +2551,8 @@ mark.purple-mark {
 /* MODAL CLOSE BUTTON */
 .cal-close-btn {
   position: absolute;
-  top: 18px;
-  right: 18px;
+  top: 16px;
+  right: 16px;
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -2518,12 +2577,12 @@ mark.purple-mark {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
   padding-right: 40px;
 }
 
 .cal-month-title {
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 800;
   color: #0f172a;
   letter-spacing: -0.01em;
@@ -2554,7 +2613,7 @@ mark.purple-mark {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   text-align: center;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: #64748b;
   margin-bottom: 10px;
@@ -2570,12 +2629,13 @@ mark.purple-mark {
 
 .cal-day-cell {
   aspect-ratio: 1;
+  min-height: 42px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13.5px;
+  font-size: 14.5px;
   font-weight: 600;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid transparent;
   user-select: none;
   transition: all 0.15s ease;
