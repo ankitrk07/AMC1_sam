@@ -202,6 +202,37 @@ document.addEventListener('DOMContentLoaded', function () {
   var counsellorUrls = {};
   var fetchedTimeSlots = [];
   var selectedCounsellorUrl = '';
+  var selectedCounsellorId = 'counsellor1';
+  var primaryCounsellorScope = 'counsellor1';
+
+  function getBrowserTimezone() {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    } catch (err) {
+      return 'UTC';
+    }
+  }
+
+  function getBrowserOffset() {
+    var minutes = -new Date().getTimezoneOffset();
+    var sign = minutes >= 0 ? '+' : '-';
+    var abs = Math.abs(minutes);
+    var hh = String(Math.floor(abs / 60)).padStart(2, '0');
+    var mm = String(abs % 60).padStart(2, '0');
+    return sign + hh + ':' + mm;
+  }
+
+  function postJson(url, payload) {
+    return fetch(getApiUrl(url), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload || {})
+    }).then(function (res) {
+      return res.json().then(function (data) {
+        return { ok: res.ok, data: data };
+      });
+    });
+  }
 
   function checkAvailability() {
     if (!prefDateInput) return;
@@ -218,7 +249,9 @@ document.addEventListener('DOMContentLoaded', function () {
       counsellingFine.classList.remove('is-error', 'is-success');
     }
 
-    var apiUrl = getApiUrl('/api/calendly/availability?date=' + encodeURIComponent(date));
+    var tz = encodeURIComponent(getBrowserTimezone());
+    var tzOffset = encodeURIComponent(getBrowserOffset());
+    var apiUrl = getApiUrl('/api/calendly/availability?date=' + encodeURIComponent(date) + '&refresh=true&counsellor=' + primaryCounsellorScope + '&tz=' + tz + '&tzOffset=' + tzOffset);
     fetch(apiUrl)
       .then(function (res) { return res.json(); })
       .then(function (data) {
@@ -246,6 +279,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     container.innerHTML = '';
     selectedCounsellorUrl = '';
+    selectedCounsellorId = 'counsellor1';
 
     if (!slots || slots.length === 0) {
       var msgHtml = '<div class="time-slots-placeholder" style="width:100%;">';
@@ -333,6 +367,7 @@ document.addEventListener('DOMContentLoaded', function () {
           radio.checked = true;
           firstRadioChecked = true;
           var firstCounsellor = slot.counsellors[0] || 'counsellor1';
+          selectedCounsellorId = firstCounsellor;
           selectedCounsellorUrl = slot.slotUrls[firstCounsellor] || counsellorUrls[firstCounsellor] || '';
         }
 
@@ -347,6 +382,7 @@ document.addEventListener('DOMContentLoaded', function () {
             e.stopPropagation();
             rObj.checked = true;
             var counsellorId = sObj.counsellors[0] || 'counsellor1';
+            selectedCounsellorId = counsellorId;
             selectedCounsellorUrl = sObj.slotUrls[counsellorId] || counsellorUrls[counsellorId] || '';
             handleDateOrTimeSelection();
           });
@@ -407,7 +443,8 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function fetchMonthAvailability(callback) {
-    var apiUrl = getApiUrl('/api/calendly/month-availability?refresh=true');
+    var tz = encodeURIComponent(getBrowserTimezone());
+    var apiUrl = getApiUrl('/api/calendly/month-availability?refresh=true&counsellor=' + primaryCounsellorScope + '&tz=' + tz);
     fetch(apiUrl)
       .then(function (res) { return res.json(); })
       .then(function (data) {
@@ -722,11 +759,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
     counsellingFine.textContent = '';
     counsellingFine.classList.remove('is-error');
-    return { name: name, phone: phone };
+    return { name: name, phone: phone, countryCode: countryCode };
   }
 
-  function openCalendlyModalFlow(name, phone, date, slot, targetUrl) {
-    currentBookingState = { name: name, phone: phone, date: date, slot: slot };
+  function openCalendlyModalFlow(name, phone, countryCode, date, slot, targetUrl, counsellorId) {
+    currentBookingState = {
+      name: name,
+      phone: phone,
+      countryCode: countryCode,
+      date: date,
+      slot: slot,
+      selectedCounsellor: counsellorId || 'counsellor1',
+      selectedCounsellorUrl: targetUrl || ''
+    };
     document.body.style.overflow = 'hidden';
     lastActiveElement = document.activeElement;
 
@@ -884,7 +929,36 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var targetUrl = selectedCounsellorUrl || counsellorUrls['counsellor1'] || 'https://calendly.com/harshraj1603/15-minute-consultation';
 
-    openCalendlyModalFlow(validation.name, validation.phone, prettyDate, slot, targetUrl);
+    var savedLead = {};
+    try {
+      savedLead = JSON.parse(localStorage.getItem('amc_lead_user') || '{}');
+    } catch (e) {}
+
+    var counsellorName = (selectedCounsellorId === 'counsellor2' || selectedCounsellorId === 'aryan') ? 'Counsellor 2 (Aryan Raj)' : 'Counsellor 1 (starsamir9955)';
+
+    postJson('/api/admin/bookings/intent', {
+      name: validation.name,
+      email: savedLead.email || null,
+      phone: validation.phone,
+      countryCode: validation.countryCode,
+      source: savedLead.source || 'Website Form',
+      sourceOther: savedLead.sourceOther || null,
+      preferredDate: prettyDate,
+      selectedSlot: slot,
+      selectedCounsellor: counsellorName,
+      selectedCounsellorId: selectedCounsellorId,
+      selectedCounsellorUrl: targetUrl,
+      timezone: getBrowserTimezone()
+    }).then(function (resp) {
+      if (resp.ok && resp.data && resp.data.bookingId) {
+        currentBookingState = currentBookingState || {};
+        currentBookingState.bookingId = resp.data.bookingId;
+      }
+    }).catch(function (err) {
+      console.warn('[Booking Intent Save Warning]', err);
+    });
+
+    openCalendlyModalFlow(validation.name, validation.phone, validation.countryCode, prettyDate, slot, targetUrl, selectedCounsellorId);
   }
 
   if (counsellingForm) {
@@ -931,7 +1005,7 @@ document.addEventListener('DOMContentLoaded', function () {
         fetch('/api/calendly/confirm', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ eventUri: eventUri })
+          body: JSON.stringify({ eventUri: eventUri, counsellor: currentBookingState && currentBookingState.selectedCounsellor })
         })
           .then(function (res) { return res.json(); })
           .then(function (result) {
@@ -962,6 +1036,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 formattedTime: formattedTime,
                 isAfternoon: isAfternoon,
                 slot: isAfternoon ? 'After lunch' : 'Before lunch'
+              });
+
+              postJson('/api/admin/bookings/confirm', {
+                bookingId: updatedState.bookingId,
+                calendlyEventUri: eventUri,
+                calendlyEventName: result.name,
+                scheduledStartTime: result.start_time,
+                scheduledEndTime: result.end_time,
+                status: result.status,
+                notes: 'Confirmed from Calendly webhook event'
+              }).catch(function (err) {
+                console.warn('[Booking Confirm Save Warning]', err);
               });
 
               updateCTAsToConfirmed(updatedState);
@@ -1161,6 +1247,30 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
       }
       if (entryError) entryError.textContent = '';
+
+      var leadPayload = {
+        name: document.getElementById('entryName').value.trim(),
+        email: document.getElementById('entryEmail').value.trim(),
+        countryCode: document.getElementById('entryCountryCode').value.trim(),
+        phone: document.getElementById('entryCountryCode').value.trim() + ' ' + document.getElementById('entryPhone').value.trim(),
+        source: document.getElementById('entrySource').value,
+        sourceOther: otherInput ? otherInput.value.trim() : ''
+      };
+
+      try {
+        localStorage.setItem('amc_lead_user', JSON.stringify(leadPayload));
+      } catch (e) {}
+
+      // Pre-fill counselling form inputs
+      var nameInput = document.getElementById('fullName');
+      if (nameInput && !nameInput.value) nameInput.value = leadPayload.name;
+      var phoneInput = document.getElementById('phone');
+      if (phoneInput && !phoneInput.value) phoneInput.value = document.getElementById('entryPhone').value.trim();
+
+      postJson('/api/admin/leads', leadPayload).catch(function (err) {
+        console.warn('[Lead Save Warning]', err);
+      });
+
       entryForm.reset();
       
       // Reset country code picker flags/codes to default

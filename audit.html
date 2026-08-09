@@ -366,7 +366,7 @@
         <div class="counsellor-header">
           <div class="counsellor-info">
             <h2>👤 Counsellor 1</h2>
-            <a href="https://calendly.com/harshraj1603/15-minute-consultation" target="_blank" rel="noopener">🔗 harshraj1603 (15-min)</a>
+            <a id="c1ProfileLink" href="#" target="_blank" rel="noopener">🔗 --</a>
           </div>
           <div class="slot-counter-badge" id="c1TotalSlots">-- Slots</div>
         </div>
@@ -393,7 +393,7 @@
         <div class="counsellor-header">
           <div class="counsellor-info">
             <h2>👤 Counsellor 2</h2>
-            <a href="https://calendly.com/aryanraj0316/30min" target="_blank" rel="noopener">🔗 aryanraj0316 (30-min)</a>
+            <a id="c2ProfileLink" href="#" target="_blank" rel="noopener">🔗 --</a>
           </div>
           <div class="slot-counter-badge" id="c2TotalSlots">-- Slots</div>
         </div>
@@ -438,15 +438,48 @@
     let month2 = new Date().getMonth();
 
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+
+    function deriveCalendlyLabel(urlStr) {
+      if (!urlStr) return '--';
+      try {
+        const url = new URL(urlStr);
+        const parts = url.pathname.split('/').filter(Boolean);
+        const userPart = parts[0] || 'unknown';
+        const meetingPart = parts[1] || 'meeting';
+        return `${userPart} / ${meetingPart}`;
+      } catch (_err) {
+        return urlStr;
+      }
+    }
+
+    function hydrateCounsellorLinks(data) {
+      const c1Url = data?.counsellor1?.url || '';
+      const c2Url = data?.counsellor2?.url || '';
+
+      const c1Link = document.getElementById('c1ProfileLink');
+      const c2Link = document.getElementById('c2ProfileLink');
+
+      if (c1Link) {
+        c1Link.href = c1Url || '#';
+        c1Link.textContent = '🔗 ' + deriveCalendlyLabel(c1Url);
+      }
+
+      if (c2Link) {
+        c2Link.href = c2Url || '#';
+        c2Link.textContent = '🔗 ' + deriveCalendlyLabel(c2Url);
+      }
+    }
 
     function initAuditData(force) {
       document.getElementById('c1DaysGrid').innerHTML = '<div style="grid-column: span 7; text-align:center; padding:30px; color:#9ca3af;">⏳ Querying Counsellor 1 API...</div>';
       document.getElementById('c2DaysGrid').innerHTML = '<div style="grid-column: span 7; text-align:center; padding:30px; color:#9ca3af;">⏳ Querying Counsellor 2 API...</div>';
 
-      fetch('/api/calendly/debug-availability?format=json' + (force ? '&refresh=true' : ''))
+      fetch('/api/calendly/debug-availability?format=json&tz=' + encodeURIComponent(browserTimeZone) + (force ? '&refresh=true' : ''))
         .then(res => res.json())
         .then(data => {
           rawData = data;
+          hydrateCounsellorLinks(data);
           document.getElementById('c1TotalSlots').textContent = (data.counsellor1?.totalSlots || 0) + ' Live Slots';
           document.getElementById('c2TotalSlots').textContent = (data.counsellor2?.totalSlots || 0) + ' Live Slots';
           renderC1();
@@ -497,7 +530,7 @@
           badge.textContent = `${slotsCount} Slots`;
           cell.appendChild(badge);
 
-          cell.onclick = () => openDayDetails(fullDateStr, 'Counsellor 1 (Harsh Raj)', 'counsellor1');
+          cell.onclick = () => openDayDetails(fullDateStr, rawData.counsellor1?.name || 'Counsellor 1', 'counsellor1');
         } else {
           cell.classList.add('disabled');
           const noTag = document.createElement('div');
@@ -549,7 +582,7 @@
           badge.textContent = `${slotsCount} Slots`;
           cell.appendChild(badge);
 
-          cell.onclick = () => openDayDetails(fullDateStr, 'Counsellor 2 (Aryan Raj)', 'counsellor2');
+          cell.onclick = () => openDayDetails(fullDateStr, rawData.counsellor2?.name || 'Counsellor 2', 'counsellor2');
         } else {
           cell.classList.add('disabled');
           const noTag = document.createElement('div');
@@ -574,7 +607,14 @@
       body.innerHTML = `⏳ Querying live time slots for ${dateStr}...`;
       document.getElementById('detailDrawer').classList.add('active');
 
-      fetch('/api/calendly/availability?date=' + dateStr)
+      var offsetMin = -new Date().getTimezoneOffset();
+      var sign = offsetMin >= 0 ? '+' : '-';
+      var absOffset = Math.abs(offsetMin);
+      var offH = String(Math.floor(absOffset / 60)).padStart(2, '0');
+      var offM = String(absOffset % 60).padStart(2, '0');
+      var browserOffset = sign + offH + ':' + offM;
+
+      fetch('/api/calendly/availability?date=' + dateStr + '&refresh=true&counsellor=' + encodeURIComponent(counsellorKey) + '&tz=' + encodeURIComponent(browserTimeZone) + '&tzOffset=' + encodeURIComponent(browserOffset))
         .then(res => res.json())
         .then(data => {
           const matchingSlots = (data.timeSlots || []).filter(s => s.counsellors && s.counsellors.includes(counsellorKey));
