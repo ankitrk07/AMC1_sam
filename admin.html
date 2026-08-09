@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AMC Admin Control Room | Bookings & Leads Management</title>
+  <link rel="stylesheet" href="https://assets.calendly.com/assets/external/widget.css">
+  <script src="https://assets.calendly.com/assets/external/widget.js" type="text/javascript" async></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
@@ -228,6 +230,12 @@
 
     .btn-outline-brand:hover {
       background: var(--brand-light);
+    }
+
+    .btn-outline-brand.active {
+      background: var(--brand);
+      color: #ffffff;
+      border-color: var(--brand);
     }
 
     .btn svg {
@@ -1136,6 +1144,144 @@
       .search-filter-row { flex-direction: column; }
       .search-box { width: 100%; }
     }
+
+    /* Custom Admin Calendar styling */
+    .calendar-counsellor-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      background: #0f172a;
+      padding: 6px 12px;
+      border-radius: var(--radius-md);
+      border: 1px solid #1e293b;
+    }
+    .calendar-counsellor-header h4 {
+      font-size: 13px;
+      font-weight: 800;
+      color: #f8fafc;
+    }
+    .calendar-counsellor-header .tab-count {
+      background: #1e293b;
+      color: #94a3b8;
+    }
+    .custom-admin-calendar-wrapper {
+      border: 1px solid #1e293b;
+      border-radius: var(--radius-lg);
+      background: #090d16;
+      overflow: hidden;
+      box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.3);
+    }
+    .cal-admin-weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      background: #0f172a;
+      border-bottom: 1px solid #1e293b;
+      text-align: center;
+      font-weight: 700;
+      font-size: 10.5px;
+      color: #94a3b8;
+      padding: 6px 0;
+    }
+    .cal-admin-days-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      background: #1e293b;
+      gap: 1px;
+    }
+    .cal-admin-day-cell {
+      background: #0f172a;
+      aspect-ratio: 1;
+      padding: 4px 5px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      transition: background 0.15s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .cal-admin-day-cell:hover {
+      background: #1e293b;
+    }
+    .cal-admin-day-cell.other-month {
+      background: #070a13;
+      color: #475569;
+      opacity: 0.55;
+    }
+    .cal-admin-day-num {
+      font-weight: 800;
+      font-size: 10.5px;
+      color: #cbd5e1;
+      margin-bottom: 2px;
+    }
+    .cal-admin-day-cell.today .cal-admin-day-num {
+      color: #38bdf8;
+      background: #0c4a6e;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .cal-admin-events-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      overflow-y: auto;
+      flex-grow: 1;
+      min-height: 0;
+      padding-right: 2px;
+    }
+    .cal-admin-events-list::-webkit-scrollbar {
+      width: 2px;
+    }
+    .cal-admin-events-list::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 999px;
+    }
+    .cal-admin-event-badge {
+      font-size: 8.5px;
+      font-weight: 600;
+      padding: 2px 3px;
+      border-radius: 4px;
+      cursor: pointer;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      overflow: hidden;
+      border-left: 2px solid transparent;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+      display: block;
+      margin-bottom: 1px;
+    }
+    .cal-admin-event-badge:hover {
+      transform: scale(1.02);
+      opacity: 0.95;
+    }
+    .cal-admin-event-badge.evt-confirmed {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border-left-color: #10b981;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .cal-admin-event-badge.evt-pending {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+      border-left-color: #f59e0b;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+    .cal-admin-event-badge.evt-cancelled {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border-left-color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    .cal-admin-event-badge.evt-completed {
+      background: rgba(99, 102, 241, 0.15);
+      color: #818cf8;
+      border-left-color: #6366f1;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+    }
   </style>
 </head>
 <body>
@@ -1252,6 +1398,10 @@
         <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
         Calendly Live Slots
       </button>
+      <button class="tab-btn" data-tab="calendars">
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        View Calendars
+      </button>
       <button class="tab-btn" data-tab="health">
         <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
         System & Integrations
@@ -1353,6 +1503,57 @@
       </div>
     </div>
 
+    <!-- TAB 5: VIEW CALENDARS -->
+    <div class="content-card tab-pane" id="pane-calendars" style="display:none;">
+      <div class="card-header-bar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+        <div>
+          <h3 style="font-size:16px; font-weight:800;">Bookings Calendars</h3>
+          <p style="font-size:13px; color:var(--text-secondary);">Live calendars for both Counsellor 1 and Counsellor 2 accounts displayed side-by-side.</p>
+        </div>
+        <div style="display: flex; gap: 4px; align-items: center;">
+          <button class="btn btn-sm" id="calPrevMonth" title="Previous Month">◀</button>
+          <h4 id="calMonthYearTitle" style="font-size: 14px; font-weight: 800; min-width: 140px; text-align: center; margin: 0 4px; color: var(--text-main);">August 2026</h4>
+          <button class="btn btn-sm" id="calNextMonth" title="Next Month">▶</button>
+        </div>
+      </div>
+      
+      <div style="padding: 16px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 20px; width: 100%;">
+          <!-- Counsellor 1 Calendar -->
+          <div>
+            <div class="calendar-counsellor-header">
+              <h4>Counsellor 1 (starsamir9955)</h4>
+              <span class="tab-count" id="c1CalBookingsCount">0 Bookings</span>
+            </div>
+            <div class="custom-admin-calendar-wrapper">
+              <div class="cal-admin-weekdays">
+                <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
+              </div>
+              <div class="cal-admin-days-grid" id="calC1DaysGrid">
+                <!-- Rendered by JS -->
+              </div>
+            </div>
+          </div>
+          
+          <!-- Counsellor 2 Calendar -->
+          <div>
+            <div class="calendar-counsellor-header">
+              <h4>Counsellor 2 (Aryan Raj)</h4>
+              <span class="tab-count" id="c2CalBookingsCount">0 Bookings</span>
+            </div>
+            <div class="custom-admin-calendar-wrapper">
+              <div class="cal-admin-weekdays">
+                <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
+              </div>
+              <div class="cal-admin-days-grid" id="calC2DaysGrid">
+                <!-- Rendered by JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- TAB 4: SYSTEM HEALTH & INTEGRATIONS -->
     <div class="content-card tab-pane" id="pane-health" style="display:none;">
       <div class="card-header-bar">
@@ -1409,6 +1610,10 @@
         status: 'ALL',
         counsellor: 'ALL'
       },
+      calendarFilter: {
+        currentDate: new Date(),
+        counsellor: 'ALL'
+      },
       leadQuery: '',
       autoRefreshInterval: null
     };
@@ -1456,6 +1661,10 @@
         var targetTab = btn.getAttribute('data-tab');
         var targetPane = document.getElementById('pane-' + targetTab);
         if (targetPane) targetPane.style.display = 'block';
+
+        if (targetTab === 'calendars') {
+          renderCustomCalendar();
+        }
       });
     });
 
@@ -1952,6 +2161,7 @@
         renderLeadsTable();
         renderAvailability(data.liveAvailability);
         renderHealth(data);
+        renderCustomCalendar();
 
         if (forceRefresh) {
           showToast('Synced with Calendly & database');
@@ -1962,6 +2172,154 @@
       } finally {
         if (syncIcon) syncIcon.classList.remove('is-spinning');
       }
+    }
+
+    function getBookingDateKey(b) {
+      var dateVal = b.scheduledStartTime || b.preferredDate;
+      if (!dateVal) return null;
+      var d = new Date(dateVal);
+      if (isNaN(d.getTime())) {
+        try {
+          var clean = String(dateVal).replace(/at.*$/i, '').trim();
+          d = new Date(clean);
+        } catch (e) {}
+      }
+      if (isNaN(d.getTime())) return null;
+      var year = d.getFullYear();
+      var month = String(d.getMonth() + 1).padStart(2, '0');
+      var day = String(d.getDate()).padStart(2, '0');
+      return year + '-' + month + '-' + day;
+    }
+
+    function renderCustomCalendar() {
+      var rootC1 = document.getElementById('calC1DaysGrid');
+      var rootC2 = document.getElementById('calC2DaysGrid');
+      var title = document.getElementById('calMonthYearTitle');
+      if (!rootC1 || !rootC2 || !title) return;
+
+      var cur = state.calendarFilter.currentDate;
+      var year = cur.getFullYear();
+      var month = cur.getMonth();
+
+      var monthNames = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+      ];
+      title.textContent = monthNames[month] + ' ' + year;
+
+      var firstDay = new Date(year, month, 1);
+      var startingDay = firstDay.getDay();
+      var lastDay = new Date(year, month + 1, 0);
+      var monthLength = lastDay.getDate();
+
+      rootC1.innerHTML = '';
+      rootC2.innerHTML = '';
+
+      var bookingsMapC1 = {};
+      var bookingsMapC2 = {};
+      
+      var countC1 = 0;
+      var countC2 = 0;
+
+      state.bookings.forEach(function (b, idx) {
+        var key = getBookingDateKey(b);
+        if (!key) return;
+
+        var dObj = new Date(key + 'T00:00:00');
+        if (dObj.getFullYear() !== year || dObj.getMonth() !== month) return;
+
+        var isC2 = (b.selectedCounsellorId === 'counsellor2' || (b.selectedCounsellor || '').toLowerCase().includes('aryan'));
+        if (isC2) {
+          countC2++;
+          if (!bookingsMapC2[key]) bookingsMapC2[key] = [];
+          bookingsMapC2[key].push({ booking: b, index: idx });
+        } else {
+          countC1++;
+          if (!bookingsMapC1[key]) bookingsMapC1[key] = [];
+          bookingsMapC1[key].push({ booking: b, index: idx });
+        }
+      });
+
+      document.getElementById('c1CalBookingsCount').textContent = countC1 + ' Bookings';
+      document.getElementById('c2CalBookingsCount').textContent = countC2 + ' Bookings';
+
+      function fillGrid(rootEl, map) {
+        var prevMonthLastDay = new Date(year, month, 0).getDate();
+        for (var i = startingDay - 1; i >= 0; i--) {
+          var dayNum = prevMonthLastDay - i;
+          var prevDate = new Date(year, month - 1, dayNum);
+          var dateStr = prevDate.getFullYear() + '-' + String(prevDate.getMonth() + 1).padStart(2, '0') + '-' + String(prevDate.getDate()).padStart(2, '0');
+          renderDayCell(rootEl, dayNum, true, dateStr, map[dateStr] || []);
+        }
+
+        var today = new Date();
+        var isCurrentMonth = (today.getFullYear() === year && today.getMonth() === month);
+        var todayNum = today.getDate();
+
+        for (var day = 1; day <= monthLength; day++) {
+          var dateStr = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+          var isToday = isCurrentMonth && (day === todayNum);
+          renderDayCell(rootEl, day, false, dateStr, map[dateStr] || [], isToday);
+        }
+
+        var totalCells = startingDay + monthLength;
+        var extraCells = totalCells <= 35 ? (35 - totalCells) : (42 - totalCells);
+        for (var day = 1; day <= extraCells; day++) {
+          var nextDate = new Date(year, month + 1, day);
+          var dateStr = nextDate.getFullYear() + '-' + String(nextDate.getMonth() + 1).padStart(2, '0') + '-' + String(nextDate.getDate()).padStart(2, '0');
+          renderDayCell(rootEl, day, true, dateStr, map[dateStr] || []);
+        }
+      }
+
+      fillGrid(rootC1, bookingsMapC1);
+      fillGrid(rootC2, bookingsMapC2);
+    }
+
+    function renderDayCell(root, dayNum, isOtherMonth, dateStr, dayBookings, isToday) {
+      var cell = document.createElement('div');
+      cell.className = 'cal-admin-day-cell' + (isOtherMonth ? ' other-month' : '') + (isToday ? ' today' : '');
+
+      var numLabel = document.createElement('div');
+      numLabel.className = 'cal-admin-day-num';
+      numLabel.textContent = dayNum;
+      cell.appendChild(numLabel);
+
+      var eventList = document.createElement('div');
+      eventList.className = 'cal-admin-events-list';
+
+      if (dayBookings && dayBookings.length > 0) {
+        dayBookings.sort(function (a, b) {
+          var tA = a.booking.scheduledStartTime || a.booking.preferredDate || '';
+          var tB = b.booking.scheduledStartTime || b.booking.preferredDate || '';
+          return tA.localeCompare(tB);
+        });
+
+        dayBookings.forEach(function (eb) {
+          var b = eb.booking;
+          var displayTime = getCleanTime(b.scheduledStartTime, b.selectedSlot).replace(/\s*\(.*\)/, '');
+          var counsellorCode = (b.selectedCounsellorId === 'counsellor2' || (b.selectedCounsellor || '').toLowerCase().includes('aryan')) ? 'Aryan' : 'Samir';
+          
+          var badge = document.createElement('div');
+          var status = String(b.status || 'PENDING').toUpperCase();
+          var statusClass = 'evt-pending';
+          if (status === 'CONFIRMED' || status === 'ACTIVE') statusClass = 'evt-confirmed';
+          else if (status === 'CANCELLED' || status === 'CANCELED') statusClass = 'evt-cancelled';
+          else if (status === 'COMPLETED') statusClass = 'evt-completed';
+
+          badge.className = 'cal-admin-event-badge ' + statusClass;
+          badge.innerHTML = '<strong>' + esc(displayTime) + '</strong> ' + esc(b.name || 'Student');
+          badge.title = esc(b.name) + ' with ' + counsellorCode + ' at ' + displayTime;
+          
+          badge.addEventListener('click', function (e) {
+            e.stopPropagation();
+            openBookingDetails(eb.index);
+          });
+          eventList.appendChild(badge);
+        });
+      }
+
+      cell.appendChild(eventList);
+      root.appendChild(cell);
     }
 
     // Export CSV Helper
@@ -2061,6 +2419,34 @@
       }
     }
     document.getElementById('autoRefreshToggle').addEventListener('change', setupAutoRefresh);
+
+    // Calendar Navigation & Filters
+    var prevMonthBtn = document.getElementById('calPrevMonth');
+    var nextMonthBtn = document.getElementById('calNextMonth');
+    var calCounsellorSelect = document.getElementById('calendarCounsellorFilter');
+
+    if (prevMonthBtn) {
+      prevMonthBtn.addEventListener('click', function () {
+        var cur = state.calendarFilter.currentDate;
+        state.calendarFilter.currentDate = new Date(cur.getFullYear(), cur.getMonth() - 1, 1);
+        renderCustomCalendar();
+      });
+    }
+
+    if (nextMonthBtn) {
+      nextMonthBtn.addEventListener('click', function () {
+        var cur = state.calendarFilter.currentDate;
+        state.calendarFilter.currentDate = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+        renderCustomCalendar();
+      });
+    }
+
+    if (calCounsellorSelect) {
+      calCounsellorSelect.addEventListener('change', function (e) {
+        state.calendarFilter.counsellor = e.target.value;
+        renderCustomCalendar();
+      });
+    }
 
     // Initial Load
     loadDashboard(false);
