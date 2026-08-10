@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', function () {
   try {
     localStorage.removeItem('amc_entry_submitted');
     localStorage.removeItem('amc_lead_submitted');
-  } catch (e) {}
+  } catch (e) { }
 
   var fnEl = document.getElementById('fullName');
   if (fnEl) fnEl.value = '';
@@ -176,7 +176,7 @@ document.addEventListener('DOMContentLoaded', function () {
   stages.forEach(function (stage) {
     var head = stage.querySelector('.stage__head');
     var closeBtn = stage.querySelector('.stage__close');
-    
+
     if (head) {
       head.addEventListener('click', function () {
         var isOpen = stage.getAttribute('data-open') === 'true';
@@ -842,7 +842,7 @@ document.addEventListener('DOMContentLoaded', function () {
             countryCodeInput.value = countryCode;
           }
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     if (!name) name = 'Student';
@@ -1041,7 +1041,7 @@ document.addEventListener('DOMContentLoaded', function () {
       var savedLeadObj = {};
       try {
         savedLeadObj = JSON.parse(sessionStorage.getItem('amc_lead_user') || localStorage.getItem('amc_lead_user') || '{}');
-      } catch (e) {}
+      } catch (e) { }
 
       var urlObj = new URL(rawUrl);
       if (finalName) urlObj.searchParams.set('name', finalName);
@@ -1109,7 +1109,7 @@ document.addEventListener('DOMContentLoaded', function () {
               handleBookingCompleted(data.event.calendlyEventUri, data.event);
             }
           })
-          .catch(function () {});
+          .catch(function () { });
       }, 5000);
     }, 10000);
   }
@@ -1129,55 +1129,55 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-    // Reset confirmation overlay state on modal open
-    var confirmOverlay = document.getElementById('calendlyConfirmOverlay');
-    if (confirmOverlay) {
-      confirmOverlay.style.display = 'none';
-      var spinner = document.getElementById('confirmSpinnerIcon');
-      if (spinner) spinner.classList.remove('is-success');
-      var progress = document.getElementById('confirmProgressFill');
-      if (progress) progress.classList.remove('is-done');
-      var title = document.getElementById('confirmTitle');
-      if (title) title.textContent = 'Confirming Your Session...';
-      var subtitle = document.getElementById('confirmSubtitle');
-      if (subtitle) subtitle.textContent = 'Connecting with Calendly & syncing your appointment details';
-    }
+  // Reset confirmation overlay state on modal open
+  var confirmOverlay = document.getElementById('calendlyConfirmOverlay');
+  if (confirmOverlay) {
+    confirmOverlay.style.display = 'none';
+    var spinner = document.getElementById('confirmSpinnerIcon');
+    if (spinner) spinner.classList.remove('is-success');
+    var progress = document.getElementById('confirmProgressFill');
+    if (progress) progress.classList.remove('is-done');
+    var title = document.getElementById('confirmTitle');
+    if (title) title.textContent = 'Confirming Your Session...';
+    var subtitle = document.getElementById('confirmSubtitle');
+    if (subtitle) subtitle.textContent = 'Connecting with Calendly & syncing your appointment details';
+  }
 
-    if (closeCalendlyModal) {
-      var handleCloseBtn = function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        closeCalendlyModalFlow();
-      };
-      closeCalendlyModal.addEventListener('click', handleCloseBtn);
-      closeCalendlyModal.addEventListener('touchstart', handleCloseBtn);
-    }
+  if (closeCalendlyModal) {
+    var handleCloseBtn = function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      closeCalendlyModalFlow();
+    };
+    closeCalendlyModal.addEventListener('click', handleCloseBtn);
+    closeCalendlyModal.addEventListener('touchstart', handleCloseBtn);
+  }
 
-    // Manual Fast-Confirm Button
-    var btnConfirmNow = document.getElementById('btnConfirmNow');
-    if (btnConfirmNow) {
-      btnConfirmNow.addEventListener('click', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        var overlay = document.getElementById('calendlyConfirmOverlay');
-        if (overlay) overlay.style.display = 'flex';
-        handleBookingCompleted(null, currentBookingState);
-      });
-    }
+  // Manual Fast-Confirm Button
+  var btnConfirmNow = document.getElementById('btnConfirmNow');
+  if (btnConfirmNow) {
+    btnConfirmNow.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var overlay = document.getElementById('calendlyConfirmOverlay');
+      if (overlay) overlay.style.display = 'flex';
+      handleBookingCompleted(null, currentBookingState);
+    });
+  }
 
-    if (calendlyModal) {
-      calendlyModal.addEventListener('click', function (e) {
-        if (e.target === calendlyModal) {
-          closeCalendlyModalFlow();
-        }
-      });
-    }
-
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && calendlyModal && calendlyModal.getAttribute('aria-hidden') === 'false') {
+  if (calendlyModal) {
+    calendlyModal.addEventListener('click', function (e) {
+      if (e.target === calendlyModal) {
         closeCalendlyModalFlow();
       }
     });
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && calendlyModal && calendlyModal.getAttribute('aria-hidden') === 'false') {
+      closeCalendlyModalFlow();
+    }
+  });
 
   // ---------- TERMS & CONDITIONS MODAL CONTROLLER ----------
   var termsLink = document.getElementById('termsLink');
@@ -1285,7 +1285,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var savedLead = {};
     try {
       savedLead = JSON.parse(sessionStorage.getItem('amc_lead_user') || localStorage.getItem('amc_lead_user') || '{}');
-    } catch (e) {}
+    } catch (e) { }
 
     var counsellorName = (selectedCounsellorId === 'counsellor2' || selectedCounsellorId === 'aryan') ? 'Counsellor 2 (Aryan Raj)' : 'Counsellor 1 (starsamir9955)';
 
@@ -1399,7 +1399,7 @@ document.addEventListener('DOMContentLoaded', function () {
           try {
             var parsed = JSON.parse(e.data);
             eventUri = parsed.payload && parsed.payload.event && parsed.payload.event.uri;
-          } catch (err) {}
+          } catch (err) { }
         }
       }
     } catch (err) {
@@ -1486,7 +1486,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (storedLead) {
       autofillEnrollmentForm(storedLead);
     }
-  } catch (e) {}
+  } catch (e) { }
 
   /* ---- Entry modal: opens cleanly on visit, auto-fills form on submit, and stays closed for the rest of that visit ---- */
   var entryModal = document.getElementById('entryModal');
@@ -1693,7 +1693,7 @@ document.addEventListener('DOMContentLoaded', function () {
       try {
         sessionStorage.setItem('amc_lead_user', JSON.stringify(leadPayload));
         localStorage.setItem('amc_lead_user', JSON.stringify(leadPayload));
-      } catch (e) {}
+      } catch (e) { }
 
       // 1. Direct Synchronous Population into the Enrollment Form
       var fnField = document.getElementById('fullName');
@@ -1748,212 +1748,212 @@ document.addEventListener('DOMContentLoaded', function () {
 
 });
 
-  // ---------- 3D ROTARY COVER FLOW CAROUSEL CONTROLLER ----------
-  var proofStage = document.getElementById('proofGrid');
-  var scrollLeftBtn = document.getElementById('scrollLeftBtn');
-  var scrollRightBtn = document.getElementById('scrollRightBtn');
-  var lightboxModal = document.getElementById('lightboxModal');
-  var lightboxImg = document.getElementById('lightboxImg');
-  var lightboxCaption = document.getElementById('lightboxCaption');
-  var closeLightboxBtn = document.getElementById('closeLightboxBtn');
+// ---------- 3D ROTARY COVER FLOW CAROUSEL CONTROLLER ----------
+var proofStage = document.getElementById('proofGrid');
+var scrollLeftBtn = document.getElementById('scrollLeftBtn');
+var scrollRightBtn = document.getElementById('scrollRightBtn');
+var lightboxModal = document.getElementById('lightboxModal');
+var lightboxImg = document.getElementById('lightboxImg');
+var lightboxCaption = document.getElementById('lightboxCaption');
+var closeLightboxBtn = document.getElementById('closeLightboxBtn');
 
-  if (proofStage) {
-    var cards = Array.from(proofStage.querySelectorAll('.proof-card'));
-    var currentIndex = 0;
-    var totalCards = cards.length;
-    var autoPlayTimer = null;
+if (proofStage) {
+  var cards = Array.from(proofStage.querySelectorAll('.proof-card'));
+  var currentIndex = 0;
+  var totalCards = cards.length;
+  var autoPlayTimer = null;
 
-    function update3DCarousel() {
-      if (totalCards === 0) return;
-      cards.forEach(function (card, idx) {
-        card.classList.remove('pos-center', 'pos-prev-1', 'pos-prev-2', 'pos-next-1', 'pos-next-2', 'pos-hidden');
+  function update3DCarousel() {
+    if (totalCards === 0) return;
+    cards.forEach(function (card, idx) {
+      card.classList.remove('pos-center', 'pos-prev-1', 'pos-prev-2', 'pos-next-1', 'pos-next-2', 'pos-hidden');
 
-        var diff = (idx - currentIndex + totalCards) % totalCards;
-        if (diff > totalCards / 2) {
-          diff -= totalCards;
-        }
+      var diff = (idx - currentIndex + totalCards) % totalCards;
+      if (diff > totalCards / 2) {
+        diff -= totalCards;
+      }
 
-        if (diff === 0) {
-          card.classList.add('pos-center');
-        } else if (diff === 1) {
-          card.classList.add('pos-next-1');
-        } else if (diff === 2) {
-          card.classList.add('pos-next-2');
-        } else if (diff === -1) {
-          card.classList.add('pos-prev-1');
-        } else if (diff === -2) {
-          card.classList.add('pos-prev-2');
-        } else {
-          card.classList.add('pos-hidden');
-        }
-      });
-    }
-
-    function next3DCard() {
-      currentIndex = (currentIndex + 1) % totalCards;
-      update3DCarousel();
-    }
-
-    function prev3DCard() {
-      currentIndex = (currentIndex - 1 + totalCards) % totalCards;
-      update3DCarousel();
-    }
-
-    function startAutoPlay() {
-      stopAutoPlay();
-      autoPlayTimer = setInterval(next3DCard, 1600);
-    }
-
-    function stopAutoPlay() {
-      if (autoPlayTimer) clearInterval(autoPlayTimer);
-    }
-
-    // CLICK HANDLER FOR STAGE CARDS
-    proofStage.addEventListener('click', function (e) {
-      var card = e.target.closest('.proof-card');
-      if (!card) return;
-      var cardIdx = parseInt(card.getAttribute('data-index'), 10);
-
-      if (cardIdx === currentIndex) {
-        // Active center card clicked -> Open Lightbox zoom modal
-        var imgSrc = card.getAttribute('data-img');
-        var title = card.getAttribute('data-title') || '';
-        if (imgSrc && lightboxModal && lightboxImg) {
-          lightboxImg.src = imgSrc;
-          if (lightboxCaption) lightboxCaption.textContent = title;
-          lightboxModal.classList.add('is-active');
-        }
+      if (diff === 0) {
+        card.classList.add('pos-center');
+      } else if (diff === 1) {
+        card.classList.add('pos-next-1');
+      } else if (diff === 2) {
+        card.classList.add('pos-next-2');
+      } else if (diff === -1) {
+        card.classList.add('pos-prev-1');
+      } else if (diff === -2) {
+        card.classList.add('pos-prev-2');
       } else {
-        // Non-active card clicked -> Rotate into center focus
-        currentIndex = cardIdx;
-        update3DCarousel();
-        startAutoPlay();
+        card.classList.add('pos-hidden');
       }
     });
-
-    // CLOSE LIGHTBOX HANDLERS
-    if (closeLightboxBtn && lightboxModal) {
-      closeLightboxBtn.addEventListener('click', function () {
-        lightboxModal.classList.remove('is-active');
-      });
-    }
-
-    if (lightboxModal) {
-      lightboxModal.addEventListener('click', function (e) {
-        if (e.target === lightboxModal) {
-          lightboxModal.classList.remove('is-active');
-        }
-      });
-    }
-
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && lightboxModal && lightboxModal.classList.contains('is-active')) {
-        lightboxModal.classList.remove('is-active');
-      }
-    });
-
-    if (scrollLeftBtn) {
-      scrollLeftBtn.addEventListener('click', function () {
-        prev3DCard();
-        startAutoPlay();
-      });
-    }
-
-    if (scrollRightBtn) {
-      scrollRightBtn.addEventListener('click', function () {
-        next3DCard();
-        startAutoPlay();
-      });
-    }
-
-    // CATEGORY FILTER TABS FOR PROOF GALLERY
-    var proofFilters = document.getElementById('proofFilters');
-    if (proofFilters) {
-      proofFilters.addEventListener('click', function (e) {
-        var filterBtn = e.target.closest('.proof-filter-btn');
-        if (!filterBtn) return;
-
-        var filterValue = filterBtn.getAttribute('data-filter');
-        proofFilters.querySelectorAll('.proof-filter-btn').forEach(function (btn) {
-          btn.classList.remove('active');
-        });
-        filterBtn.classList.add('active');
-
-        // Filter cards and reset 3D carousel focus
-        cards.forEach(function (card) {
-          var cardCat = card.getAttribute('data-category');
-          if (filterValue === 'all' || cardCat === filterValue || cardCat === 'all') {
-            card.style.display = 'block';
-          } else {
-            card.style.display = 'none';
-          }
-        });
-      });
-    }
-
-    // PAUSE AUTOPLAY ONLY WHEN CURSOR IS DIRECTLY ON THE CENTER SCREENSHOT
-    proofStage.addEventListener('mouseover', function (e) {
-      var centerCard = e.target.closest('.proof-card.pos-center');
-      if (centerCard) {
-        stopAutoPlay();
-      } else {
-        startAutoPlay();
-      }
-    });
-
-    proofStage.addEventListener('mouseleave', function () {
-      startAutoPlay();
-    });
-
-    // INITIAL RENDER & START AUTOPLAY
-    update3DCarousel();
-    startAutoPlay();
   }
 
-  // --- SEARCHABLE COUNTRY CODE PICKERS ---
-  function initCountryCodePicker(config) {
-    var picker = document.getElementById(config.pickerId);
-    var trigger = document.getElementById(config.triggerId);
-    var dropdown = document.getElementById(config.dropdownId);
-    var searchInput = document.getElementById(config.searchInputId);
-    var list = document.getElementById(config.listId);
-    var flagEl = document.getElementById(config.flagElId);
-    var codeEl = document.getElementById(config.codeElId);
-    var hiddenInput = document.getElementById(config.hiddenInputId);
+  function next3DCard() {
+    currentIndex = (currentIndex + 1) % totalCards;
+    update3DCarousel();
+  }
 
-    if (!picker || !trigger || !list) return;
+  function prev3DCard() {
+    currentIndex = (currentIndex - 1 + totalCards) % totalCards;
+    update3DCarousel();
+  }
 
-    var countries = [
-      { name: "Australia", code: "+61", iso: "au" },
-      { name: "India", code: "+91", iso: "in" },
-      { name: "United Kingdom", code: "+44", iso: "gb" },
-      { name: "United States", code: "+1", iso: "us" },
-      { name: "Canada", code: "+1", iso: "ca" },
-      { name: "New Zealand", code: "+64", iso: "nz" },
-      { name: "Ireland", code: "+353", iso: "ie" },
-      { name: "South Africa", code: "+27", iso: "za" },
-      { name: "Singapore", code: "+65", iso: "sg" },
-      { name: "Malaysia", code: "+60", iso: "my" },
-      { name: "United Arab Emirates", code: "+971", iso: "ae" },
-      { name: "Saudi Arabia", code: "+966", iso: "sa" },
-      { name: "Pakistan", code: "+92", iso: "pk" },
-      { name: "Nepal", code: "+977", iso: "np" },
-      { name: "Bangladesh", code: "+880", iso: "bd" },
-      { name: "Sri Lanka", code: "+94", iso: "lk" }
-    ];
+  function startAutoPlay() {
+    stopAutoPlay();
+    autoPlayTimer = setInterval(next3DCard, 1600);
+  }
 
-    function renderList(filterText) {
-      list.innerHTML = '';
-      var query = (filterText || '').toLowerCase().trim();
+  function stopAutoPlay() {
+    if (autoPlayTimer) clearInterval(autoPlayTimer);
+  }
 
-      countries.forEach(function (c) {
-        if (query && c.name.toLowerCase().indexOf(query) === -1 && c.code.indexOf(query) === -1) {
-          return;
+  // CLICK HANDLER FOR STAGE CARDS
+  proofStage.addEventListener('click', function (e) {
+    var card = e.target.closest('.proof-card');
+    if (!card) return;
+    var cardIdx = parseInt(card.getAttribute('data-index'), 10);
+
+    if (cardIdx === currentIndex) {
+      // Active center card clicked -> Open Lightbox zoom modal
+      var imgSrc = card.getAttribute('data-img');
+      var title = card.getAttribute('data-title') || '';
+      if (imgSrc && lightboxModal && lightboxImg) {
+        lightboxImg.src = imgSrc;
+        if (lightboxCaption) lightboxCaption.textContent = title;
+        lightboxModal.classList.add('is-active');
+      }
+    } else {
+      // Non-active card clicked -> Rotate into center focus
+      currentIndex = cardIdx;
+      update3DCarousel();
+      startAutoPlay();
+    }
+  });
+
+  // CLOSE LIGHTBOX HANDLERS
+  if (closeLightboxBtn && lightboxModal) {
+    closeLightboxBtn.addEventListener('click', function () {
+      lightboxModal.classList.remove('is-active');
+    });
+  }
+
+  if (lightboxModal) {
+    lightboxModal.addEventListener('click', function (e) {
+      if (e.target === lightboxModal) {
+        lightboxModal.classList.remove('is-active');
+      }
+    });
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && lightboxModal && lightboxModal.classList.contains('is-active')) {
+      lightboxModal.classList.remove('is-active');
+    }
+  });
+
+  if (scrollLeftBtn) {
+    scrollLeftBtn.addEventListener('click', function () {
+      prev3DCard();
+      startAutoPlay();
+    });
+  }
+
+  if (scrollRightBtn) {
+    scrollRightBtn.addEventListener('click', function () {
+      next3DCard();
+      startAutoPlay();
+    });
+  }
+
+  // CATEGORY FILTER TABS FOR PROOF GALLERY
+  var proofFilters = document.getElementById('proofFilters');
+  if (proofFilters) {
+    proofFilters.addEventListener('click', function (e) {
+      var filterBtn = e.target.closest('.proof-filter-btn');
+      if (!filterBtn) return;
+
+      var filterValue = filterBtn.getAttribute('data-filter');
+      proofFilters.querySelectorAll('.proof-filter-btn').forEach(function (btn) {
+        btn.classList.remove('active');
+      });
+      filterBtn.classList.add('active');
+
+      // Filter cards and reset 3D carousel focus
+      cards.forEach(function (card) {
+        var cardCat = card.getAttribute('data-category');
+        if (filterValue === 'all' || cardCat === filterValue || cardCat === 'all') {
+          card.style.display = 'block';
+        } else {
+          card.style.display = 'none';
         }
+      });
+    });
+  }
 
-        var li = document.createElement('li');
-        li.className = 'country-option';
-        li.innerHTML = `
+  // PAUSE AUTOPLAY ONLY WHEN CURSOR IS DIRECTLY ON THE CENTER SCREENSHOT
+  proofStage.addEventListener('mouseover', function (e) {
+    var centerCard = e.target.closest('.proof-card.pos-center');
+    if (centerCard) {
+      stopAutoPlay();
+    } else {
+      startAutoPlay();
+    }
+  });
+
+  proofStage.addEventListener('mouseleave', function () {
+    startAutoPlay();
+  });
+
+  // INITIAL RENDER & START AUTOPLAY
+  update3DCarousel();
+  startAutoPlay();
+}
+
+// --- SEARCHABLE COUNTRY CODE PICKERS ---
+function initCountryCodePicker(config) {
+  var picker = document.getElementById(config.pickerId);
+  var trigger = document.getElementById(config.triggerId);
+  var dropdown = document.getElementById(config.dropdownId);
+  var searchInput = document.getElementById(config.searchInputId);
+  var list = document.getElementById(config.listId);
+  var flagEl = document.getElementById(config.flagElId);
+  var codeEl = document.getElementById(config.codeElId);
+  var hiddenInput = document.getElementById(config.hiddenInputId);
+
+  if (!picker || !trigger || !list) return;
+
+  var countries = [
+    { name: "Australia", code: "+61", iso: "au" },
+    { name: "India", code: "+91", iso: "in" },
+    { name: "United Kingdom", code: "+44", iso: "gb" },
+    { name: "United States", code: "+1", iso: "us" },
+    { name: "Canada", code: "+1", iso: "ca" },
+    { name: "New Zealand", code: "+64", iso: "nz" },
+    { name: "Ireland", code: "+353", iso: "ie" },
+    { name: "South Africa", code: "+27", iso: "za" },
+    { name: "Singapore", code: "+65", iso: "sg" },
+    { name: "Malaysia", code: "+60", iso: "my" },
+    { name: "United Arab Emirates", code: "+971", iso: "ae" },
+    { name: "Saudi Arabia", code: "+966", iso: "sa" },
+    { name: "Pakistan", code: "+92", iso: "pk" },
+    { name: "Nepal", code: "+977", iso: "np" },
+    { name: "Bangladesh", code: "+880", iso: "bd" },
+    { name: "Sri Lanka", code: "+94", iso: "lk" }
+  ];
+
+  function renderList(filterText) {
+    list.innerHTML = '';
+    var query = (filterText || '').toLowerCase().trim();
+
+    countries.forEach(function (c) {
+      if (query && c.name.toLowerCase().indexOf(query) === -1 && c.code.indexOf(query) === -1) {
+        return;
+      }
+
+      var li = document.createElement('li');
+      li.className = 'country-option';
+      li.innerHTML = `
           <div class="country-option__name-flag">
             <span class="country-option__flag"><img src="https://flagcdn.com/w20/${c.iso}.png" width="18" style="border-radius:1px; vertical-align:middle; display:inline-block;" alt="${c.name} Flag"></span>
             <span class="country-option__name">${c.name}</span>
@@ -1961,75 +1961,75 @@ document.addEventListener('DOMContentLoaded', function () {
           <span class="country-option__code">${c.code}</span>
         `;
 
-        li.addEventListener('click', function (e) {
-          e.stopPropagation();
-          flagEl.innerHTML = `<img src="https://flagcdn.com/w20/${c.iso}.png" width="18" style="border-radius:2px; box-shadow: 0 1px 2px rgba(0,0,0,0.15); display:inline-block; vertical-align:middle; margin-right:4px;" alt="${c.name} Flag">`;
-          codeEl.textContent = c.code;
-          hiddenInput.value = c.code;
-          picker.classList.remove('is-open');
-          if (searchInput) searchInput.value = '';
-          renderList('');
-        });
-
-        list.appendChild(li);
-      });
-    }
-
-    trigger.addEventListener('click', function (e) {
-      e.stopPropagation();
-      var isOpen = picker.classList.contains('is-open');
-      if (isOpen) {
-        picker.classList.remove('is-open');
-      } else {
-        // Close other open pickers
-        document.querySelectorAll('.country-code-picker').forEach(function (p) {
-          p.classList.remove('is-open');
-        });
-        picker.classList.add('is-open');
-        setTimeout(function () {
-          if (searchInput) searchInput.focus();
-        }, 50);
-      }
-    });
-
-    if (searchInput) {
-      searchInput.addEventListener('input', function (e) {
-        renderList(e.target.value);
-      });
-      searchInput.addEventListener('click', function (e) {
+      li.addEventListener('click', function (e) {
         e.stopPropagation();
-      });
-    }
-
-    document.addEventListener('click', function (e) {
-      if (!picker.contains(e.target)) {
+        flagEl.innerHTML = `<img src="https://flagcdn.com/w20/${c.iso}.png" width="18" style="border-radius:2px; box-shadow: 0 1px 2px rgba(0,0,0,0.15); display:inline-block; vertical-align:middle; margin-right:4px;" alt="${c.name} Flag">`;
+        codeEl.textContent = c.code;
+        hiddenInput.value = c.code;
         picker.classList.remove('is-open');
-      }
-    });
+        if (searchInput) searchInput.value = '';
+        renderList('');
+      });
 
-    renderList('');
+      list.appendChild(li);
+    });
   }
 
-  // Initialize main form country code picker
-  initCountryCodePicker({
-    pickerId: 'countryCodePicker',
-    triggerId: 'countryCodeTrigger',
-    dropdownId: 'countryCodeDropdown',
-    searchInputId: 'countrySearchInput',
-    listId: 'countryOptionsList',
-    flagElId: 'selectedCountryFlag',
-    codeElId: 'selectedCountryCode',
-    hiddenInputId: 'countryCode'
+  trigger.addEventListener('click', function (e) {
+    e.stopPropagation();
+    var isOpen = picker.classList.contains('is-open');
+    if (isOpen) {
+      picker.classList.remove('is-open');
+    } else {
+      // Close other open pickers
+      document.querySelectorAll('.country-code-picker').forEach(function (p) {
+        p.classList.remove('is-open');
+      });
+      picker.classList.add('is-open');
+      setTimeout(function () {
+        if (searchInput) searchInput.focus();
+      }, 50);
+    }
   });
 
-  // Initialize entry modal country code picker
-  initCountryCodePicker({
-    pickerId: 'entryCountryCodePicker',
-    triggerId: 'entryCountryCodeTrigger',
-    dropdownId: 'entryCountryCodeDropdown',
-    searchInputId: 'entryCountrySearchInput',
-    listId: 'entryCountryOptionsList',
-    flagElId: 'entrySelectedCountryFlag',
-    codeElId: 'entrySelectedCountryCode',
-    hiddenInputId: 'entryCountryCode'
+  if (searchInput) {
+    searchInput.addEventListener('input', function (e) {
+      renderList(e.target.value);
+    });
+    searchInput.addEventListener('click', function (e) {
+      e.stopPropagation();
+    });
+  }
+
+  document.addEventListener('click', function (e) {
+    if (!picker.contains(e.target)) {
+      picker.classList.remove('is-open');
+    }
   });
+
+  renderList('');
+}
+
+// Initialize main form country code picker
+initCountryCodePicker({
+  pickerId: 'countryCodePicker',
+  triggerId: 'countryCodeTrigger',
+  dropdownId: 'countryCodeDropdown',
+  searchInputId: 'countrySearchInput',
+  listId: 'countryOptionsList',
+  flagElId: 'selectedCountryFlag',
+  codeElId: 'selectedCountryCode',
+  hiddenInputId: 'countryCode'
+});
+
+// Initialize entry modal country code picker
+initCountryCodePicker({
+  pickerId: 'entryCountryCodePicker',
+  triggerId: 'entryCountryCodeTrigger',
+  dropdownId: 'entryCountryCodeDropdown',
+  searchInputId: 'entryCountrySearchInput',
+  listId: 'entryCountryOptionsList',
+  flagElId: 'entrySelectedCountryFlag',
+  codeElId: 'entrySelectedCountryCode',
+  hiddenInputId: 'entryCountryCode'
+});

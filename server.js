@@ -350,7 +350,7 @@ function getLocalDateStr(dateVal) {
   if (!dateVal) return null;
   const d = new Date(dateVal);
   if (isNaN(d.getTime())) return null;
-  
+
   try {
     const formatter = new Intl.DateTimeFormat('en-CA', {
       timeZone: 'Asia/Kolkata',
@@ -735,12 +735,12 @@ async function getUnifiedBookings(forceRefresh = false) {
     } else {
       // Find matching live event by contact (phone, email, or name) AND timezone-safe date key
       const lbDate = getLocalDateStr(lb.scheduledStartTime || lb.preferredDate);
-      
+
       for (const [key, ev] of eventMap.entries()) {
         const evDate = getLocalDateStr(ev.scheduledStartTime || ev.preferredDate);
         if (lbDate && evDate && lbDate === evDate) {
           let contactMatches = false;
-          
+
           if (lb.phone && ev.phone) {
             const cleanLbPhone = String(lb.phone).replace(/\D/g, '').slice(-10);
             const cleanEvPhone = String(ev.phone).replace(/\D/g, '').slice(-10);
@@ -748,19 +748,19 @@ async function getUnifiedBookings(forceRefresh = false) {
               contactMatches = true;
             }
           }
-          
+
           if (!contactMatches && lb.email && ev.email) {
             if (lb.email.trim().toLowerCase() === ev.email.trim().toLowerCase()) {
               contactMatches = true;
             }
           }
-          
+
           if (!contactMatches && lb.name && ev.name) {
             if (lb.name.trim().toLowerCase() === ev.name.trim().toLowerCase()) {
               contactMatches = true;
             }
           }
-          
+
           if (contactMatches) {
             matchedEventKey = key;
             break;
@@ -1224,7 +1224,7 @@ app.get('/api/calendly/debug-availability', async (req, res) => {
   });
 
   const wantsJson = req.query.format === 'json' || (req.headers.accept && req.headers.accept.includes('application/json') && !req.headers.accept.includes('text/html'));
-  
+
   if (!wantsJson) {
     return res.sendFile(path.join(__dirname, 'admin.html'));
   }

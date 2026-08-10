@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,7 +9,9 @@
   <script src="https://assets.calendly.com/assets/external/widget.js" type="text/javascript" async></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap"
+    rel="stylesheet" />
   <style>
     :root {
       --bg: #f8fafc;
@@ -17,42 +20,42 @@
       --surface-hover: #f8fafc;
       --border: #e2e8f0;
       --border-strong: #cbd5e1;
-      
+
       --text-main: #0f172a;
       --text-secondary: #475569;
       --text-muted: #94a3b8;
-      
+
       --brand: #0284c7;
       --brand-hover: #0369a1;
       --brand-light: #e0f2fe;
       --brand-dark: #075985;
-      
+
       --emerald: #059669;
       --emerald-bg: #ecfdf5;
       --emerald-border: #a7f3d0;
-      
+
       --amber: #d97706;
       --amber-bg: #fffbeb;
       --amber-border: #fde68a;
-      
+
       --rose: #dc2626;
       --rose-bg: #fef2f2;
       --rose-border: #fecaca;
-      
+
       --indigo: #4f46e5;
       --indigo-bg: #eef2ff;
       --indigo-border: #c7d2fe;
-      
+
       --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
       --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
       --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
       --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.05);
-      
+
       --radius-sm: 6px;
       --radius-md: 10px;
       --radius-lg: 14px;
       --radius-xl: 20px;
-      
+
       --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       --font-mono: 'JetBrains Mono', monospace;
     }
@@ -157,9 +160,17 @@
     }
 
     @keyframes pulse {
-      0% { box-shadow: 0 0 0 0 rgba(5, 150, 105, 0.7); }
-      70% { box-shadow: 0 0 0 6px rgba(5, 150, 105, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(5, 150, 105, 0); }
+      0% {
+        box-shadow: 0 0 0 0 rgba(5, 150, 105, 0.7);
+      }
+
+      70% {
+        box-shadow: 0 0 0 6px rgba(5, 150, 105, 0);
+      }
+
+      100% {
+        box-shadow: 0 0 0 0 rgba(5, 150, 105, 0);
+      }
     }
 
     .header-actions {
@@ -249,7 +260,9 @@
     }
 
     @keyframes spin {
-      100% { transform: rotate(360deg); }
+      100% {
+        transform: rotate(360deg);
+      }
     }
 
     /* Auto-refresh Switch */
@@ -282,7 +295,10 @@
     .slider {
       position: absolute;
       cursor: pointer;
-      top: 0; left: 0; right: 0; bottom: 0;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
       background-color: var(--border-strong);
       transition: .2s;
       border-radius: 34px;
@@ -300,11 +316,11 @@
       border-radius: 50%;
     }
 
-    input:checked + .slider {
+    input:checked+.slider {
       background-color: var(--brand);
     }
 
-    input:checked + .slider:before {
+    input:checked+.slider:before {
       transform: translateX(16px);
     }
 
@@ -380,11 +396,30 @@
       gap: 6px;
     }
 
-    .metric-icon-blue { background: var(--brand-light); color: var(--brand); }
-    .metric-icon-green { background: var(--emerald-bg); color: var(--emerald); }
-    .metric-icon-amber { background: var(--amber-bg); color: var(--amber); }
-    .metric-icon-rose { background: var(--rose-bg); color: var(--rose); }
-    .metric-icon-indigo { background: var(--indigo-bg); color: var(--indigo); }
+    .metric-icon-blue {
+      background: var(--brand-light);
+      color: var(--brand);
+    }
+
+    .metric-icon-green {
+      background: var(--emerald-bg);
+      color: var(--emerald);
+    }
+
+    .metric-icon-amber {
+      background: var(--amber-bg);
+      color: var(--amber);
+    }
+
+    .metric-icon-rose {
+      background: var(--rose-bg);
+      color: var(--rose);
+    }
+
+    .metric-icon-indigo {
+      background: var(--indigo-bg);
+      color: var(--indigo);
+    }
 
     /* Tabs Navigation */
     .tabs-wrapper {
@@ -596,13 +631,34 @@
     }
 
     /* Column Widths */
-    .col-student { width: 22%; }
-    .col-phone { width: 17%; }
-    .col-counsellor { width: 16%; }
-    .col-schedule { width: 19%; }
-    .col-source { width: 12%; }
-    .col-status { width: 10%; }
-    .col-actions { width: 9%; text-align: right; }
+    .col-student {
+      width: 22%;
+    }
+
+    .col-phone {
+      width: 17%;
+    }
+
+    .col-counsellor {
+      width: 16%;
+    }
+
+    .col-schedule {
+      width: 19%;
+    }
+
+    .col-source {
+      width: 12%;
+    }
+
+    .col-status {
+      width: 10%;
+    }
+
+    .col-actions {
+      width: 9%;
+      text-align: right;
+    }
 
     /* Student Cell */
     .student-cell {
@@ -736,7 +792,8 @@
       white-space: nowrap;
     }
 
-    .status-confirmed, .status-active {
+    .status-confirmed,
+    .status-active {
       background: #ecfdf5;
       color: #059669;
       border: 1px solid #a7f3d0;
@@ -748,7 +805,8 @@
       border: 1px solid #fde68a;
     }
 
-    .status-cancelled, .status-canceled {
+    .status-cancelled,
+    .status-canceled {
       background: #fef2f2;
       color: #dc2626;
       border: 1px solid #fecaca;
@@ -994,7 +1052,10 @@
     /* Modal Drawer */
     .modal-backdrop {
       position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
       background: rgba(15, 23, 42, 0.45);
       backdrop-filter: blur(4px);
       display: flex;
@@ -1127,22 +1188,49 @@
     }
 
     @keyframes slideUp {
-      from { transform: translateY(20px); opacity: 0; }
-      to { transform: translateY(0); opacity: 1; }
+      from {
+        transform: translateY(20px);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
     }
 
     /* Responsive adjustments */
     @media (max-width: 900px) {
-      .app-container { padding: 16px; }
-      .header { flex-direction: column; align-items: stretch; }
-      .header-actions { justify-content: flex-start; }
-      .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+      .app-container {
+        padding: 16px;
+      }
+
+      .header {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .header-actions {
+        justify-content: flex-start;
+      }
+
+      .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
     }
 
     @media (max-width: 600px) {
-      .metrics-grid { grid-template-columns: 1fr; }
-      .search-filter-row { flex-direction: column; }
-      .search-box { width: 100%; }
+      .metrics-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .search-filter-row {
+        flex-direction: column;
+      }
+
+      .search-box {
+        width: 100%;
+      }
     }
 
     /* Custom Admin Calendar styling */
@@ -1156,15 +1244,18 @@
       border-radius: var(--radius-md);
       border: 1px solid #1e293b;
     }
+
     .calendar-counsellor-header h4 {
       font-size: 13px;
       font-weight: 800;
       color: #f8fafc;
     }
+
     .calendar-counsellor-header .tab-count {
       background: #1e293b;
       color: #94a3b8;
     }
+
     .custom-admin-calendar-wrapper {
       border: 1px solid #1e293b;
       border-radius: var(--radius-lg);
@@ -1172,6 +1263,7 @@
       overflow: hidden;
       box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.3);
     }
+
     .cal-admin-weekdays {
       display: grid;
       grid-template-columns: repeat(7, 1fr);
@@ -1183,12 +1275,14 @@
       color: #94a3b8;
       padding: 6px 0;
     }
+
     .cal-admin-days-grid {
       display: grid;
       grid-template-columns: repeat(7, 1fr);
       background: #1e293b;
       gap: 1px;
     }
+
     .cal-admin-day-cell {
       background: #0f172a;
       aspect-ratio: 1;
@@ -1200,20 +1294,24 @@
       position: relative;
       overflow: hidden;
     }
+
     .cal-admin-day-cell:hover {
       background: #1e293b;
     }
+
     .cal-admin-day-cell.other-month {
       background: #070a13;
       color: #475569;
       opacity: 0.55;
     }
+
     .cal-admin-day-num {
       font-weight: 800;
       font-size: 10.5px;
       color: #cbd5e1;
       margin-bottom: 2px;
     }
+
     .cal-admin-day-cell.today .cal-admin-day-num {
       color: #38bdf8;
       background: #0c4a6e;
@@ -1224,6 +1322,7 @@
       align-items: center;
       justify-content: center;
     }
+
     .cal-admin-events-list {
       display: flex;
       flex-direction: column;
@@ -1233,13 +1332,16 @@
       min-height: 0;
       padding-right: 2px;
     }
+
     .cal-admin-events-list::-webkit-scrollbar {
       width: 2px;
     }
+
     .cal-admin-events-list::-webkit-scrollbar-thumb {
       background: #334155;
       border-radius: 999px;
     }
+
     .cal-admin-event-badge {
       font-size: 8.5px;
       font-weight: 600;
@@ -1254,28 +1356,33 @@
       display: block;
       margin-bottom: 1px;
     }
+
     .cal-admin-event-badge:hover {
       transform: scale(1.02);
       opacity: 0.95;
     }
+
     .cal-admin-event-badge.evt-confirmed {
       background: rgba(16, 185, 129, 0.15);
       color: #34d399;
       border-left-color: #10b981;
       border: 1px solid rgba(16, 185, 129, 0.3);
     }
+
     .cal-admin-event-badge.evt-pending {
       background: rgba(245, 158, 11, 0.15);
       color: #fbbf24;
       border-left-color: #f59e0b;
       border: 1px solid rgba(245, 158, 11, 0.3);
     }
+
     .cal-admin-event-badge.evt-cancelled {
       background: rgba(239, 68, 68, 0.15);
       color: #f87171;
       border-left-color: #ef4444;
       border: 1px solid rgba(239, 68, 68, 0.3);
     }
+
     .cal-admin-event-badge.evt-completed {
       background: rgba(99, 102, 241, 0.15);
       color: #818cf8;
@@ -1284,9 +1391,10 @@
     }
   </style>
 </head>
+
 <body>
   <div class="app-container">
-    
+
     <!-- Top Header -->
     <header class="header">
       <div class="brand-section">
@@ -1313,12 +1421,18 @@
         </div>
 
         <button class="btn" id="exportBtn" title="Export current bookings to CSV">
-          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
           Export CSV
         </button>
 
         <button class="btn btn-primary" id="syncBtn" title="Sync real-time data from Calendly">
-          <svg id="syncIcon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          <svg id="syncIcon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
           Sync Now
         </button>
       </div>
@@ -1330,7 +1444,10 @@
         <div class="metric-head">
           <span class="metric-title">Total Bookings</span>
           <div class="metric-icon-box metric-icon-blue">
-            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
           </div>
         </div>
         <div class="metric-val" id="metricTotalBookings">--</div>
@@ -1341,7 +1458,10 @@
         <div class="metric-head">
           <span class="metric-title">Confirmed Meetings</span>
           <div class="metric-icon-box metric-icon-green">
-            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
           </div>
         </div>
         <div class="metric-val" id="metricConfirmedBookings">--</div>
@@ -1352,7 +1472,10 @@
         <div class="metric-head">
           <span class="metric-title">Pending / In-Progress</span>
           <div class="metric-icon-box metric-icon-amber">
-            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
           </div>
         </div>
         <div class="metric-val" id="metricPendingBookings">--</div>
@@ -1363,7 +1486,10 @@
         <div class="metric-head">
           <span class="metric-title">Captured Leads</span>
           <div class="metric-icon-box metric-icon-indigo">
-            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
           </div>
         </div>
         <div class="metric-val" id="metricTotalLeads">--</div>
@@ -1374,7 +1500,9 @@
         <div class="metric-head">
           <span class="metric-title">Live Calendly Slots</span>
           <div class="metric-icon-box metric-icon-blue">
-            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
           </div>
         </div>
         <div class="metric-val" id="metricLiveSlots">--</div>
@@ -1385,25 +1513,40 @@
     <!-- Navigation Tabs -->
     <div class="tabs-wrapper">
       <button class="tab-btn active" data-tab="bookings">
-        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
         All Bookings
         <span class="tab-count" id="tabCountBookings">0</span>
       </button>
       <button class="tab-btn" data-tab="leads">
-        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
         Captured Leads
         <span class="tab-count" id="tabCountLeads">0</span>
       </button>
       <button class="tab-btn" data-tab="availability">
-        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
         Calendly Live Slots
       </button>
       <button class="tab-btn" data-tab="calendars">
-        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
         View Calendars
       </button>
       <button class="tab-btn" data-tab="health">
-        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+        </svg>
         System & Integrations
       </button>
     </div>
@@ -1413,8 +1556,12 @@
       <div class="card-header-bar">
         <div class="search-filter-row">
           <div class="search-box">
-            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-            <input type="text" id="bookingSearchInput" class="search-input" placeholder="Search by student name, email, phone, counsellor, date..." />
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input type="text" id="bookingSearchInput" class="search-input"
+              placeholder="Search by student name, email, phone, counsellor, date..." />
           </div>
 
           <div class="filter-chips" id="statusFilterChips">
@@ -1457,11 +1604,18 @@
       <div class="card-header-bar">
         <div class="search-filter-row">
           <div class="search-box">
-            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-            <input type="text" id="leadSearchInput" class="search-input" placeholder="Search leads by name, email, phone, source..." />
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input type="text" id="leadSearchInput" class="search-input"
+              placeholder="Search leads by name, email, phone, source..." />
           </div>
           <button class="btn btn-sm" id="exportLeadsBtn">
-            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
             Export Leads CSV
           </button>
         </div>
@@ -1491,7 +1645,8 @@
       <div class="card-header-bar">
         <div>
           <h3 style="font-size:16px; font-weight:800;">Real-Time Calendly Slot Allocation</h3>
-          <p style="font-size:13px; color:var(--text-secondary);">Direct API query for both counsellor calendars spanning next 120 days.</p>
+          <p style="font-size:13px; color:var(--text-secondary);">Direct API query for both counsellor calendars
+            spanning next 120 days.</p>
         </div>
         <a href="/audit.html" class="btn btn-outline-brand btn-sm" target="_blank">
           Open Full Calendar Audit Page ↗
@@ -1505,20 +1660,25 @@
 
     <!-- TAB 5: VIEW CALENDARS -->
     <div class="content-card tab-pane" id="pane-calendars" style="display:none;">
-      <div class="card-header-bar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+      <div class="card-header-bar"
+        style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
         <div>
           <h3 style="font-size:16px; font-weight:800;">Bookings Calendars</h3>
-          <p style="font-size:13px; color:var(--text-secondary);">Live calendars for both Counsellor 1 and Counsellor 2 accounts displayed side-by-side.</p>
+          <p style="font-size:13px; color:var(--text-secondary);">Live calendars for both Counsellor 1 and Counsellor 2
+            accounts displayed side-by-side.</p>
         </div>
         <div style="display: flex; gap: 4px; align-items: center;">
           <button class="btn btn-sm" id="calPrevMonth" title="Previous Month">◀</button>
-          <h4 id="calMonthYearTitle" style="font-size: 14px; font-weight: 800; min-width: 140px; text-align: center; margin: 0 4px; color: var(--text-main);">August 2026</h4>
+          <h4 id="calMonthYearTitle"
+            style="font-size: 14px; font-weight: 800; min-width: 140px; text-align: center; margin: 0 4px; color: var(--text-main);">
+            August 2026</h4>
           <button class="btn btn-sm" id="calNextMonth" title="Next Month">▶</button>
         </div>
       </div>
-      
+
       <div style="padding: 16px;">
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 20px; width: 100%;">
+        <div
+          style="display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 20px; width: 100%;">
           <!-- Counsellor 1 Calendar -->
           <div>
             <div class="calendar-counsellor-header">
@@ -1527,14 +1687,20 @@
             </div>
             <div class="custom-admin-calendar-wrapper">
               <div class="cal-admin-weekdays">
-                <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
+                <div>S</div>
+                <div>M</div>
+                <div>T</div>
+                <div>W</div>
+                <div>T</div>
+                <div>F</div>
+                <div>S</div>
               </div>
               <div class="cal-admin-days-grid" id="calC1DaysGrid">
                 <!-- Rendered by JS -->
               </div>
             </div>
           </div>
-          
+
           <!-- Counsellor 2 Calendar -->
           <div>
             <div class="calendar-counsellor-header">
@@ -1543,7 +1709,13 @@
             </div>
             <div class="custom-admin-calendar-wrapper">
               <div class="cal-admin-weekdays">
-                <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
+                <div>S</div>
+                <div>M</div>
+                <div>T</div>
+                <div>W</div>
+                <div>T</div>
+                <div>F</div>
+                <div>S</div>
               </div>
               <div class="cal-admin-days-grid" id="calC2DaysGrid">
                 <!-- Rendered by JS -->
@@ -1572,7 +1744,9 @@
       <div class="modal-header">
         <h3 class="modal-title">Booking Details & Selected Slot</h3>
         <button class="modal-close" id="modalCloseBtn">
-          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
         </button>
       </div>
       <div class="modal-body" id="modalContent">
@@ -1656,7 +1830,7 @@
       btn.addEventListener('click', function () {
         document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
         document.querySelectorAll('.tab-pane').forEach(function (p) { p.style.display = 'none'; });
-        
+
         btn.classList.add('active');
         var targetTab = btn.getAttribute('data-tab');
         var targetPane = document.getElementById('pane-' + targetTab);
@@ -1676,7 +1850,7 @@
       document.getElementById('metricPendingBookings').textContent = m.pendingBookings || 0;
       document.getElementById('metricTotalLeads').textContent = m.totalLeads || 0;
       document.getElementById('metricLiveSlots').textContent = m.totalLiveSlots || 0;
-      
+
       document.getElementById('tabCountBookings').textContent = m.totalBookings || 0;
       document.getElementById('tabCountLeads').textContent = m.totalLeads || 0;
 
@@ -1725,7 +1899,7 @@
         return '<span class="source-tag source-instagram" title="Instagram">' +
           '<svg viewBox="0 0 24 24"><radialGradient id="ig-b" cx="30%" cy="107%" r="130%"><stop offset="0%" stop-color="#fdf497"/><stop offset="45%" stop-color="#fd5949"/><stop offset="60%" stop-color="#d6249f"/><stop offset="90%" stop-color="#285AEB"/></radialGradient><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162z" fill="url(#ig-b)"/></svg>' +
           'Instagram' +
-        '</span>';
+          '</span>';
       }
 
       // Facebook
@@ -1733,7 +1907,7 @@
         return '<span class="source-tag source-facebook" title="Facebook">' +
           '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#1877F2"/><path d="M15.5 12H13V20H10V12H8.5V9.5H10V7.8C10 6.2 10.9 5 13 5H15V7.5H13.8C13.1 7.5 13 7.8 13 8.3V9.5H15.5L15.5 12Z" fill="white"/></svg>' +
           'Facebook' +
-        '</span>';
+          '</span>';
       }
 
       // WhatsApp
@@ -1741,7 +1915,7 @@
         return '<span class="source-tag source-whatsapp" title="WhatsApp">' +
           '<svg viewBox="0 0 24 24"><path fill="#25D366" d="M12.004 2C6.482 2 2 6.482 2 12.004c0 1.825.489 3.535 1.326 5.04L2.016 22l5.12-1.309a9.92 9.92 0 0 0 4.868 1.313c5.522 0 10.004-4.482 10.004-10.004C22.008 6.482 17.526 2 12.004 2z"/><path fill="white" d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg>' +
           'WhatsApp' +
-        '</span>';
+          '</span>';
       }
 
       // YouTube
@@ -1749,7 +1923,7 @@
         return '<span class="source-tag source-youtube" title="YouTube">' +
           '<svg viewBox="0 0 24 24"><rect width="24" height="17" x="0" y="3.5" rx="4" fill="#FF0000"/><polygon points="9.5,7.5 16.5,12 9.5,16.5" fill="white"/></svg>' +
           'YouTube' +
-        '</span>';
+          '</span>';
       }
 
       // Friend / Referral
@@ -1757,7 +1931,7 @@
         return '<span class="source-tag source-friend" title="Friend / Referral">' +
           '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#A94665"/><path d="M12 12a3.5 3.5 0 1 0-3.5-3.5A3.5 3.5 0 0 0 12 12zm5.4 1.2a6.5 6.5 0 0 0-10.8 0A1.3 1.3 0 0 0 6.8 15a10.4 10.4 0 0 0 10.4 0 1.3 1.3 0 0 0 .2-1.8z" fill="white"/></svg>' +
           'Friend / Referral' +
-        '</span>';
+          '</span>';
       }
 
       // Other
@@ -1766,27 +1940,27 @@
         return '<span class="source-tag source-other" title="Other">' +
           '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#6B7280"/><circle cx="7" cy="12" r="1.5" fill="white"/><circle cx="12" cy="12" r="1.5" fill="white"/><circle cx="17" cy="12" r="1.5" fill="white"/></svg>' +
           'Other' + otherDetail +
-        '</span>';
+          '</span>';
       }
 
       // Google
       if (sLower.includes('google')) {
         return '<span class="source-tag source-other" title="Google Search">' +
           '🔍 Google Search' +
-        '</span>';
+          '</span>';
       }
 
       // Calendly
       if (sLower.includes('calendly')) {
         return '<span class="source-tag source-calendly" title="Calendly">' +
           '🗓️ Calendly' +
-        '</span>';
+          '</span>';
       }
 
       // Default Website Form
       return '<span class="source-tag">' +
         '🌐 ' + esc(s || 'Website Form') +
-      '</span>';
+        '</span>';
     }
 
     // Render Bookings Table
@@ -1801,10 +1975,10 @@
 
       var filtered = list.filter(function (b) {
         var matchesStatus = (st === 'ALL') || (b.status === st);
-        var matchesCounsellor = (counsellor === 'ALL') || 
-                                (b.selectedCounsellorId === counsellor) ||
-                                (counsellor === 'counsellor1' && (b.selectedCounsellor || '').toLowerCase().includes('counsellor 1')) ||
-                                (counsellor === 'counsellor2' && (b.selectedCounsellor || '').toLowerCase().includes('aryan'));
+        var matchesCounsellor = (counsellor === 'ALL') ||
+          (b.selectedCounsellorId === counsellor) ||
+          (counsellor === 'counsellor1' && (b.selectedCounsellor || '').toLowerCase().includes('counsellor 1')) ||
+          (counsellor === 'counsellor2' && (b.selectedCounsellor || '').toLowerCase().includes('aryan'));
 
         var textPool = [
           b.name, b.email, b.phone, b.selectedCounsellor,
@@ -1818,11 +1992,11 @@
       if (filtered.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7">' +
           '<div class="empty-state">' +
-            '<div class="empty-icon-wrap"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></div>' +
-            '<div class="empty-title">No bookings found</div>' +
-            '<div class="empty-desc">Try adjusting your search query or filter settings.</div>' +
+          '<div class="empty-icon-wrap"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></div>' +
+          '<div class="empty-title">No bookings found</div>' +
+          '<div class="empty-desc">Try adjusting your search query or filter settings.</div>' +
           '</div>' +
-        '</td></tr>';
+          '</td></tr>';
         return;
       }
 
@@ -1840,42 +2014,42 @@
 
         return '<tr>' +
           '<td class="col-student">' +
-            '<div class="student-cell">' +
-              '<div class="student-avatar">' + esc(getAvatarInitial(b.name)) + '</div>' +
-              '<div class="student-info">' +
-                '<span class="student-name" title="' + esc(b.name) + '">' + esc(b.name || 'Anonymous Student') + '</span>' +
-                (b.email ? ('<a href="mailto:' + esc(b.email) + '" class="student-email" title="' + esc(b.email) + '">📧 ' + esc(b.email) + '</a>') : '<span class="student-email" style="color:#94a3b8;">Email not captured</span>') +
-              '</div>' +
-            '</div>' +
+          '<div class="student-cell">' +
+          '<div class="student-avatar">' + esc(getAvatarInitial(b.name)) + '</div>' +
+          '<div class="student-info">' +
+          '<span class="student-name" title="' + esc(b.name) + '">' + esc(b.name || 'Anonymous Student') + '</span>' +
+          (b.email ? ('<a href="mailto:' + esc(b.email) + '" class="student-email" title="' + esc(b.email) + '">📧 ' + esc(b.email) + '</a>') : '<span class="student-email" style="color:#94a3b8;">Email not captured</span>') +
+          '</div>' +
+          '</div>' +
           '</td>' +
           '<td class="col-phone">' +
-            (b.phone ? (
-              '<div class="phone-cell">' +
-                '<span class="phone-text">📞 ' + esc(b.phone) + '</span>' +
-              '</div>'
-            ) : '<span style="color:#94a3b8; font-size:12px;">--</span>') +
+          (b.phone ? (
+            '<div class="phone-cell">' +
+            '<span class="phone-text">📞 ' + esc(b.phone) + '</span>' +
+            '</div>'
+          ) : '<span style="color:#94a3b8; font-size:12px;">--</span>') +
           '</td>' +
           '<td class="col-counsellor">' +
-            '<span class="counsellor-badge" title="' + esc(counsellorName) + '">👤 ' + esc(counsellorName) + '</span>' +
+          '<span class="counsellor-badge" title="' + esc(counsellorName) + '">👤 ' + esc(counsellorName) + '</span>' +
           '</td>' +
           '<td class="col-schedule">' +
-            '<div class="schedule-cell">' +
-              '<span class="schedule-date">📅 ' + esc(displayDate) + '</span>' +
-              '<span class="schedule-time-badge">🕒 ' + esc(displayTime) + '</span>' +
-            '</div>' +
+          '<div class="schedule-cell">' +
+          '<span class="schedule-date">📅 ' + esc(displayDate) + '</span>' +
+          '<span class="schedule-time-badge">🕒 ' + esc(displayTime) + '</span>' +
+          '</div>' +
           '</td>' +
           '<td class="col-source">' +
-            sourceBadgeHtml +
+          sourceBadgeHtml +
           '</td>' +
           '<td class="col-status">' +
-            '<span class="status-pill ' + statusClass + '">● ' + esc(status) + '</span>' +
+          '<span class="status-pill ' + statusClass + '">● ' + esc(status) + '</span>' +
           '</td>' +
           '<td class="col-actions">' +
-            '<button class="action-btn" onclick="openBookingDetails(' + idx + ')">' +
-              'Details →' +
-            '</button>' +
+          '<button class="action-btn" onclick="openBookingDetails(' + idx + ')">' +
+          'Details →' +
+          '</button>' +
           '</td>' +
-        '</tr>';
+          '</tr>';
       }).join('');
     }
 
@@ -1893,11 +2067,11 @@
       if (filtered.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6">' +
           '<div class="empty-state">' +
-            '<div class="empty-icon-wrap"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg></div>' +
-            '<div class="empty-title">No leads captured yet</div>' +
-            '<div class="empty-desc">Leads submitted from the AMC consultation form will automatically appear here.</div>' +
+          '<div class="empty-icon-wrap"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg></div>' +
+          '<div class="empty-title">No leads captured yet</div>' +
+          '<div class="empty-desc">Leads submitted from the AMC consultation form will automatically appear here.</div>' +
           '</div>' +
-        '</td></tr>';
+          '</td></tr>';
         return;
       }
 
@@ -1906,26 +2080,26 @@
 
         return '<tr>' +
           '<td>' +
-            '<div class="student-cell">' +
-              '<div class="student-avatar" style="background:#eef2ff; color:#4f46e5; border-color:#c7d2fe;">' + esc(getAvatarInitial(l.name)) + '</div>' +
-              '<div class="student-info">' +
-                '<span class="student-name">' + esc(l.name || '--') + '</span>' +
-                '<span style="font-size:11px; color:#64748b;">Website Lead</span>' +
-              '</div>' +
-            '</div>' +
+          '<div class="student-cell">' +
+          '<div class="student-avatar" style="background:#eef2ff; color:#4f46e5; border-color:#c7d2fe;">' + esc(getAvatarInitial(l.name)) + '</div>' +
+          '<div class="student-info">' +
+          '<span class="student-name">' + esc(l.name || '--') + '</span>' +
+          '<span style="font-size:11px; color:#64748b;">Website Lead</span>' +
+          '</div>' +
+          '</div>' +
           '</td>' +
           '<td><a href="mailto:' + esc(l.email) + '" class="student-email" style="color:var(--brand); font-weight:500;">📧 ' + esc(l.email || '--') + '</a></td>' +
           '<td>' +
-            '<div class="phone-cell">' +
-              '<span class="phone-text">📞 ' + esc(l.phone || '--') + '</span>' +
-            '</div>' +
+          '<div class="phone-cell">' +
+          '<span class="phone-text">📞 ' + esc(l.phone || '--') + '</span>' +
+          '</div>' +
           '</td>' +
           '<td>' + sourceBadgeHtml + '</td>' +
           '<td><span style="font-size:12px; color:#475569; white-space:nowrap;">📅 ' + esc(getCleanDate(l.createdAt)) + '</span></td>' +
           '<td style="text-align:right;">' +
-            '<button class="btn btn-sm btn-danger" onclick="deleteLead(\'' + esc(l.id) + '\')">Delete</button>' +
+          '<button class="btn btn-sm btn-danger" onclick="deleteLead(\'' + esc(l.id) + '\')">Delete</button>' +
           '</td>' +
-        '</tr>';
+          '</tr>';
       }).join('');
     }
 
@@ -1945,26 +2119,26 @@
         var pct = Math.round(((c.totalSlots || 0) / maxSlots) * 100);
         return '<div class="counsellor-card">' +
           '<div>' +
-            '<div class="counsellor-card-header">' +
-              '<div>' +
-                '<h4 class="counsellor-card-title">' + esc(c.name || label) + '</h4>' +
-                '<a href="' + esc(c.url) + '" target="_blank" class="counsellor-url">' + esc(c.url) + ' ↗</a>' +
-              '</div>' +
-              '<span class="status-pill status-confirmed">' + esc(c.totalSlots || 0) + ' Live Slots</span>' +
-            '</div>' +
-            '<div class="slot-bar-wrap">' +
-              '<div class="slot-bar-label">' +
-                '<span>Slot Availability Capacity</span>' +
-                '<span>' + pct + '%</span>' +
-              '</div>' +
-              '<div class="progress-track"><div class="progress-fill" style="width:' + pct + '%;"></div></div>' +
-            '</div>' +
+          '<div class="counsellor-card-header">' +
+          '<div>' +
+          '<h4 class="counsellor-card-title">' + esc(c.name || label) + '</h4>' +
+          '<a href="' + esc(c.url) + '" target="_blank" class="counsellor-url">' + esc(c.url) + ' ↗</a>' +
+          '</div>' +
+          '<span class="status-pill status-confirmed">' + esc(c.totalSlots || 0) + ' Live Slots</span>' +
+          '</div>' +
+          '<div class="slot-bar-wrap">' +
+          '<div class="slot-bar-label">' +
+          '<span>Slot Availability Capacity</span>' +
+          '<span>' + pct + '%</span>' +
+          '</div>' +
+          '<div class="progress-track"><div class="progress-fill" style="width:' + pct + '%;"></div></div>' +
+          '</div>' +
           '</div>' +
           '<div style="margin-top:14px; display:flex; justify-content:space-between; align-items:center;">' +
-            '<span style="font-size:12px; color:var(--text-muted);">Active token verified</span>' +
-            '<a href="' + esc(c.url) + '" target="_blank" class="btn btn-sm btn-outline-brand">Test Calendly Link</a>' +
+          '<span style="font-size:12px; color:var(--text-muted);">Active token verified</span>' +
+          '<a href="' + esc(c.url) + '" target="_blank" class="btn btn-sm btn-outline-brand">Test Calendly Link</a>' +
           '</div>' +
-        '</div>';
+          '</div>';
       }
 
       root.innerHTML = makeCard(c1, 'Counsellor 1') + makeCard(c2, 'Counsellor 2');
@@ -1988,12 +2162,12 @@
         return '<div class="diag-box">' +
           '<div class="diag-box-label">' + esc(item.label) + '</div>' +
           '<div class="diag-box-val">' +
-            '<span class="status-pill ' + (item.ok ? 'status-confirmed' : 'status-cancelled') + '">' +
-              (item.ok ? '● ACTIVE' : '● WARNING') +
-            '</span>' +
-            '<span>' + esc(item.val) + '</span>' +
+          '<span class="status-pill ' + (item.ok ? 'status-confirmed' : 'status-cancelled') + '">' +
+          (item.ok ? '● ACTIVE' : '● WARNING') +
+          '</span>' +
+          '<span>' + esc(item.val) + '</span>' +
           '</div>' +
-        '</div>';
+          '</div>';
       }).join('');
 
       root.innerHTML = html;
@@ -2020,44 +2194,44 @@
 
       root.innerHTML = '' +
         '<div class="modal-field">' +
-          '<span class="modal-field-label">Student Full Name</span>' +
-          '<span class="modal-field-val" style="font-size:16px; font-weight:800; color:var(--text-main);">' + esc(b.name || 'Anonymous Student') + '</span>' +
+        '<span class="modal-field-label">Student Full Name</span>' +
+        '<span class="modal-field-val" style="font-size:16px; font-weight:800; color:var(--text-main);">' + esc(b.name || 'Anonymous Student') + '</span>' +
         '</div>' +
         '<div class="modal-field">' +
-          '<span class="modal-field-label">Email Address</span>' +
-          '<span class="modal-field-val">' +
-            (b.email ? ('<a href="mailto:' + esc(b.email) + '" class="counsellor-url" style="font-size:14px; font-weight:600;">📧 ' + esc(b.email) + '</a>') : '<span style="color:var(--text-muted);">Email not captured</span>') +
-          '</span>' +
+        '<span class="modal-field-label">Email Address</span>' +
+        '<span class="modal-field-val">' +
+        (b.email ? ('<a href="mailto:' + esc(b.email) + '" class="counsellor-url" style="font-size:14px; font-weight:600;">📧 ' + esc(b.email) + '</a>') : '<span style="color:var(--text-muted);">Email not captured</span>') +
+        '</span>' +
         '</div>' +
         '<div class="modal-field">' +
-          '<span class="modal-field-label">Phone Number</span>' +
-          '<div style="display:flex; align-items:center; gap:10px; margin-top:2px;">' +
-            '<span class="modal-field-val mono" style="font-size:14px; font-weight:700;">📞 ' + esc(b.phone || 'Not provided') + '</span>' +
-            (b.phone ? ('<a href="tel:' + esc(b.phone) + '" class="btn btn-sm" style="padding:3px 8px; font-size:11px;">📞 Call</a>') : '') +
-          '</div>' +
+        '<span class="modal-field-label">Phone Number</span>' +
+        '<div style="display:flex; align-items:center; gap:10px; margin-top:2px;">' +
+        '<span class="modal-field-val mono" style="font-size:14px; font-weight:700;">📞 ' + esc(b.phone || 'Not provided') + '</span>' +
+        (b.phone ? ('<a href="tel:' + esc(b.phone) + '" class="btn btn-sm" style="padding:3px 8px; font-size:11px;">📞 Call</a>') : '') +
+        '</div>' +
         '</div>' +
         '<div class="modal-field">' +
-          '<span class="modal-field-label">Where Did You Hear About Us? (Lead Source)</span>' +
-          '<div style="margin-top:2px;">' + sourceBadgeHtml + '</div>' +
+        '<span class="modal-field-label">Where Did You Hear About Us? (Lead Source)</span>' +
+        '<div style="margin-top:2px;">' + sourceBadgeHtml + '</div>' +
         '</div>' +
         '<div class="modal-field">' +
-          '<span class="modal-field-label">Assigned Counsellor</span>' +
-          '<div style="display:flex; align-items:center; gap:8px;">' +
-            '<span class="modal-field-val" style="font-weight:700;">👤 ' + esc(b.selectedCounsellor || '--') + '</span>' +
-            (b.selectedCounsellorUrl ? ('<a href="' + esc(b.selectedCounsellorUrl) + '" target="_blank" class="counsellor-url" style="font-size:12px;">(Calendly Page ↗)</a>') : '') +
-          '</div>' +
+        '<span class="modal-field-label">Assigned Counsellor</span>' +
+        '<div style="display:flex; align-items:center; gap:8px;">' +
+        '<span class="modal-field-val" style="font-weight:700;">👤 ' + esc(b.selectedCounsellor || '--') + '</span>' +
+        (b.selectedCounsellorUrl ? ('<a href="' + esc(b.selectedCounsellorUrl) + '" target="_blank" class="counsellor-url" style="font-size:12px;">(Calendly Page ↗)</a>') : '') +
+        '</div>' +
         '</div>' +
         '<div class="modal-field" style="background:var(--brand-light); padding:14px; border-radius:12px; border:1px solid #bae6fd;">' +
-          '<span class="modal-field-label" style="color:var(--brand-dark); font-weight:800;">Scheduled Date & Timing Selected</span>' +
-          '<div style="margin-top:6px; font-size:15px; font-weight:800; color:var(--text-main); display:flex; flex-wrap:wrap; align-items:center; gap:8px;">' +
-            '<span>📅 ' + esc(b.scheduledStartTime ? fmt(b.scheduledStartTime) : (b.preferredDate || 'Date Not Specified')) + '</span>' +
-            (b.selectedSlot ? ('<span class="status-pill status-confirmed" style="background:#0284c7; color:#fff; border-color:#0284c7; font-size:12px; font-weight:700;">🕒 Selected Timing: ' + esc(b.selectedSlot) + '</span>') : '') +
-          '</div>' +
-          (b.timezone ? '<div style="font-size:11px; color:var(--text-secondary); margin-top:4px;">🌐 Timezone: ' + esc(b.timezone) + '</div>' : '') +
+        '<span class="modal-field-label" style="color:var(--brand-dark); font-weight:800;">Scheduled Date & Timing Selected</span>' +
+        '<div style="margin-top:6px; font-size:15px; font-weight:800; color:var(--text-main); display:flex; flex-wrap:wrap; align-items:center; gap:8px;">' +
+        '<span>📅 ' + esc(b.scheduledStartTime ? fmt(b.scheduledStartTime) : (b.preferredDate || 'Date Not Specified')) + '</span>' +
+        (b.selectedSlot ? ('<span class="status-pill status-confirmed" style="background:#0284c7; color:#fff; border-color:#0284c7; font-size:12px; font-weight:700;">🕒 Selected Timing: ' + esc(b.selectedSlot) + '</span>') : '') +
+        '</div>' +
+        (b.timezone ? '<div style="font-size:11px; color:var(--text-secondary); margin-top:4px;">🌐 Timezone: ' + esc(b.timezone) + '</div>' : '') +
         '</div>' +
         '<div class="modal-field">' +
-          '<span class="modal-field-label">Booking Channel & Event Type</span>' +
-          '<span class="modal-field-val">' + esc(b.source || 'Website') + ' — <em>' + esc(b.calendlyEventName || 'AMC Counselling Session') + '</em></span>' +
+        '<span class="modal-field-label">Booking Channel & Event Type</span>' +
+        '<span class="modal-field-val">' + esc(b.source || 'Website') + ' — <em>' + esc(b.calendlyEventName || 'AMC Counselling Session') + '</em></span>' +
         '</div>' +
         (b.id ? ('<div class="modal-field"><span class="modal-field-label">Booking ID & Created Timestamp</span><span class="modal-field-val mono" style="font-size:11px; color:var(--text-muted);">' + esc(b.id) + ' • ' + esc(fmt(b.createdAt)) + '</span></div>') : '') +
         (b.rescheduleUrl ? '<div class="modal-field"><span class="modal-field-label">Calendly Reschedule Link</span><a href="' + esc(b.rescheduleUrl) + '" target="_blank" class="counsellor-url">' + esc(b.rescheduleUrl) + ' ↗</a></div>' : '') +
@@ -2182,7 +2356,7 @@
         try {
           var clean = String(dateVal).replace(/at.*$/i, '').trim();
           d = new Date(clean);
-        } catch (e) {}
+        } catch (e) { }
       }
       if (isNaN(d.getTime())) return null;
       var year = d.getFullYear();
@@ -2217,7 +2391,7 @@
 
       var bookingsMapC1 = {};
       var bookingsMapC2 = {};
-      
+
       var countC1 = 0;
       var countC2 = 0;
 
@@ -2298,7 +2472,7 @@
           var b = eb.booking;
           var displayTime = getCleanTime(b.scheduledStartTime, b.selectedSlot).replace(/\s*\(.*\)/, '');
           var counsellorCode = (b.selectedCounsellorId === 'counsellor2' || (b.selectedCounsellor || '').toLowerCase().includes('aryan')) ? 'Aryan' : 'Samir';
-          
+
           var badge = document.createElement('div');
           var status = String(b.status || 'PENDING').toUpperCase();
           var statusClass = 'evt-pending';
@@ -2309,7 +2483,7 @@
           badge.className = 'cal-admin-event-badge ' + statusClass;
           badge.innerHTML = '<strong>' + esc(displayTime) + '</strong> ' + esc(b.name || 'Student');
           badge.title = esc(b.name) + ' with ' + counsellorCode + ' at ' + displayTime;
-          
+
           badge.addEventListener('click', function (e) {
             e.stopPropagation();
             openBookingDetails(eb.index);
@@ -2453,4 +2627,5 @@
     setupAutoRefresh();
   </script>
 </body>
+
 </html>
