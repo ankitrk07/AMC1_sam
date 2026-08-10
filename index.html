@@ -1091,6 +1091,36 @@
 
       <!-- Calendly Widget Container -->
       <div class="calendly-widget-container" id="calendlyWidgetContainer"></div>
+
+      <!-- Processing & Confirmation State Overlay -->
+      <div class="calendly-confirm-overlay" id="calendlyConfirmOverlay" style="display: none;">
+        <div class="confirm-loader-wrapper">
+          <div class="confirm-spinner" id="confirmSpinnerIcon">
+            <div class="spinner-ring"></div>
+            <div class="spinner-core">
+              <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </div>
+          </div>
+          <h3 class="confirm-title" id="confirmTitle">Confirming Your Session...</h3>
+          <p class="confirm-subtitle" id="confirmSubtitle">Connecting with Calendly & syncing your appointment details</p>
+          <div class="confirm-progress-bar">
+            <div class="confirm-progress-fill" id="confirmProgressFill"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Action Bottom Bar -->
+      <div class="calendly-modal-bottom-bar" id="calendlyModalBottomBar">
+        <span class="bottom-bar-hint">Completed your booking on the calendar above?</span>
+        <button type="button" class="btn-confirm-now" id="btnConfirmNow">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          I've Completed My Booking
+        </button>
+      </div>
     </div>
   </div>
 

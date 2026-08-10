@@ -876,7 +876,24 @@ document.addEventListener('DOMContentLoaded', function () {
       calendlyPollInterval = null;
     }
 
-    console.log('[Calendly Auto-Close] Booking confirmed. Auto-closing popup in 2.0 seconds...', eventUri, eventDetails);
+    console.log('[Calendly Auto-Close] Booking confirmed. Updating UI instantly and showing confirmation animation...', eventUri, eventDetails);
+
+    // Update UI instantly on the background page
+    updateCTAsToConfirmed(currentBookingState || {});
+
+    // Show beautiful animated confirmation overlay inside modal
+    var confirmOverlay = document.getElementById('calendlyConfirmOverlay');
+    if (confirmOverlay) {
+      confirmOverlay.style.display = 'flex';
+      var spinner = document.getElementById('confirmSpinnerIcon');
+      if (spinner) spinner.classList.add('is-success');
+      var progress = document.getElementById('confirmProgressFill');
+      if (progress) progress.classList.add('is-done');
+      var title = document.getElementById('confirmTitle');
+      if (title) title.textContent = 'Session Booked Successfully! 🎉';
+      var subtitle = document.getElementById('confirmSubtitle');
+      if (subtitle) subtitle.textContent = 'Your appointment has been confirmed. Redirecting to your booking...';
+    }
 
     // Show visual confirmation banner inside modal header
     var modalHeader = document.querySelector('.calendly-modal-header');
@@ -890,16 +907,15 @@ document.addEventListener('DOMContentLoaded', function () {
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="20 6 9 17 4 12"></polyline>
         </svg>
-        <span>Appointment Scheduled! Closing in 2 seconds...</span>
+        <span>Appointment Scheduled! Closing...</span>
       `;
       modalHeader.prepend(banner);
     }
 
-    // 1. Guaranteed auto-close after exactly 2.0s
+    // 1. Close the modal after brief celebration animation
     setTimeout(function () {
       closeCalendlyModalFlow();
-      updateCTAsToConfirmed(currentBookingState || {});
-    }, 2000);
+    }, 850);
 
     // 2. Fetch server-side verification and confirm booking record
     var targetUri = eventUri || (eventDetails && eventDetails.calendlyEventUri);
@@ -1033,6 +1049,8 @@ document.addEventListener('DOMContentLoaded', function () {
       if (finalPhone) urlObj.searchParams.set('a1', finalPhone);
       if (slot) urlObj.searchParams.set('a2', slot);
       if (date) urlObj.searchParams.set('a3', date);
+      urlObj.searchParams.set('embed_domain', window.location.host || window.location.hostname || 'localhost');
+      urlObj.searchParams.set('embed_type', 'Inline');
       finalBookingUrl = urlObj.toString();
     } catch (e) {
       finalBookingUrl = rawUrl;
@@ -1069,7 +1087,7 @@ document.addEventListener('DOMContentLoaded', function () {
       if (calendlyWidgetContainer) calendlyWidgetContainer.style.display = 'block';
     }, 600);
 
-    // Active polling fallback: check every 2.0s while modal is open
+    // Active polling fallback: check every 1.0s while modal is open
     if (calendlyPollInterval) clearInterval(calendlyPollInterval);
     calendlyPollInterval = setInterval(function () {
       if (hasHandledScheduledBooking) {
@@ -1086,7 +1104,7 @@ document.addEventListener('DOMContentLoaded', function () {
           }
         })
         .catch(function () {});
-    }, 2000);
+    }, 1000);
   }
 
   function closeCalendlyModalFlow() {
@@ -1104,29 +1122,55 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  if (closeCalendlyModal) {
-    var handleCloseBtn = function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-      closeCalendlyModalFlow();
-    };
-    closeCalendlyModal.addEventListener('click', handleCloseBtn);
-    closeCalendlyModal.addEventListener('touchstart', handleCloseBtn);
-  }
+    // Reset confirmation overlay state on modal open
+    var confirmOverlay = document.getElementById('calendlyConfirmOverlay');
+    if (confirmOverlay) {
+      confirmOverlay.style.display = 'none';
+      var spinner = document.getElementById('confirmSpinnerIcon');
+      if (spinner) spinner.classList.remove('is-success');
+      var progress = document.getElementById('confirmProgressFill');
+      if (progress) progress.classList.remove('is-done');
+      var title = document.getElementById('confirmTitle');
+      if (title) title.textContent = 'Confirming Your Session...';
+      var subtitle = document.getElementById('confirmSubtitle');
+      if (subtitle) subtitle.textContent = 'Connecting with Calendly & syncing your appointment details';
+    }
 
-  if (calendlyModal) {
-    calendlyModal.addEventListener('click', function (e) {
-      if (e.target === calendlyModal) {
+    if (closeCalendlyModal) {
+      var handleCloseBtn = function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        closeCalendlyModalFlow();
+      };
+      closeCalendlyModal.addEventListener('click', handleCloseBtn);
+      closeCalendlyModal.addEventListener('touchstart', handleCloseBtn);
+    }
+
+    // Manual Fast-Confirm Button
+    var btnConfirmNow = document.getElementById('btnConfirmNow');
+    if (btnConfirmNow) {
+      btnConfirmNow.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var overlay = document.getElementById('calendlyConfirmOverlay');
+        if (overlay) overlay.style.display = 'flex';
+        handleBookingCompleted(null, currentBookingState);
+      });
+    }
+
+    if (calendlyModal) {
+      calendlyModal.addEventListener('click', function (e) {
+        if (e.target === calendlyModal) {
+          closeCalendlyModalFlow();
+        }
+      });
+    }
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && calendlyModal && calendlyModal.getAttribute('aria-hidden') === 'false') {
         closeCalendlyModalFlow();
       }
     });
-  }
-
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && calendlyModal && calendlyModal.getAttribute('aria-hidden') === 'false') {
-      closeCalendlyModalFlow();
-    }
-  });
 
   function trapFocus(modal) {
     var focusableElements = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
