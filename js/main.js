@@ -1736,19 +1736,10 @@ document.addEventListener('DOMContentLoaded', function () {
         modalTimer = null;
       }
 
-      // 3. Close modal smoothly
+      // 3. Close modal smoothly (preserve current page scroll position)
       closeModal();
 
-      // 4. Smoothly scroll to the counselling section
-      var counsellingSection = document.getElementById('counselling');
-      if (counsellingSection) {
-        var formCard = counsellingSection.querySelector('.counselling__card') || counsellingSection;
-        var rect = formCard.getBoundingClientRect();
-        var centerTop = rect.top + window.pageYOffset - (window.innerHeight / 2) + (rect.height / 2);
-        window.scrollTo({ top: Math.max(0, centerTop), behavior: 'smooth' });
-      }
-
-      // 5. Post lead to backend API
+      // 4. Post lead to backend API
       postJson('/api/admin/leads', leadPayload).catch(function (err) {
         console.warn('[Lead Save Warning]', err);
       });
