@@ -760,15 +760,6 @@
             <button type="submit" class="btn btn--primary btn--full">Request Counselling Slot</button>
             <p class="counselling__fine" id="counsellingFine">We'll confirm your slot on WhatsApp shortly after you
               submit.</p>
-            <button type="button" class="btn btn--outline btn--full reschedule-main-btn" id="rescheduleBtn"
-              style="display: none;">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"
-                stroke-linecap="round" stroke-linejoin="round"
-                style="display:inline-block;vertical-align:middle;margin-right:6px;">
-                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
-              </svg>
-              Reschedule Date &amp; Time
-            </button>
           </form>
 
         </div>
@@ -900,10 +891,7 @@
         <div class="footer__bottom">
           <p class="footer__copy">© <span id="year"></span> DRG Coaching</p>
           <div class="footer__links">
-            <a href="#">Privacy Policy</a>
-            <a href="#">Terms &amp; Conditions</a>
-            <a href="#">Refund Policy</a>
-            <a href="#">Content Disclaimer</a>
+            <a href="#termsModal" id="termsLink">Terms &amp; Conditions</a>
           </div>
         </div>
       </div>
@@ -1120,6 +1108,221 @@
           </svg>
           I've Completed My Booking
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ TERMS & CONDITIONS MODAL ============ -->
+  <div class="terms-modal-overlay" id="termsModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="termsTitle">
+    <div class="terms-modal-panel">
+      <div class="terms-modal-header">
+        <div class="terms-header-titles">
+          <span class="terms-badge">Legal Documentation</span>
+          <h2 id="termsTitle">Terms and Conditions — Terms of Use</h2>
+          <p class="terms-subtitle">DRG Coaching FZE LLC &bull; AMC Part 1 &amp; Part 2 Preparation &bull; SPC Free Zone, Sharjah, UAE</p>
+        </div>
+        <button class="terms-modal-close" id="closeTermsModal" aria-label="Close Terms modal">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="terms-modal-body">
+        <div class="terms-meta-card">
+          <div class="terms-meta-row">
+            <span><strong>Entity:</strong> DRG Coaching FZE LLC</span>
+            <span><strong>Location:</strong> SPC Free Zone, Sharjah, United Arab Emirates</span>
+          </div>
+          <div class="terms-meta-row">
+            <span><strong>Scope:</strong> AMC Part 1 &amp; Part 2 Preparation</span>
+            <span><strong>Version:</strong> 1.0 &bull; Effective Date: August 2026</span>
+          </div>
+        </div>
+
+        <div class="terms-toc">
+          <div class="terms-toc-title">Table of Contents</div>
+          <div class="terms-toc-grid">
+            <a href="#t1">1. Acceptance of these terms</a>
+            <a href="#t2">2. Definitions</a>
+            <a href="#t3">3. Courses and registration</a>
+            <a href="#t4">4. Access to our courses</a>
+            <a href="#t5">5. How payments work</a>
+            <a href="#t6">6. Referral gifts</a>
+            <a href="#t7">7. Delivery of courses and content</a>
+            <a href="#t8">8. General information disclaimer</a>
+            <a href="#t9">9. Cancellation, refund and termination</a>
+            <a href="#t10">10. Operation of website and content</a>
+            <a href="#t11">11. Liability</a>
+            <a href="#t12">12. Intellectual property rights in content</a>
+            <a href="#t13">13. Forum and student groups</a>
+            <a href="#t14">14. Disclaimer for content &amp; use</a>
+            <a href="#t15">15. Privacy</a>
+            <a href="#t16">16. Disputes</a>
+            <a href="#t17">17. Relationship</a>
+            <a href="#t18">18. Force majeure</a>
+            <a href="#t19">19. Severance</a>
+            <a href="#t20">20. Governing law</a>
+            <a href="#t21">21. Agreement and acceptance</a>
+          </div>
+        </div>
+
+        <section class="terms-section" id="t1">
+          <h3>1. Acceptance of These Terms</h3>
+          <p>These Terms and Conditions and Terms of Use ("Terms") govern your use of the DRG Coaching website ("Website") and all courses, live classes, mentorship sessions, study materials and consultations offered through it ("Services"). The Website and Services are operated by DRG Coaching FZE LLC, a free zone company registered at SPC Free Zone, Sharjah, United Arab Emirates ("DRG Coaching", "we", "us", "our").</p>
+          <p>By using the Website, creating an account, enrolling in a course, making a payment or downloading any material, you confirm that you have read, understood and agree to be bound by these Terms, together with our Privacy Policy. If you do not agree, you must not use the Website or the Services.</p>
+          <p>These Terms form a binding electronic agreement. No physical signature is required. We may update these Terms at any time; the version published on the Website at the time of your enrolment applies to that enrolment, and continued use of the Website after an update means you accept the revised Terms.</p>
+        </section>
+
+        <section class="terms-section" id="t2">
+          <h3>2. Definitions</h3>
+          <p><strong>"AMC"</strong> means the Australian Medical Council. <strong>"AMC Part 1"</strong> means the AMC CAT MCQ Examination. <strong>"AMC Part 2"</strong> means the AMC Clinical Examination.</p>
+          <p><strong>"Content"</strong> means all material provided through the Services, including recorded lectures, live sessions, notes, slides, question banks, recalls, OSCE stations, checklists, videos and software.</p>
+          <p><strong>"Course"</strong> means any programme, batch, module, subscription or package offered by DRG Coaching.</p>
+          <p><strong>"Mentor"</strong> means any doctor, tutor or facilitator engaged by DRG Coaching to deliver the Services.</p>
+          <p><strong>"You"</strong> or <strong>"Student"</strong> means any person who uses the Website or the Services.</p>
+        </section>
+
+        <section class="terms-section" id="t3">
+          <h3>3. Courses and Registration</h3>
+          <p>You must be at least 18 years old and legally able to enter into a contract. The Services are intended for medical graduates, international medical graduates and final-year medical students preparing for the AMC examinations or the Australian medical pathway.</p>
+          <p>You must provide accurate registration details and keep them current. Registration is confirmed only when payment has been received and we have issued written confirmation by email or through the Website. Submitting a form does not itself secure a seat, and places in live batches and mentorship slots are limited.</p>
+          <p>You are responsible for choosing the correct Course, batch and exam cycle. We may permit a transfer between batches at our discretion and subject to any published transfer fee. We may refuse or cancel a registration where eligibility is not met or where information given to us is false or misleading.</p>
+        </section>
+
+        <section class="terms-section" id="t4">
+          <h3>4. Access to Our Courses</h3>
+          <p>Your account and access credentials are personal to you and must not be shared, sold, transferred or used by anyone else. You are responsible for all activity under your account and must tell us immediately if you suspect unauthorised use. We monitor concurrent logins and devices, and may suspend access without refund where sharing is detected.</p>
+          <p>Access to each Course lasts for the validity period stated on the Course page and expires automatically at the end of that period. Access does not pause, roll over or extend unless an extension is purchased or granted by us in writing.</p>
+          <p>You are responsible for your own device, internet connection, browser, camera and microphone. Live sessions may be recorded by us for quality, training and the benefit of students who could not attend, and by joining a session you consent to your voice, image and chat messages being recorded. You must not record any session yourself.</p>
+        </section>
+
+        <section class="terms-section" id="t5">
+          <h3>5. How Payments Work</h3>
+          <p>All fees are payable in advance in the currency shown at checkout. Fees are exclusive of UAE Value Added Tax and any other applicable tax, duty or levy, which will be added at the prevailing rate where required by law.</p>
+          <p>You are responsible for payment gateway charges, currency conversion costs, international transaction fees, withholding taxes and bank charges. Amounts we receive must be net of these deductions.</p>
+          <p>Where an instalment plan is offered, each instalment must be paid by its due date. We may suspend access without notice while an instalment is overdue. Discounts, early-bird pricing and promotional codes are subject to their own published conditions, cannot be combined unless stated, and cannot be applied after purchase.</p>
+          <p>We may revise our fees at any time. Changes do not affect enrolments already confirmed and paid. If you raise a chargeback or payment dispute without first contacting us, we may suspend your access and recover the resulting costs from you.</p>
+        </section>
+
+        <section class="terms-section" id="t6">
+          <h3>6. Referral Gifts</h3>
+          <p>We may from time to time offer referral rewards, gifts, credits or discounts to students who introduce a new student to DRG Coaching. Any such offer is made at our discretion and its value, conditions and expiry will be stated when the offer is published.</p>
+          <p>A referral reward is earned only when the referred student completes a full paid enrolment and remains enrolled beyond any applicable qualifying period. Self-referrals, duplicate accounts, referrals of existing or previously enrolled students, and referrals obtained through spam, misleading claims or paid advertising using our name are not eligible.</p>
+          <p>Rewards have no cash value unless expressly stated, are not transferable, and cannot be exchanged for a refund of fees already paid. We may withdraw, vary or suspend any referral offer at any time, and may withhold or reverse a reward where we reasonably believe the programme has been misused.</p>
+        </section>
+
+        <section class="terms-section" id="t7">
+          <h3>7. Delivery of Courses and Content</h3>
+          <p>Services are delivered online. Recorded Content is made available through our learning platform, and live classes, mentorship and OSCE practice are delivered through video-conferencing software. Your use of those third-party platforms is also subject to their own terms.</p>
+          <p>Session timings are published in the time zone stated on the Course page. You are responsible for converting them to your local time and attending punctually. Where we cancel or reschedule a live session, we will provide a replacement session or an equivalent recording.</p>
+          <p>We may update the curriculum, change mentors, adjust schedules or modify the delivery platform where reasonably necessary, including in response to changes made by the AMC to the examination format or blueprint. Where a change is material we will give reasonable notice.</p>
+        </section>
+
+        <section class="terms-section" id="t8">
+          <h3>8. General Information Disclaimer</h3>
+          <p>DRG Coaching provides examination preparation and mentorship only. We do not guarantee that you will pass AMC Part 1, AMC Part 2 or any other examination, and we do not guarantee registration with AHPRA or the Medical Board of Australia, an internship or hospital job, a training place, a visa or permanent residency. Results depend on your own knowledge, effort, clinical exposure, English proficiency and examination-day performance.</p>
+          <p>DRG Coaching is an independent private education provider. We are not affiliated with, endorsed by, accredited by or connected to the Australian Medical Council, AHPRA, the Medical Board of Australia, any government body, university or hospital. Examination names are used only to describe the subject matter of our Services and remain the property of their owners.</p>
+          <p>Pass rates, achiever lists, testimonials and score reports describe the experience of particular individuals and are not a promise or prediction of your result. Practice questions, recalls, mock exams and OSCE stations are prepared for teaching purposes; they are not actual or officially sourced examination papers.</p>
+          <p>Content is educational and must never be relied on for the diagnosis or treatment of a patient. Pathway and consultation guidance is general information only and is not legal, immigration, migration agent, financial or career advice. You must verify all examination requirements, dates, eligibility criteria and fees with the official source before acting.</p>
+        </section>
+
+        <section class="terms-section" id="t9">
+          <h3>9. Cancellation, Refund and Termination</h3>
+          <p>All fees are non-refundable once access to the Services has been granted. Access is treated as granted at the earliest of: the issue of login credentials or a course link; the first live session of your batch; or the delivery or download of any material.</p>
+          <p>Because the Services are digital content and personalised services delivered immediately, no refund or credit is given for non-attendance, unused access, a change in your exam date or personal circumstances, a decision to stop studying or to move to another provider, failure in any examination, dissatisfaction with teaching style or batch composition, or loss of access caused by your own breach of these Terms. Enrolments cannot be sold, gifted or transferred to another person.</p>
+          <p>If we cancel a Course entirely and cannot provide an equivalent replacement or recording, we will refund the portion of the fee relating to the undelivered part. That is your sole remedy in those circumstances. Any refund we approve is processed to the original payment method within fifteen business days, net of gateway charges, taxes already remitted and the value of material or sessions already accessed.</p>
+          <p>We may suspend or terminate your access immediately and without refund if you breach these Terms, fail to pay an amount due, share credentials or Content, behave abusively, or provide false information. You may stop using the Services at any time, but this does not entitle you to a refund or release you from instalments already due. On termination your licence to use the Content ends and you must delete all downloaded material.</p>
+          <p>Nothing in this section limits any right you may have under mandatory consumer protection law that cannot lawfully be excluded. Where such a right applies and is established, we will provide the remedy the law requires.</p>
+        </section>
+
+        <section class="terms-section" id="t10">
+          <h3>10. Operation of Website and Content</h3>
+          <p>We aim to keep the Website and platform available at all times but do not warrant uninterrupted or error-free access. Scheduled maintenance, upgrades, emergency downtime and third-party outages may occur, and we will give notice where practicable.</p>
+          <p>We may change, suspend or withdraw any part of the Website or Content, and may impose limits on features or restrict access to registered users, at any time and without liability.</p>
+          <p>The Website may contain links to third-party websites, guidelines, textbooks and resources. These are provided for convenience only. We do not control or endorse them and accept no responsibility for their availability, accuracy or content, or for any dealing you have with a third party.</p>
+        </section>
+
+        <section class="terms-section" id="t11">
+          <h3>11. Liability</h3>
+          <p>To the fullest extent permitted by law, the Website, Content and Services are provided on an "as is" and "as available" basis, without warranties of any kind, express or implied, including as to accuracy, completeness, currency, fitness for purpose or uninterrupted operation.</p>
+          <p>We are not liable for any indirect, incidental, special or consequential loss, or for loss of profit, opportunity, data, goodwill, examination fees, travel or accommodation costs, visa or registration costs, or anticipated earnings, however arising. In particular we are not liable for any loss arising from failure in an examination, a change in examination policy or format, a missed session, a connectivity or device failure, the act or omission of a third-party platform, or unauthorised use of your account resulting from your own conduct.</p>
+          <p>Our total liability arising out of or connected with these Terms and the Services, in contract, tort, statute or otherwise, is limited to the total fees you actually paid for the specific Course giving rise to the claim in the twelve months before the event.</p>
+          <p>Nothing in these Terms excludes liability for death or personal injury caused by our negligence, for fraud, or for any other liability that cannot lawfully be excluded. You agree to indemnify us against all claims, losses and reasonable legal costs arising from your breach of these Terms, your unauthorised sharing of Content, or any material you post through the Services.</p>
+        </section>
+
+        <section class="terms-section" id="t12">
+          <h3>12. Intellectual Property Rights in the Content</h3>
+          <p>All Content, together with the DRG Coaching name, logo, course structure, methodology, question banks, recall compilations, OSCE stations, marking rubrics, templates and the design of the Website, is owned by or licensed to DRG Coaching and protected by copyright and trade mark law.</p>
+          <p>Subject to your compliance with these Terms and payment of all fees, we grant you a limited, personal, non-exclusive, non-transferable and revocable licence to access the Content for your own individual examination preparation during the validity period only.</p>
+          <p>You must not copy, republish, upload, transmit, sell, rent, sublicense or distribute any Content; record, screen-capture, screen-share, photograph or re-broadcast any session; upload Content to any cloud drive, messaging group, file-sharing service, forum, social media platform or artificial intelligence training dataset; remove or alter any watermark or copyright notice; scrape or reverse-engineer the platform; or use any Content for teaching, tutoring or any commercial purpose.</p>
+          <p>Content may be watermarked with your name, email address or a unique identifier so that unauthorised distribution can be traced, and you consent to this. Breach of this section is a material breach: we may terminate your access without refund, issue takedown notices, report the matter to platforms and authorities, and seek damages, injunctive relief and legal costs. Any feedback or suggestions you send us may be used by us without restriction or compensation.</p>
+        </section>
+
+        <section class="terms-section" id="t13">
+          <h3>13. Forum and Student Groups</h3>
+          <p>As part of some Courses we operate student groups on WhatsApp, Telegram or similar messaging platforms for announcements, discussion and doubt-clearing. Participation is a privilege, not an entitlement, and is subject to these Terms and to the platform's own terms.</p>
+          <p>Within any group you must not: share, forward or export any Content, recording, note or question bank; harass, abuse, threaten, defame or discriminate against any student, mentor or staff member; post unlawful, obscene, misleading or offensive material; advertise, recruit, or promote any competing course, agent or commercial service; share the group link or add any person without our permission; or post examination material in any way that breaches the AMC's own candidate rules and confidentiality undertakings, for which you remain solely responsible.</p>
+          <p>You retain ownership of what you post but grant us a licence to display and use it for the operation of the group and the Services. We may moderate, edit or delete any message, and may warn, mute or permanently remove any participant without refund. Anything posted by other students is their own opinion and is not endorsed or verified by us.</p>
+        </section>
+
+        <section class="terms-section" id="t14">
+          <h3>14. Disclaimer for Content and Limitations on Use</h3>
+          <p>Content is prepared with reasonable care but medical knowledge, clinical guidelines and the AMC examination format change over time. We do not warrant that Content is complete, current or free from error, and it should be used alongside, not instead of, current authoritative guidelines and official AMC publications.</p>
+          <p>Content may only be used for your own personal, non-commercial examination preparation. It may not be used to train, coach or tutor any other person, to create derivative or competing material, or in connection with any unlawful purpose.</p>
+          <p>You must not misuse the Website, including by introducing any virus or malicious code, attempting to gain unauthorised access to our servers or another user's account, using automated tools to extract data, or interfering with the delivery of any live session.</p>
+        </section>
+
+        <section class="terms-section" id="t15">
+          <h3>15. Privacy</h3>
+          <p>We collect and process personal data in accordance with our Privacy Policy, which forms part of these Terms. This may include your name, contact details, country of residence, qualification and examination history, payment details, identity documents, performance data, session recordings, device information and usage analytics.</p>
+          <p>We use this data to deliver the Services, verify identity, process payments, give feedback, communicate with you, improve our Content, and meet our legal obligations. We share it only with service providers such as payment processors, learning and video platforms, our mentors, and professional advisers or authorities where the law requires. We do not sell your personal data.</p>
+          <p>Data may be stored or processed outside your country of residence, including in the United Arab Emirates. We apply reasonable technical and organisational security measures, but no electronic transmission or storage is completely secure. Subject to applicable law, including UAE Federal Decree-Law No. 45 of 2021 on Personal Data Protection, you may request access to, correction of, or deletion of your data by writing to us through the contact details on the Website.</p>
+          <p>By enrolling you agree to receive service communications such as class links, schedule changes and receipts, which are essential while your enrolment is active. Marketing communications are optional and you may unsubscribe at any time. If you give us a testimonial, review, photograph or score report, you allow us to publish it in our marketing with your first name, qualification and country, and you may ask us to remove it at any time.</p>
+        </section>
+
+        <section class="terms-section" id="t16">
+          <h3>16. Disputes</h3>
+          <p>If you have a complaint, you must first raise it with us in writing through the contact details published on the Website, setting out the facts, dates and the outcome you are seeking. We will acknowledge your complaint within three business days and aim to give a substantive response within fifteen business days.</p>
+          <p>If the matter is not resolved, both parties will attempt in good faith to settle it by negotiation for thirty days from written notice of the dispute before commencing any proceedings.</p>
+          <p>Any claim must be brought in your individual capacity and not as part of any class or representative proceeding, to the extent permitted by law.</p>
+        </section>
+
+        <section class="terms-section" id="t17">
+          <h3>17. Relationship</h3>
+          <p>Nothing in these Terms creates any partnership, joint venture, employment, franchise or agency relationship between you and DRG Coaching. No mentor, tutor or staff member has authority to vary these Terms or to make any promise about examination or registration outcomes on our behalf.</p>
+          <p>You may not assign or transfer your rights under these Terms. We may assign or transfer ours to any successor or acquirer of our business. A person who is not a party to these Terms has no right to enforce them.</p>
+          <p>Our failure or delay in enforcing any right is not a waiver of that right. These Terms, with the Privacy Policy and any course-specific terms, are the entire agreement between us and replace all previous discussions, brochures and representations.</p>
+        </section>
+
+        <section class="terms-section" id="t18">
+          <h3>18. Force Majeure</h3>
+          <p>We are not liable for any delay or failure to perform caused by events beyond our reasonable control, including natural disaster, fire, flood, epidemic or pandemic, war, terrorism, civil unrest, strike, government action, change in law, a decision of an examining body, internet or telecommunications failure, cyber-attack, or the failure of a third-party service provider.</p>
+          <p>Where such an event prevents a live session, we will reschedule it or provide an equivalent recording. A force majeure event does not entitle you to a refund.</p>
+        </section>
+
+        <section class="terms-section" id="t19">
+          <h3>19. Severance</h3>
+          <p>If any provision of these Terms is found to be invalid, unlawful or unenforceable, it will be severed or read down to the minimum extent necessary, and the remaining provisions will continue in full force and effect.</p>
+        </section>
+
+        <section class="terms-section" id="t20">
+          <h3>20. Governing Law</h3>
+          <p>These Terms and any dispute or claim arising out of them are governed by the federal laws of the United Arab Emirates and the applicable laws of the Emirate of Sharjah, without regard to conflict of law principles. The courts of Sharjah, United Arab Emirates have exclusive jurisdiction, subject to the dispute resolution steps set out above.</p>
+          <p>These Terms are written in English. Any translation is provided for convenience only and the English version prevails in the event of any inconsistency. Where you are a consumer resident in another country, nothing in this section removes the protection of any mandatory consumer law of your country of residence that cannot lawfully be excluded.</p>
+        </section>
+
+        <section class="terms-section" id="t21">
+          <h3>21. Agreement and Acceptance</h3>
+          <p>By ticking the acceptance box at checkout, creating an account, making a payment or using the Services, you confirm that you have read and understood these Terms and Conditions and Terms of Use in full, that you have had the opportunity to seek independent advice, and that you agree to be bound by them.</p>
+          <p>You also consent to receiving communications and records electronically and agree that electronic records and click acceptance satisfy any legal requirement for writing or signature.</p>
+          <p>Questions about these Terms, your enrolment or the Services should be sent to us using the contact details published on the Website.</p>
+        </section>
+      </div>
+
+      <div class="terms-modal-footer">
+        <button type="button" class="btn btn--primary" id="btnTermsAccept">I Understand &amp; Close</button>
       </div>
     </div>
   </div>

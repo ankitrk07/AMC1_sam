@@ -10,9 +10,7 @@ document.addEventListener('DOMContentLoaded', function () {
   document.body.style.overflow = '';
 
   try {
-    sessionStorage.clear();
     localStorage.removeItem('amc_entry_submitted');
-    localStorage.removeItem('amc_lead_user');
     localStorage.removeItem('amc_lead_submitted');
   } catch (e) {}
 
@@ -698,14 +696,10 @@ document.addEventListener('DOMContentLoaded', function () {
       `;
     }
 
-    // Mark dateTimeSection as booked & show reschedule button
+    // Mark dateTimeSection as booked
     var dateTimeSectionEl = document.getElementById('dateTimeSection');
     if (dateTimeSectionEl) {
       dateTimeSectionEl.classList.add('is-booked');
-    }
-    var rescheduleBtn = document.getElementById('rescheduleBtn');
-    if (rescheduleBtn) {
-      rescheduleBtn.style.display = 'inline-flex';
     }
 
     // 5. Form status message & prominent Success Card
@@ -1044,8 +1038,14 @@ document.addEventListener('DOMContentLoaded', function () {
     var rawUrl = targetUrl || selectedCounsellorUrl || counsellorUrls['counsellor1'] || 'https://calendly.com/starsamir9955/new-meeting';
     var finalBookingUrl = rawUrl;
     try {
+      var savedLeadObj = {};
+      try {
+        savedLeadObj = JSON.parse(sessionStorage.getItem('amc_lead_user') || localStorage.getItem('amc_lead_user') || '{}');
+      } catch (e) {}
+
       var urlObj = new URL(rawUrl);
       if (finalName) urlObj.searchParams.set('name', finalName);
+      if (savedLeadObj.email) urlObj.searchParams.set('email', savedLeadObj.email);
       if (finalPhone) urlObj.searchParams.set('a1', finalPhone);
       if (slot) urlObj.searchParams.set('a2', slot);
       if (date) urlObj.searchParams.set('a3', date);
@@ -1087,24 +1087,31 @@ document.addEventListener('DOMContentLoaded', function () {
       if (calendlyWidgetContainer) calendlyWidgetContainer.style.display = 'block';
     }, 600);
 
-    // Active polling fallback: check every 1.0s while modal is open
-    if (calendlyPollInterval) clearInterval(calendlyPollInterval);
-    calendlyPollInterval = setInterval(function () {
-      if (hasHandledScheduledBooking) {
-        clearInterval(calendlyPollInterval);
-        calendlyPollInterval = null;
-        return;
-      }
-      var checkUrl = '/api/calendly/check-scheduled?since=' + calendlyOpenTimestamp + '&phone=' + encodeURIComponent(finalPhone);
-      fetch(checkUrl)
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-          if (data && data.scheduled && data.event && !hasHandledScheduledBooking) {
-            handleBookingCompleted(data.event.calendlyEventUri, data.event);
-          }
-        })
-        .catch(function () {});
-    }, 1000);
+    // Gentle fallback check (does not spam Calendly while student is filling the form)
+    if (calendlyPollInterval) {
+      clearInterval(calendlyPollInterval);
+      calendlyPollInterval = null;
+    }
+    // Only check periodically after 10 seconds of modal being open
+    setTimeout(function () {
+      if (hasHandledScheduledBooking || !calendlyModal || calendlyModal.getAttribute('aria-hidden') === 'true') return;
+      calendlyPollInterval = setInterval(function () {
+        if (hasHandledScheduledBooking) {
+          clearInterval(calendlyPollInterval);
+          calendlyPollInterval = null;
+          return;
+        }
+        var checkUrl = '/api/calendly/check-scheduled?since=' + calendlyOpenTimestamp + '&phone=' + encodeURIComponent(finalPhone);
+        fetch(checkUrl)
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data && data.scheduled && data.event && !hasHandledScheduledBooking) {
+              handleBookingCompleted(data.event.calendlyEventUri, data.event);
+            }
+          })
+          .catch(function () {});
+      }, 5000);
+    }, 10000);
   }
 
   function closeCalendlyModalFlow() {
@@ -1171,6 +1178,63 @@ document.addEventListener('DOMContentLoaded', function () {
         closeCalendlyModalFlow();
       }
     });
+
+  // ---------- TERMS & CONDITIONS MODAL CONTROLLER ----------
+  var termsLink = document.getElementById('termsLink');
+  var termsModal = document.getElementById('termsModal');
+  var closeTermsModal = document.getElementById('closeTermsModal');
+  var btnTermsAccept = document.getElementById('btnTermsAccept');
+
+  function openTermsModalFlow() {
+    if (!termsModal) return;
+    termsModal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeTermsModalFlow() {
+    if (!termsModal) return;
+    termsModal.setAttribute('aria-hidden', 'true');
+    var entryModalOpen = document.getElementById('entryModal') && document.getElementById('entryModal').getAttribute('aria-hidden') === 'false';
+    var calModalOpen = document.getElementById('calendlyModal') && document.getElementById('calendlyModal').getAttribute('aria-hidden') === 'false';
+    if (!entryModalOpen && !calModalOpen) {
+      document.body.style.overflow = '';
+    }
+  }
+
+  if (termsLink) {
+    termsLink.addEventListener('click', function (e) {
+      e.preventDefault();
+      openTermsModalFlow();
+    });
+  }
+
+  if (closeTermsModal) {
+    closeTermsModal.addEventListener('click', function (e) {
+      e.preventDefault();
+      closeTermsModalFlow();
+    });
+  }
+
+  if (btnTermsAccept) {
+    btnTermsAccept.addEventListener('click', function (e) {
+      e.preventDefault();
+      closeTermsModalFlow();
+    });
+  }
+
+  if (termsModal) {
+    termsModal.addEventListener('click', function (e) {
+      if (e.target === termsModal) {
+        closeTermsModalFlow();
+      }
+    });
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && termsModal && termsModal.getAttribute('aria-hidden') === 'false') {
+      closeTermsModalFlow();
+    }
+  });
 
   function trapFocus(modal) {
     var focusableElements = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
@@ -1311,14 +1375,7 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     }
 
-    var rescheduleBtn = document.getElementById('rescheduleBtn');
-    if (rescheduleBtn) {
-      rescheduleBtn.addEventListener('click', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        handleDateOrTimeSelection();
-      });
-    }
+
 
   }
 
@@ -1631,6 +1688,12 @@ document.addEventListener('DOMContentLoaded', function () {
         source: sourceVal,
         sourceOther: otherVal
       };
+
+      // Save lead payload to browser storage for subsequent booking intents
+      try {
+        sessionStorage.setItem('amc_lead_user', JSON.stringify(leadPayload));
+        localStorage.setItem('amc_lead_user', JSON.stringify(leadPayload));
+      } catch (e) {}
 
       // 1. Direct Synchronous Population into the Enrollment Form
       var fnField = document.getElementById('fullName');

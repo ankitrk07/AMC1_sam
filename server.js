@@ -510,10 +510,15 @@ async function buildLiveAvailabilitySnapshot(tzName) {
   };
 }
 
+let recentScheduledThrottleCache = { time: 0, events: [] };
+
 // Live Scheduled Events from Calendly
 async function fetchCalendlyScheduledEvents(forceRefresh = false, minCreatedAtIso = null) {
   if (!forceRefresh && !minCreatedAtIso && scheduledEventsCache.events.length > 0 && scheduledEventsCache.expiresAt > Date.now()) {
     return scheduledEventsCache.events;
+  }
+  if (minCreatedAtIso && (Date.now() - recentScheduledThrottleCache.time < 3000) && recentScheduledThrottleCache.events.length > 0) {
+    return recentScheduledThrottleCache.events;
   }
 
   const counsellors = [
@@ -625,10 +630,15 @@ async function fetchCalendlyScheduledEvents(forceRefresh = false, minCreatedAtIs
     }
   }
 
+  recentScheduledThrottleCache = {
+    events: allEvents,
+    time: Date.now()
+  };
+
   if (!minCreatedAtIso) {
     scheduledEventsCache = {
       events: allEvents,
-      expiresAt: Date.now() + SCHEDULED_EVENTS_CACHE_TTL
+      expiresAt: Date.now() + (2 * 60 * 1000)
     };
   }
 
@@ -706,8 +716,18 @@ async function getUnifiedBookings(forceRefresh = false) {
       matchedLead = leadNameMap.get(lb.name.trim().toLowerCase());
     }
 
-    const leadPlatform = lb.leadSource || (matchedLead ? matchedLead.source : null) || lb.source || 'Website Form';
-    const sourceOther = lb.sourceOther || (matchedLead ? matchedLead.sourceOther : null);
+    let leadPlatform = null;
+    if (matchedLead && matchedLead.source && matchedLead.source !== 'Website Form' && matchedLead.source !== 'Website Lead Modal') {
+      leadPlatform = matchedLead.source;
+    } else if (lb.leadSource && lb.leadSource !== 'Website Form' && lb.leadSource !== 'Website Lead Modal' && lb.leadSource !== 'Website Booking Intent') {
+      leadPlatform = lb.leadSource;
+    } else if (matchedLead && matchedLead.source) {
+      leadPlatform = matchedLead.source;
+    } else {
+      leadPlatform = lb.leadSource || lb.source || 'Website Form';
+    }
+
+    const sourceOther = (matchedLead ? matchedLead.sourceOther : null) || lb.sourceOther || null;
 
     let matchedEventKey = null;
     if (lb.calendlyEventUri && eventMap.has(lb.calendlyEventUri)) {
@@ -789,8 +809,10 @@ async function getUnifiedBookings(forceRefresh = false) {
 
     if (matchedLead) {
       if (!b.email || b.email === 'null') b.email = matchedLead.email;
-      if (!b.leadSource) {
-        b.leadSource = matchedLead.sourceOther ? `${matchedLead.source} (${matchedLead.sourceOther})` : matchedLead.source;
+      const isPlaceholderSource = !b.leadSource || b.leadSource === 'Website Form' || b.leadSource === 'Website Lead Modal' || b.leadSource === 'Website Booking Intent' || b.leadSource === 'Calendly' || b.leadSource === 'Website Lead';
+      if (isPlaceholderSource && matchedLead.source) {
+        b.leadSource = matchedLead.source;
+        b.sourceOther = matchedLead.sourceOther || b.sourceOther;
       }
       if (!b.countryCode) b.countryCode = matchedLead.countryCode;
     }
