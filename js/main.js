@@ -232,7 +232,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var fetchedTimeSlots = [];
   var selectedCounsellorUrl = '';
   var selectedCounsellorId = 'counsellor1';
-  var primaryCounsellorScope = 'counsellor1';
+  var primaryCounsellorScope = 'both';
 
   function getBrowserTimezone() {
     try {

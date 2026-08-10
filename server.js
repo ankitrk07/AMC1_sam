@@ -346,6 +346,27 @@ function formatLocalTime(date, timeZone) {
   }
 }
 
+function getLocalDateStr(dateVal) {
+  if (!dateVal) return null;
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return null;
+  
+  try {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    return formatter.format(d);
+  } catch (e) {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+}
+
 function normalizeDateStr(dateStr) {
   if (!dateStr || typeof dateStr !== 'string') return null;
   dateStr = dateStr.trim();
@@ -679,11 +700,38 @@ async function getUnifiedBookings(forceRefresh = false) {
     if (lb.calendlyEventUri && eventMap.has(lb.calendlyEventUri)) {
       matchedEventKey = lb.calendlyEventUri;
     } else {
-      // Find matching live event by name
+      // Find matching live event by contact (phone, email, or name) AND timezone-safe date key
+      const lbDate = getLocalDateStr(lb.scheduledStartTime || lb.preferredDate);
+      
       for (const [key, ev] of eventMap.entries()) {
-        if (ev.name && lb.name && ev.name.trim().toLowerCase() === lb.name.trim().toLowerCase()) {
-          matchedEventKey = key;
-          break;
+        const evDate = getLocalDateStr(ev.scheduledStartTime || ev.preferredDate);
+        if (lbDate && evDate && lbDate === evDate) {
+          let contactMatches = false;
+          
+          if (lb.phone && ev.phone) {
+            const cleanLbPhone = String(lb.phone).replace(/\D/g, '').slice(-10);
+            const cleanEvPhone = String(ev.phone).replace(/\D/g, '').slice(-10);
+            if (cleanLbPhone && cleanLbPhone === cleanEvPhone) {
+              contactMatches = true;
+            }
+          }
+          
+          if (!contactMatches && lb.email && ev.email) {
+            if (lb.email.trim().toLowerCase() === ev.email.trim().toLowerCase()) {
+              contactMatches = true;
+            }
+          }
+          
+          if (!contactMatches && lb.name && ev.name) {
+            if (lb.name.trim().toLowerCase() === ev.name.trim().toLowerCase()) {
+              contactMatches = true;
+            }
+          }
+          
+          if (contactMatches) {
+            matchedEventKey = key;
+            break;
+          }
         }
       }
     }
@@ -1083,17 +1131,15 @@ app.post('/api/admin/sync-calendly', async (req, res) => {
 // GET /api/admin/dashboard
 app.get('/api/admin/dashboard', async (req, res) => {
   try {
+    // Always reload environment and reset caches to fetch live data
+    reloadCalendlyEnv();
+    resetCalendlyCaches();
+
     const liveTz = resolveTimeZone(req.query.tz, process.env.CALENDLY_TIMEZONE || 'Asia/Kolkata');
     const includeAvailability = req.query.includeAvailability !== 'false';
-    const forceRefresh = req.query.refresh === 'true';
-
-    if (forceRefresh) {
-      reloadCalendlyEnv();
-      resetCalendlyCaches();
-    }
 
     const [bookings, leads, liveAvailability] = await Promise.all([
-      getUnifiedBookings(forceRefresh),
+      getUnifiedBookings(true),
       getUnifiedLeads(),
       includeAvailability ? buildLiveAvailabilitySnapshot(liveTz) : Promise.resolve(null)
     ]);
@@ -1161,10 +1207,9 @@ app.get('/api/calendly/debug-availability', async (req, res) => {
 // Always queries live Calendly REST API in real time across 120 days (4 months)
 app.get('/api/calendly/month-availability', async (req, res) => {
   try {
-    if (req.query.refresh === 'true') {
-      reloadCalendlyEnv();
-      resetCalendlyCaches();
-    }
+    // Always reload environment and reset caches to fetch live data
+    reloadCalendlyEnv();
+    resetCalendlyCaches();
 
     res.set({
       'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
@@ -1246,10 +1291,9 @@ app.get('/api/calendly/month-availability', async (req, res) => {
 // GET /api/calendly/availability endpoint
 app.get('/api/calendly/availability', async (req, res) => {
   try {
-    if (req.query.refresh === 'true') {
-      reloadCalendlyEnv();
-      resetCalendlyCaches();
-    }
+    // Always reload environment and reset caches to fetch live data
+    reloadCalendlyEnv();
+    resetCalendlyCaches();
 
     res.set({
       'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
