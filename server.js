@@ -511,8 +511,8 @@ async function buildLiveAvailabilitySnapshot(tzName) {
 }
 
 // Live Scheduled Events from Calendly
-async function fetchCalendlyScheduledEvents(forceRefresh = false) {
-  if (!forceRefresh && scheduledEventsCache.events.length > 0 && scheduledEventsCache.expiresAt > Date.now()) {
+async function fetchCalendlyScheduledEvents(forceRefresh = false, minCreatedAtIso = null) {
+  if (!forceRefresh && !minCreatedAtIso && scheduledEventsCache.events.length > 0 && scheduledEventsCache.expiresAt > Date.now()) {
     return scheduledEventsCache.events;
   }
 
@@ -548,8 +548,19 @@ async function fetchCalendlyScheduledEvents(forceRefresh = false) {
       const json = await resp.json();
       const events = json.collection || [];
 
-      // Fetch invitees for each event
-      const inviteePromises = events.map(async (event) => {
+      // Fetch invitees for each event (filtering by creation time if requested)
+      const filteredEvents = events.filter(event => {
+        if (!minCreatedAtIso) return true;
+        try {
+          const eventCreated = new Date(event.created_at || 0).getTime();
+          const minCreated = new Date(minCreatedAtIso).getTime();
+          return eventCreated >= minCreated;
+        } catch (e) {
+          return true;
+        }
+      });
+
+      const inviteePromises = filteredEvents.map(async (event) => {
         try {
           const invResp = await fetch(`${event.uri}/invitees`, {
             headers: {
@@ -614,10 +625,12 @@ async function fetchCalendlyScheduledEvents(forceRefresh = false) {
     }
   }
 
-  scheduledEventsCache = {
-    events: allEvents,
-    expiresAt: Date.now() + SCHEDULED_EVENTS_CACHE_TTL
-  };
+  if (!minCreatedAtIso) {
+    scheduledEventsCache = {
+      events: allEvents,
+      expiresAt: Date.now() + SCHEDULED_EVENTS_CACHE_TTL
+    };
+  }
 
   return allEvents;
 }
@@ -1522,9 +1535,10 @@ app.get('/api/calendly/check-scheduled', async (req, res) => {
   try {
     const sinceTime = req.query.since ? parseInt(req.query.since, 10) : (Date.now() - 120000);
     const phone = req.query.phone ? String(req.query.phone).replace(/\D/g, '').slice(-10) : '';
+    const minCreatedAtIso = new Date(sinceTime - 60000).toISOString();
 
-    // Fetch live scheduled events from Calendly
-    const events = await fetchCalendlyScheduledEvents(true);
+    // Fetch live scheduled events from Calendly, optimized to only pull recent details
+    const events = await fetchCalendlyScheduledEvents(true, minCreatedAtIso);
 
     const match = events.find(ev => {
       const isConfirmed = ev.status === 'CONFIRMED' || ev.status === 'active';

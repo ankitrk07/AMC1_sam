@@ -630,6 +630,31 @@ document.addEventListener('DOMContentLoaded', function () {
   function updateCTAsToConfirmed(data) {
     data = data || currentBookingState || {};
 
+    // Fallback values for instant UI response before server confirmation completes
+    var rawSlot = data.slot || '';
+    if (!data.formattedTime && rawSlot) {
+      if (rawSlot.toLowerCase().indexOf('lunch') === -1) {
+        data.formattedTime = rawSlot;
+      } else {
+        data.formattedTime = rawSlot.toLowerCase().indexOf('after') !== -1 ? 'Afternoon Session' : 'Morning Session';
+      }
+    }
+
+    // If date is not in pretty format, try to format it or use a default
+    var prettyDate = data.date || '';
+    var dateInput = document.getElementById('prefDate');
+    if (!prettyDate && dateInput && dateInput.value) {
+      try {
+        prettyDate = new Date(dateInput.value + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+      } catch (e) {
+        prettyDate = dateInput.value;
+      }
+    }
+    if (prettyDate && prettyDate.indexOf('at') === -1 && data.formattedTime) {
+      prettyDate = prettyDate + ' at ' + data.formattedTime;
+    }
+    data.date = prettyDate || data.date;
+
     // 1. Fill exact Name into form
     if (data.name) {
       var nameEl = document.getElementById('fullName');
@@ -1260,34 +1285,24 @@ document.addEventListener('DOMContentLoaded', function () {
     var isScheduled = false;
     var eventUri = null;
 
-    if (typeof e.data === 'object' && e.data !== null) {
-      var evName = e.data.event || e.data.action || e.data.type || '';
-      if (
-        evName === 'calendly.event_scheduled' ||
-        evName === 'event_scheduled' ||
-        (typeof evName === 'string' && evName.indexOf('event_scheduled') !== -1)
-      ) {
-        isScheduled = true;
-        eventUri = e.data.payload && e.data.payload.event && e.data.payload.event.uri;
-      } else {
-        try {
-          var dataJson = JSON.stringify(e.data);
-          if (dataJson.indexOf('event_scheduled') !== -1) {
-            isScheduled = true;
-            if (e.data.payload && e.data.payload.event && e.data.payload.event.uri) {
-              eventUri = e.data.payload.event.uri;
-            }
-          }
-        } catch (_) {}
+    try {
+      if (typeof e.data === 'object' && e.data !== null) {
+        var evName = e.data.event || e.data.action || e.data.type || '';
+        if (typeof evName === 'string' && (evName === 'calendly.event_scheduled' || evName.indexOf('event_scheduled') !== -1)) {
+          isScheduled = true;
+          eventUri = e.data.payload && e.data.payload.event && e.data.payload.event.uri;
+        }
+      } else if (typeof e.data === 'string') {
+        if (e.data.indexOf('event_scheduled') !== -1) {
+          isScheduled = true;
+          try {
+            var parsed = JSON.parse(e.data);
+            eventUri = parsed.payload && parsed.payload.event && parsed.payload.event.uri;
+          } catch (err) {}
+        }
       }
-    } else if (typeof e.data === 'string') {
-      if (e.data.indexOf('event_scheduled') !== -1) {
-        isScheduled = true;
-        try {
-          var parsed = JSON.parse(e.data);
-          eventUri = parsed.payload && parsed.payload.event && parsed.payload.event.uri;
-        } catch (err) {}
-      }
+    } catch (err) {
+      console.warn('[Calendly postMessage Parse Warning]', err);
     }
 
     if (isScheduled) {
