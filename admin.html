@@ -1220,16 +1220,99 @@
     }
 
     @media (max-width: 600px) {
+      .app-container {
+        padding: 12px 12px 30px !important;
+      }
+
+      .header {
+        padding: 12px 16px !important;
+        border-radius: var(--radius-lg) !important;
+        gap: 12px !important;
+      }
+
+      .header h1 {
+        font-size: 18px !important;
+      }
+
+      .header p {
+        font-size: 11.5px !important;
+      }
+
+      .header-actions {
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+        width: 100% !important;
+        justify-content: space-between !important;
+      }
+
+      .header-actions .btn {
+        flex: 1 !important;
+        text-align: center !important;
+        justify-content: center !important;
+      }
+
       .metrics-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+      }
+
+      .metrics-grid .metric-card:last-child {
+        grid-column: span 2 !important;
+      }
+
+      .metric-card {
+        padding: 10px 12px !important;
+        border-radius: var(--radius-md) !important;
+      }
+
+      .metric-val {
+        font-size: 20px !important;
+      }
+
+      .metric-title {
+        font-size: 11px !important;
+      }
+
+      .metric-footer {
+        font-size: 10px !important;
+        margin-top: 6px !important;
+      }
+
+      .metric-icon-box {
+        width: 28px !important;
+        height: 28px !important;
+      }
+
+      .metric-icon-box svg {
+        width: 14px !important;
+        height: 14px !important;
       }
 
       .search-filter-row {
-        flex-direction: column;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px !important;
       }
 
       .search-box {
-        width: 100%;
+        width: 100% !important;
+      }
+
+      .filter-select {
+        width: 100% !important;
+      }
+
+      /* Horizontal scrolling for tables on mobile */
+      .table-container {
+        width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        border: 1px solid var(--border) !important;
+        border-radius: var(--radius-md) !important;
+      }
+
+      table {
+        min-width: 950px !important;
       }
     }
 
