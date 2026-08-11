@@ -3,7 +3,30 @@ const fs = require('fs');
 const express = require('express');
 const cors = require('cors');
 const { PrismaClient } = require('@prisma/client');
+const SibApiV3Sdk = require('sib-api-v3-sdk');
 require('dotenv').config();
+
+// ──────────────────────────────────────────────────────
+// Brevo (Sendinblue) Transactional Email Client Setup
+// ──────────────────────────────────────────────────────
+let brevoClient = null;
+const BREVO_SENDER = { name: 'AMC by DRG', email: 'a32117123@gmail.com' };
+const ADMIN_NOTIFICATION_EMAIL = 'a32117123@gmail.com';
+
+if (process.env.BREVO_API_KEY && process.env.BREVO_API_KEY.trim() && !process.env.BREVO_API_KEY.startsWith('your_')) {
+  try {
+    const defaultClient = SibApiV3Sdk.ApiClient.instance;
+    const apiKey = defaultClient.authentications['api-key'];
+    apiKey.apiKey = process.env.BREVO_API_KEY.trim();
+    brevoClient = new SibApiV3Sdk.TransactionalEmailsApi();
+    console.log('[Brevo] ✅ Transactional email client initialized — sender:', BREVO_SENDER.email);
+  } catch (initErr) {
+    console.error('[Brevo] ❌ Failed to initialize email client:', initErr.message);
+    brevoClient = null;
+  }
+} else {
+  console.warn('[Brevo] ⚠️  BREVO_API_KEY is missing or placeholder — emails will be logged to console only (offline mode)');
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -367,6 +390,141 @@ async function fetchCalendlyEventWithRetry(eventUri, token, maxWaitMs = 42000, i
     locationType: 'pending',
     isPending: true
   };
+}
+
+// ──────────────────────────────────────────────────────
+// Booking Confirmation Email via Brevo (Sendinblue)
+// Sends meeting details + Google Meet link to student
+// ──────────────────────────────────────────────────────
+async function sendBookingConfirmationEmail(booking) {
+  const recipientEmail = booking.email;
+  const recipientName = booking.name || 'Student';
+  const googleMeetUrl = booking.googleMeetUrl;
+  const startTime = booking.scheduledStartTime;
+  const counsellorName = booking.selectedCounsellor || 'Your AMC Counsellor';
+  const eventName = booking.calendlyEventName || 'AMC Counselling Session';
+  const bookingId = booking.id || 'N/A';
+
+  console.log('[Brevo Email] ──── SEND ATTEMPT ────');
+  console.log('[Brevo Email]   Booking ID:', bookingId);
+  console.log('[Brevo Email]   Recipient:', recipientEmail || 'NONE');
+  console.log('[Brevo Email]   Meet URL:', googleMeetUrl || 'NONE');
+
+  if (!recipientEmail) {
+    console.warn('[Brevo Email]   ⚠️ SKIPPED — no recipient email for booking', bookingId);
+    return { sent: false, reason: 'no_recipient_email' };
+  }
+
+  if (!googleMeetUrl) {
+    console.warn('[Brevo Email]   ⚠️ SKIPPED — no Google Meet URL yet for booking', bookingId, '(will send when resolved)');
+    return { sent: false, reason: 'no_meet_url_yet' };
+  }
+
+  // Format date/time for email display
+  let formattedDate = 'your scheduled date';
+  let formattedTime = '';
+  let timezoneLabel = '';
+  if (startTime) {
+    try {
+      const d = new Date(startTime);
+      const tz = booking.timezone || process.env.CALENDLY_TIMEZONE || 'UTC';
+      formattedDate = d.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: tz });
+      formattedTime = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: tz });
+      timezoneLabel = tz.replace(/_/g, ' ');
+    } catch (e) {
+      formattedDate = String(startTime);
+    }
+  }
+
+  const htmlContent = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0; padding:0; background:#f1f5f9; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <div style="max-width:560px; margin:32px auto; background:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,0.06);">
+    <div style="background:linear-gradient(135deg, #059669 0%, #10b981 100%); padding:36px 28px; text-align:center;">
+      <div style="width:48px; height:48px; border-radius:50%; background:rgba(255,255,255,0.2); margin:0 auto 14px; line-height:48px; font-size:24px; color:#fff;">&#10003;</div>
+      <h1 style="margin:0; color:#ffffff; font-size:22px; font-weight:800; letter-spacing:-0.02em;">Session Confirmed</h1>
+      <p style="margin:8px 0 0 0; color:rgba(255,255,255,0.88); font-size:14px;">Your counselling appointment is booked</p>
+    </div>
+    <div style="padding:28px;">
+      <p style="margin:0 0 20px 0; font-size:15px; color:#1e293b; line-height:1.5;">Hi <strong>${recipientName}</strong>,</p>
+      <p style="margin:0 0 24px 0; font-size:14px; color:#475569; line-height:1.6;">Your session with <strong>AMC by DRG</strong> has been confirmed. Here are your booking details:</p>
+      <div style="background:#f8fafc; border-radius:12px; padding:20px; margin-bottom:20px; border:1px solid #e2e8f0;">
+        <table style="width:100%; border-collapse:collapse;">
+          <tr><td style="padding:10px 0; font-size:13px; color:#64748b; font-weight:600; width:35%;">Session</td><td style="padding:10px 0; font-size:14px; color:#1e293b; font-weight:700;">${eventName}</td></tr>
+          <tr><td style="padding:10px 0; font-size:13px; color:#64748b; font-weight:600; border-top:1px solid #e2e8f0;">Date</td><td style="padding:10px 0; font-size:14px; color:#1e293b; font-weight:700; border-top:1px solid #e2e8f0;">${formattedDate}</td></tr>
+          ${formattedTime ? '<tr><td style="padding:10px 0; font-size:13px; color:#64748b; font-weight:600; border-top:1px solid #e2e8f0;">Time</td><td style="padding:10px 0; font-size:14px; color:#1e293b; font-weight:700; border-top:1px solid #e2e8f0;">' + formattedTime + (timezoneLabel ? ' (' + timezoneLabel + ')' : '') + '</td></tr>' : ''}
+          <tr><td style="padding:10px 0; font-size:13px; color:#64748b; font-weight:600; border-top:1px solid #e2e8f0;">Counsellor</td><td style="padding:10px 0; font-size:14px; color:#1e293b; font-weight:700; border-top:1px solid #e2e8f0;">${counsellorName}</td></tr>
+        </table>
+      </div>
+      <div style="background:#f0fdf4; border:2px solid #86efac; border-radius:12px; padding:24px; margin:20px 0; text-align:center;">
+        <div style="margin-bottom:12px;"><span style="font-size:14px; font-weight:700; color:#166534;">Join via Google Meet</span></div>
+        <a href="${googleMeetUrl}" target="_blank" style="display:inline-block; background:#059669; color:#ffffff; text-decoration:none; padding:14px 32px; border-radius:8px; font-weight:700; font-size:15px;">Join Meeting &rarr;</a>
+        <p style="margin:14px 0 0 0; font-size:12px; color:#6b7280; word-break:break-all; line-height:1.4;">${googleMeetUrl}</p>
+      </div>
+      <p style="margin:24px 0 0 0; font-size:13px; color:#64748b; line-height:1.6;">Need to reschedule or cancel? Use the links in your Calendly confirmation email.<br>We look forward to meeting you!</p>
+    </div>
+    <div style="background:#f1f5f9; padding:16px 28px; text-align:center; border-top:1px solid #e2e8f0;">
+      <p style="margin:0; font-size:11px; color:#94a3b8;">&copy; ${new Date().getFullYear()} AMC by DRG</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const subject = `Your ${eventName} is Confirmed — ${formattedDate}${formattedTime ? ' at ' + formattedTime : ''}`;
+
+  // Build recipient list: student + admin BCC
+  const toList = [{ email: recipientEmail, name: recipientName }];
+  const bccList = [];
+  if (ADMIN_NOTIFICATION_EMAIL && ADMIN_NOTIFICATION_EMAIL.toLowerCase() !== recipientEmail.toLowerCase()) {
+    bccList.push({ email: ADMIN_NOTIFICATION_EMAIL, name: 'AMC Admin' });
+  }
+
+  // OFFLINE MODE — Brevo key is missing, just log
+  if (!brevoClient) {
+    console.log('[Brevo Email]   📧 OFFLINE MODE — would have sent:');
+    console.log('[Brevo Email]     Subject:', subject);
+    console.log('[Brevo Email]     From:', BREVO_SENDER.name, '<' + BREVO_SENDER.email + '>');
+    console.log('[Brevo Email]     To:', JSON.stringify(toList));
+    console.log('[Brevo Email]     BCC:', JSON.stringify(bccList));
+    return { sent: false, reason: 'brevo_client_not_initialized' };
+  }
+
+  // LIVE MODE — send via Brevo Transactional API
+  try {
+    const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+    sendSmtpEmail.sender = BREVO_SENDER;
+    sendSmtpEmail.to = toList;
+    if (bccList.length > 0) sendSmtpEmail.bcc = bccList;
+    sendSmtpEmail.subject = subject;
+    sendSmtpEmail.htmlContent = htmlContent;
+
+    console.log('[Brevo Email]   📤 Calling Brevo sendTransacEmail API...');
+    console.log('[Brevo Email]     Sender:', BREVO_SENDER.name, '<' + BREVO_SENDER.email + '>');
+    console.log('[Brevo Email]     To:', recipientEmail, '(' + recipientName + ')');
+    if (bccList.length > 0) console.log('[Brevo Email]     BCC:', bccList.map(function(b) { return b.email; }).join(', '));
+    console.log('[Brevo Email]     Subject:', subject);
+
+    const result = await brevoClient.sendTransacEmail(sendSmtpEmail);
+
+    console.log('[Brevo Email]   ✅ SUCCESS — Email sent!');
+    console.log('[Brevo Email]     Brevo messageId:', result.messageId || JSON.stringify(result));
+    console.log('[Brevo Email]     Full Brevo Response:', JSON.stringify(result));
+    return { sent: true, messageId: result.messageId, response: result };
+
+  } catch (brevoErr) {
+    console.error('[Brevo Email]   ❌ FAILED — Brevo API returned an error');
+    console.error('[Brevo Email]     Recipient:', recipientEmail);
+    console.error('[Brevo Email]     Subject:', subject);
+    if (brevoErr.response) {
+      console.error('[Brevo Email]     HTTP Status:', brevoErr.response.status || brevoErr.status || 'unknown');
+      console.error('[Brevo Email]     Error Body:', JSON.stringify(brevoErr.response.body || brevoErr.response.text || brevoErr.response.data || 'no body'));
+    } else {
+      console.error('[Brevo Email]     Error:', brevoErr.message || JSON.stringify(brevoErr));
+      console.error('[Brevo Email]     Stack:', brevoErr.stack || 'no stack');
+    }
+    return { sent: false, reason: 'brevo_api_error', error: brevoErr.message || String(brevoErr) };
+  }
 }
 
 // Fetch availability slots for a counsellor with retry for future start_time requirements
@@ -1732,19 +1890,33 @@ app.get('/api/calendly/check-scheduled', async (req, res) => {
 app.post('/api/calendly/confirm', async (req, res) => {
   try {
     const { eventUri, counsellor, bookingId } = req.body || {};
+    console.log('[Calendly Confirm] ──── INCOMING ────');
+    console.log('[Calendly Confirm]   eventUri:', eventUri);
+    console.log('[Calendly Confirm]   counsellor:', counsellor);
+    console.log('[Calendly Confirm]   bookingId:', bookingId);
+
     if (!eventUri) {
       return res.status(400).json({ error: 'eventUri is required' });
     }
 
+    // Fix: Match counsellor by display name OR ID (frontend sends display name like "Counsellor 2 (Aryan Raj)")
     let token = process.env.CALENDLY_API_TOKEN_1;
-    if (counsellor === 'counsellor2') {
+    const counsellorStr = String(counsellor || '').toLowerCase();
+    if (counsellorStr === 'counsellor2' || counsellorStr.includes('counsellor 2') || counsellorStr.includes('aryan')) {
       token = process.env.CALENDLY_API_TOKEN_2;
+      console.log('[Calendly Confirm]   Using Token 2 (Counsellor 2)');
+    } else if (counsellorStr === 'counsellor1' || counsellorStr.includes('counsellor 1')) {
+      token = process.env.CALENDLY_API_TOKEN_1;
+      console.log('[Calendly Confirm]   Using Token 1 (Counsellor 1)');
     } else if (!token || token.startsWith('your_')) {
       token = process.env.CALENDLY_API_TOKEN_2 || process.env.CALENDLY_API_TOKEN_1;
+      console.log('[Calendly Confirm]   Using fallback token');
+    } else {
+      console.log('[Calendly Confirm]   Using Token 1 (default)');
     }
 
     if (!token || token.startsWith('your_')) {
-      console.warn('[Calendly API Warning] Token for verifying counsellor booking is missing or unconfigured');
+      console.warn('[Calendly Confirm] Token missing or unconfigured');
       return res.status(400).json({
         error: 'Calendly token is missing for the selected counsellor',
         fallback: true
@@ -1754,6 +1926,12 @@ app.post('/api/calendly/confirm', async (req, res) => {
     // Call fetch with retry (up to ~42s, checking every ~4.5s)
     const eventResult = await fetchCalendlyEventWithRetry(eventUri, token, 42000, 4500);
     const resource = eventResult.resource;
+    const invitee = eventResult.invitee || null;
+
+    console.log('[Calendly Confirm]   Calendly resource found:', !!resource);
+    console.log('[Calendly Confirm]   Invitee:', invitee ? (invitee.name + ' / ' + invitee.email) : 'NONE');
+    console.log('[Calendly Confirm]   googleMeetUrl:', eventResult.googleMeetUrl || 'NONE');
+    console.log('[Calendly Confirm]   locationType:', eventResult.locationType);
 
     if (!resource || !resource.start_time) {
       return res.status(404).json({
@@ -1774,10 +1952,39 @@ app.post('/api/calendly/confirm', async (req, res) => {
     const googleMeetUrl = eventResult.googleMeetUrl || null;
     const locationType = eventResult.locationType || (googleMeetUrl ? 'google_conference' : 'pending');
 
+    // Get invitee contact info from Calendly
+    const inviteeEmail = (invitee && invitee.email) || null;
+    const inviteeName = (invitee && invitee.name) || null;
+    const inviteePhone = (invitee && invitee.text_reminder_number) || null;
+
     // Update Local Store
     const store = readLocalStore();
     store.bookings = store.bookings || [];
+
+    // Step 1: Try to find by explicit bookingId or eventUri
     let target = store.bookings.find(b => (bookingId && b.id === bookingId) || (eventUri && b.calendlyEventUri === eventUri));
+
+    // Step 2: If not found (race condition — bookingId may not have been set yet),
+    // search for the most recent pending booking intent that matches by contact info
+    if (!target && (inviteeEmail || inviteeName)) {
+      const recentPending = store.bookings.filter(b => {
+        if (b.calendlyEventUri) return false; // already confirmed
+        const age = Date.now() - new Date(b.createdAt || 0).getTime();
+        if (age > 10 * 60 * 1000) return false; // older than 10 min
+        return true;
+      });
+
+      // Match by email, then name, then phone
+      target = recentPending.find(b => inviteeEmail && b.email && b.email.toLowerCase() === inviteeEmail.toLowerCase());
+      if (!target) target = recentPending.find(b => inviteeName && b.name && b.name.toLowerCase() === inviteeName.toLowerCase());
+      if (!target) target = recentPending.find(b => inviteePhone && b.phone && String(b.phone).replace(/\D/g, '').slice(-10) === String(inviteePhone).replace(/\D/g, '').slice(-10));
+
+      if (target) {
+        console.log('[Calendly Confirm]   Matched pending intent by contact:', target.id, target.name, target.email);
+      }
+    }
+
+    console.log('[Calendly Confirm]   Target found:', !!target, target ? target.id : 'will create new');
 
     if (target) {
       target.googleMeetUrl = googleMeetUrl || target.googleMeetUrl || null;
@@ -1787,6 +1994,9 @@ app.post('/api/calendly/confirm', async (req, res) => {
       target.scheduledEndTime = resource.end_time || target.scheduledEndTime;
       target.calendlyEventName = resource.name || target.calendlyEventName;
       target.status = normalizeBookingStatus(resource.status || 'CONFIRMED');
+      // Merge invitee contact from Calendly if missing locally
+      if (inviteeEmail && !target.email) target.email = inviteeEmail;
+      if (inviteeName && !target.name) target.name = inviteeName;
       target.updatedAt = new Date().toISOString();
     } else {
       target = {
@@ -1797,6 +2007,9 @@ app.post('/api/calendly/confirm', async (req, res) => {
         scheduledEndTime: resource.end_time,
         googleMeetUrl: googleMeetUrl,
         locationType: locationType,
+        // Always pull invitee contact from Calendly for new entries
+        name: inviteeName || null,
+        email: inviteeEmail || null,
         status: normalizeBookingStatus(resource.status || 'CONFIRMED'),
         notes: 'Confirmed from Calendly verification',
         createdAt: new Date().toISOString(),
@@ -1804,6 +2017,8 @@ app.post('/api/calendly/confirm', async (req, res) => {
       };
       store.bookings.unshift(target);
     }
+
+    console.log('[Calendly Confirm]   Final target: id=' + target.id + ', email=' + target.email + ', name=' + target.name + ', meetUrl=' + (target.googleMeetUrl ? 'YES' : 'NONE'));
     writeLocalStore(store);
 
     // Update Prisma DB if available
@@ -1845,6 +2060,35 @@ app.post('/api/calendly/confirm', async (req, res) => {
     }
 
     scheduledEventsCache.expiresAt = 0;
+
+    // Send booking confirmation email with Google Meet link (fire-and-forget — does not block response)
+    if (googleMeetUrl && target.email && !target.emailSent) {
+      console.log('[Calendly Confirm] Triggering booking confirmation email for', target.email);
+      sendBookingConfirmationEmail({
+        id: target.id,
+        email: target.email,
+        name: target.name || 'Student',
+        googleMeetUrl: googleMeetUrl,
+        scheduledStartTime: resource.start_time,
+        scheduledEndTime: resource.end_time,
+        selectedCounsellor: target.selectedCounsellor,
+        calendlyEventName: resource.name || target.calendlyEventName || 'AMC Counselling Session',
+        timezone: target.timezone
+      }).then(function(emailResult) {
+        if (emailResult.sent) {
+          try {
+            const freshStore = readLocalStore();
+            const bk = (freshStore.bookings || []).find(function(x) { return x.id === target.id; });
+            if (bk) { bk.emailSent = true; bk.emailSentAt = new Date().toISOString(); writeLocalStore(freshStore); }
+            console.log('[Calendly Confirm] emailSent flag saved for booking', target.id);
+          } catch (flagErr) { console.warn('[Calendly Confirm] Could not save emailSent flag:', flagErr.message); }
+        }
+      }).catch(function(err) { console.error('[Calendly Confirm] Email error (non-fatal):', err.message || err); });
+    } else if (!googleMeetUrl) {
+      console.log('[Calendly Confirm] Meet URL pending — confirmation email will send when link resolves via background sweep');
+    } else if (!target.email) {
+      console.warn('[Calendly Confirm] No email address available — cannot send confirmation email for booking', target.id);
+    }
 
     return res.json({
       success: true,
@@ -1962,6 +2206,38 @@ async function runPendingMeetSweep() {
               console.warn('[Prisma Sweep Update Non-fatal]', e.message);
             }
           }
+
+          // Send confirmation email for newly resolved Google Meet link
+          if (!b.emailSent) {
+            const sweepEmail = b.email || (result.invitee && result.invitee.email) || null;
+            const sweepName = b.name || (result.invitee && result.invitee.name) || 'Student';
+            if (sweepEmail) {
+              try {
+                console.log('[Pending Meet Sweep] Sending confirmation email to', sweepEmail, 'for booking', b.id);
+                const emailResult = await sendBookingConfirmationEmail({
+                  id: b.id,
+                  email: sweepEmail,
+                  name: sweepName,
+                  googleMeetUrl: b.googleMeetUrl,
+                  scheduledStartTime: b.scheduledStartTime,
+                  selectedCounsellor: b.selectedCounsellor,
+                  calendlyEventName: b.calendlyEventName || 'AMC Counselling Session',
+                  timezone: b.timezone
+                });
+                if (emailResult.sent) {
+                  b.emailSent = true;
+                  b.emailSentAt = new Date().toISOString();
+                  writeLocalStore(store);
+                  console.log('[Pending Meet Sweep] ✅ Confirmation email sent for booking', b.id);
+                }
+              } catch (emailErr) {
+                console.error('[Pending Meet Sweep] Email send error (non-fatal):', emailErr.message || emailErr);
+              }
+            } else {
+              console.warn('[Pending Meet Sweep] No email address found for booking', b.id, '— cannot send confirmation');
+            }
+          }
+
           break;
         }
       }
