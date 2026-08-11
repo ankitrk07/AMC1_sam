@@ -1994,6 +1994,15 @@
         return matchesStatus && matchesCounsellor && matchesQuery;
       });
 
+      // Strictly sort latest bookings first (newest at top)
+      filtered.sort(function (a, b) {
+        var tA = new Date(a.createdAt || a.updatedAt || a.scheduledStartTime || 0).getTime();
+        var tB = new Date(b.createdAt || b.updatedAt || b.scheduledStartTime || 0).getTime();
+        return tB - tA;
+      });
+
+      state.filteredBookings = filtered;
+
       if (filtered.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7">' +
           '<div class="empty-state">' +
@@ -2017,30 +2026,38 @@
         var counsellorName = b.selectedCounsellor || 'Assigned Counsellor';
         var sourceBadgeHtml = renderSourceBadge(b.leadSource || b.source, b.sourceOther);
 
+        var meetBadgeHtml = '';
+        if (b.googleMeetUrl) {
+          meetBadgeHtml = '<a href="' + esc(b.googleMeetUrl) + '" target="_blank" class="status-pill" style="background:#ecfdf5; color:#047857; border:1px solid #a7f3d0; font-weight:600; font-size:11px; text-decoration:none; display:inline-flex; align-items:center; gap:4px; margin-top:4px;" title="Open Google Meet Link"><span style="width:5px; height:5px; border-radius:50%; background:#10b981; display:inline-block;"></span> Google Meet ↗</a>';
+        } else if (b.locationType === 'pending') {
+          meetBadgeHtml = '<span class="status-pill" style="background:#fffbeb; color:#b45309; border:1px solid #fde68a; font-weight:600; font-size:11px; margin-top:4px;" title="Conference link syncing"><span style="width:5px; height:5px; border-radius:50%; background:#f59e0b; display:inline-block;"></span> Meet Syncing</span>';
+        }
+
         return '<tr>' +
           '<td class="col-student">' +
           '<div class="student-cell">' +
           '<div class="student-avatar">' + esc(getAvatarInitial(b.name)) + '</div>' +
           '<div class="student-info">' +
           '<span class="student-name" title="' + esc(b.name) + '">' + esc(b.name || 'Anonymous Student') + '</span>' +
-          (b.email ? ('<a href="mailto:' + esc(b.email) + '" class="student-email" title="' + esc(b.email) + '">📧 ' + esc(b.email) + '</a>') : '<span class="student-email" style="color:#94a3b8;">Email not captured</span>') +
+          (b.email ? ('<a href="mailto:' + esc(b.email) + '" class="student-email" title="' + esc(b.email) + '">' + esc(b.email) + '</a>') : '<span class="student-email" style="color:#94a3b8;">Email not captured</span>') +
           '</div>' +
           '</div>' +
           '</td>' +
           '<td class="col-phone">' +
           (b.phone ? (
             '<div class="phone-cell">' +
-            '<span class="phone-text">📞 ' + esc(b.phone) + '</span>' +
+            '<span class="phone-text">' + esc(b.phone) + '</span>' +
             '</div>'
           ) : '<span style="color:#94a3b8; font-size:12px;">--</span>') +
           '</td>' +
           '<td class="col-counsellor">' +
-          '<span class="counsellor-badge" title="' + esc(counsellorName) + '">👤 ' + esc(counsellorName) + '</span>' +
+          '<span class="counsellor-badge" title="' + esc(counsellorName) + '">' + esc(counsellorName) + '</span>' +
           '</td>' +
           '<td class="col-schedule">' +
           '<div class="schedule-cell">' +
-          '<span class="schedule-date">📅 ' + esc(displayDate) + '</span>' +
-          '<span class="schedule-time-badge">🕒 ' + esc(displayTime) + '</span>' +
+          '<span class="schedule-date">' + esc(displayDate) + '</span>' +
+          '<span class="schedule-time-badge">' + esc(displayTime) + '</span>' +
+          meetBadgeHtml +
           '</div>' +
           '</td>' +
           '<td class="col-source">' +
@@ -2178,79 +2195,163 @@
       root.innerHTML = html;
     }
 
-    // Open Booking Details Modal with All Data
-    window.openBookingDetails = function (idx) {
-      var b = state.bookings[idx];
-      if (!b) return;
-      state.selectedBooking = b;
-
-      var root = document.getElementById('modalContent');
-
-      var qnaHtml = '';
-      if (b.questionsAndAnswers && b.questionsAndAnswers.length > 0) {
-        qnaHtml = '<div class="modal-field"><span class="modal-field-label">Student Questions & Answers</span>' +
-          '<div style="background:var(--surface-subtle); padding:10px; border-radius:8px; font-size:12px; margin-top:4px; border:1px solid var(--border);">' +
-          b.questionsAndAnswers.map(function (qa) {
-            return '<div style="margin-bottom:6px;"><strong>' + esc(qa.question) + ':</strong> <span style="color:var(--text-main);">' + esc(qa.answer) + '</span></div>';
-          }).join('') + '</div></div>';
+    window.copyAdminMeetUrl = function (url) {
+      if (!url) return;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(function () {
+          showToast('Google Meet link copied!');
+        });
+      } else {
+        prompt('Copy Google Meet Link:', url);
       }
+    };
 
-      var sourceBadgeHtml = renderSourceBadge(b.leadSource || b.source, b.sourceOther);
+    // Open Booking Details Modal with All Data
+    window.openBookingDetails = function (identifier) {
+      try {
+        var b = null;
+        if (typeof identifier === 'number') {
+          b = (state.filteredBookings && state.filteredBookings[identifier]) || state.bookings[identifier];
+        } else if (typeof identifier === 'string') {
+          b = (state.filteredBookings || []).find(function (item) { return item.id === identifier || item.calendlyEventUri === identifier; });
+          if (!b) {
+            b = (state.bookings || []).find(function (item) { return item.id === identifier || item.calendlyEventUri === identifier; });
+          }
+        }
+        if (!b) {
+          showToast('Booking details not found', true);
+          return;
+        }
+        state.selectedBooking = b;
 
-      root.innerHTML = '' +
-        '<div class="modal-field">' +
-        '<span class="modal-field-label">Student Full Name</span>' +
-        '<span class="modal-field-val" style="font-size:16px; font-weight:800; color:var(--text-main);">' + esc(b.name || 'Anonymous Student') + '</span>' +
-        '</div>' +
-        '<div class="modal-field">' +
-        '<span class="modal-field-label">Email Address</span>' +
-        '<span class="modal-field-val">' +
-        (b.email ? ('<a href="mailto:' + esc(b.email) + '" class="counsellor-url" style="font-size:14px; font-weight:600;">📧 ' + esc(b.email) + '</a>') : '<span style="color:var(--text-muted);">Email not captured</span>') +
-        '</span>' +
-        '</div>' +
-        '<div class="modal-field">' +
-        '<span class="modal-field-label">Phone Number</span>' +
-        '<div style="display:flex; align-items:center; gap:10px; margin-top:2px;">' +
-        '<span class="modal-field-val mono" style="font-size:14px; font-weight:700;">📞 ' + esc(b.phone || 'Not provided') + '</span>' +
-        (b.phone ? ('<a href="tel:' + esc(b.phone) + '" class="btn btn-sm" style="padding:3px 8px; font-size:11px;">📞 Call</a>') : '') +
-        '</div>' +
-        '</div>' +
-        '<div class="modal-field">' +
-        '<span class="modal-field-label">Where Did You Hear About Us? (Lead Source)</span>' +
-        '<div style="margin-top:2px;">' + sourceBadgeHtml + '</div>' +
-        '</div>' +
-        '<div class="modal-field">' +
-        '<span class="modal-field-label">Assigned Counsellor</span>' +
-        '<div style="display:flex; align-items:center; gap:8px;">' +
-        '<span class="modal-field-val" style="font-weight:700;">👤 ' + esc(b.selectedCounsellor || '--') + '</span>' +
-        (b.selectedCounsellorUrl ? ('<a href="' + esc(b.selectedCounsellorUrl) + '" target="_blank" class="counsellor-url" style="font-size:12px;">(Calendly Page ↗)</a>') : '') +
-        '</div>' +
-        '</div>' +
-        '<div class="modal-field" style="background:var(--brand-light); padding:14px; border-radius:12px; border:1px solid #bae6fd;">' +
-        '<span class="modal-field-label" style="color:var(--brand-dark); font-weight:800;">Scheduled Date & Timing Selected</span>' +
-        '<div style="margin-top:6px; font-size:15px; font-weight:800; color:var(--text-main); display:flex; flex-wrap:wrap; align-items:center; gap:8px;">' +
-        '<span>📅 ' + esc(b.scheduledStartTime ? fmt(b.scheduledStartTime) : (b.preferredDate || 'Date Not Specified')) + '</span>' +
-        (b.selectedSlot ? ('<span class="status-pill status-confirmed" style="background:#0284c7; color:#fff; border-color:#0284c7; font-size:12px; font-weight:700;">🕒 Selected Timing: ' + esc(b.selectedSlot) + '</span>') : '') +
-        '</div>' +
-        (b.timezone ? '<div style="font-size:11px; color:var(--text-secondary); margin-top:4px;">🌐 Timezone: ' + esc(b.timezone) + '</div>' : '') +
-        '</div>' +
-        '<div class="modal-field">' +
-        '<span class="modal-field-label">Booking Channel & Event Type</span>' +
-        '<span class="modal-field-val">' + esc(b.source || 'Website') + ' — <em>' + esc(b.calendlyEventName || 'AMC Counselling Session') + '</em></span>' +
-        '</div>' +
-        (b.id ? ('<div class="modal-field"><span class="modal-field-label">Booking ID & Created Timestamp</span><span class="modal-field-val mono" style="font-size:11px; color:var(--text-muted);">' + esc(b.id) + ' • ' + esc(fmt(b.createdAt)) + '</span></div>') : '') +
-        (b.rescheduleUrl ? '<div class="modal-field"><span class="modal-field-label">Calendly Reschedule Link</span><a href="' + esc(b.rescheduleUrl) + '" target="_blank" class="counsellor-url">' + esc(b.rescheduleUrl) + ' ↗</a></div>' : '') +
-        (b.cancelUrl ? '<div class="modal-field"><span class="modal-field-label">Calendly Cancel Link</span><a href="' + esc(b.cancelUrl) + '" target="_blank" class="counsellor-url" style="color:var(--rose);">' + esc(b.cancelUrl) + ' ↗</a></div>' : '') +
-        qnaHtml +
-        (b.notes ? '<div class="modal-field"><span class="modal-field-label">Notes & Remarks</span><div class="modal-field-val" style="background:var(--surface-subtle); padding:8px 12px; border-radius:6px; border:1px solid var(--border); font-size:13px;">' + esc(b.notes) + '</div></div>' : '');
+        var root = document.getElementById('modalContent');
+        if (!root) return;
 
-      document.getElementById('modalStatusSelect').value = b.status || 'CONFIRMED';
-      document.getElementById('bookingModal').classList.add('is-open');
+        var qnaHtml = '';
+        if (Array.isArray(b.questionsAndAnswers) && b.questionsAndAnswers.length > 0) {
+          qnaHtml = '<div class="modal-field"><span class="modal-field-label">Student Questions & Answers</span>' +
+            '<div style="background:var(--surface-subtle); padding:10px; border-radius:8px; font-size:12px; margin-top:4px; border:1px solid var(--border);">' +
+            b.questionsAndAnswers.map(function (qa) {
+              if (!qa) return '';
+              return '<div style="margin-bottom:6px;"><strong>' + esc(qa.question || 'Question') + ':</strong> <span style="color:var(--text-main);">' + esc(qa.answer || '--') + '</span></div>';
+            }).join('') + '</div></div>';
+        }
+
+        var sourceBadgeHtml = renderSourceBadge(b.leadSource || b.source, b.sourceOther);
+
+        var meetCardHtml = '';
+        if (b.googleMeetUrl) {
+          meetCardHtml = '' +
+            '<div class="modal-field" style="background:#f8fafc; padding:16px; border-radius:12px; border:1px solid #e2e8f0; margin-top:6px;">' +
+            '<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">' +
+            '<div style="display:flex; align-items:center; gap:8px;">' +
+            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>' +
+            '<span style="font-weight:700; color:#1e293b; font-size:13px; letter-spacing:-0.01em;">Google Meet Video Conference</span>' +
+            '</div>' +
+            '<span style="display:inline-flex; align-items:center; gap:5px; background:#ecfdf5; color:#047857; border:1px solid #a7f3d0; font-size:11px; font-weight:700; padding:2px 8px; border-radius:20px;">' +
+            '<span style="width:6px; height:6px; border-radius:50%; background:#10b981; display:inline-block;"></span> Active' +
+            '</span>' +
+            '</div>' +
+            '<div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:8px;">' +
+            '<a href="' + esc(b.googleMeetUrl) + '" target="_blank" class="btn btn-primary" style="background:#0284c7; border-color:#0284c7; font-size:12px; padding:7px 14px; display:inline-flex; align-items:center; gap:6px; text-decoration:none; color:#fff; font-weight:600; border-radius:6px;">' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>' +
+            'Join Meeting' +
+            '</a>' +
+            '<button type="button" class="btn btn-secondary" onclick="copyAdminMeetUrl(\'' + esc(b.googleMeetUrl) + '\')" style="font-size:12px; padding:7px 12px; display:inline-flex; align-items:center; gap:5px; border-radius:6px; border:1px solid #cbd5e1; background:#ffffff; color:#334155; font-weight:600; cursor:pointer;">' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>' +
+            'Copy Link' +
+            '</button>' +
+            '</div>' +
+            '<div style="margin-top:8px; font-size:12px; color:#64748b; font-family:ui-monospace, SFMono-Regular, monospace; background:#ffffff; padding:7px 10px; border-radius:6px; border:1px solid #e2e8f0; word-break:break-all;">' +
+            esc(b.googleMeetUrl) +
+            '</div>' +
+            '</div>';
+        } else if (b.locationType === 'pending') {
+          meetCardHtml = '' +
+            '<div class="modal-field" style="background:#fffbeb; padding:14px; border-radius:12px; border:1px dashed #fde68a; margin-top:6px;">' +
+            '<div style="display:flex; align-items:center; gap:10px;">' +
+            '<div style="width:16px; height:16px; border:2px solid #d97706; border-top-color:transparent; border-radius:50%; animation:spin 0.8s linear infinite; flex-shrink:0;"></div>' +
+            '<div>' +
+            '<span style="font-weight:700; color:#b45309; font-size:13px;">Google Meet Link Pending Sync</span>' +
+            '<p style="margin:2px 0 0 0; font-size:12px; color:#92400e; line-height:1.35;">Calendly is generating the conference link. It will automatically update in background or via confirmation email.</p>' +
+            '</div>' +
+            '</div>' +
+            '</div>';
+        }
+
+        root.innerHTML = '' +
+          '<div class="modal-field">' +
+          '<span class="modal-field-label">Student Full Name</span>' +
+          '<span class="modal-field-val" style="font-size:16px; font-weight:800; color:var(--text-main);">' + esc(b.name || 'Anonymous Student') + '</span>' +
+          '</div>' +
+          '<div class="modal-field">' +
+          '<span class="modal-field-label">Email Address</span>' +
+          '<span class="modal-field-val">' +
+          (b.email ? ('<a href="mailto:' + esc(b.email) + '" class="counsellor-url" style="font-size:13.5px; font-weight:600;">' + esc(b.email) + '</a>') : '<span style="color:var(--text-muted);">Email not captured</span>') +
+          '</span>' +
+          '</div>' +
+          '<div class="modal-field">' +
+          '<span class="modal-field-label">Phone Number</span>' +
+          '<div style="display:flex; align-items:center; gap:10px; margin-top:2px;">' +
+          '<span class="modal-field-val mono" style="font-size:13.5px; font-weight:700;">' + esc(b.phone || 'Not provided') + '</span>' +
+          (b.phone ? ('<a href="tel:' + esc(b.phone) + '" class="btn btn-sm" style="padding:3px 8px; font-size:11px;">Call</a>') : '') +
+          '</div>' +
+          '</div>' +
+          '<div class="modal-field">' +
+          '<span class="modal-field-label">Where Did You Hear About Us? (Lead Source)</span>' +
+          '<div style="margin-top:2px;">' + sourceBadgeHtml + '</div>' +
+          '</div>' +
+          '<div class="modal-field">' +
+          '<span class="modal-field-label">Assigned Counsellor</span>' +
+          '<div style="display:flex; align-items:center; gap:8px;">' +
+          '<span class="modal-field-val" style="font-weight:700;">' + esc(b.selectedCounsellor || '--') + '</span>' +
+          (b.selectedCounsellorUrl ? ('<a href="' + esc(b.selectedCounsellorUrl) + '" target="_blank" class="counsellor-url" style="font-size:12px;">(Calendly Page ↗)</a>') : '') +
+          '</div>' +
+          '</div>' +
+          '<div class="modal-field" style="background:#f0fdf4; padding:14px; border-radius:12px; border:1px solid #bbf7d0;">' +
+          '<span class="modal-field-label" style="color:#15803d; font-weight:800;">Scheduled Date & Timing Selected</span>' +
+          '<div style="margin-top:6px; font-size:15px; font-weight:800; color:#14532d; display:flex; flex-wrap:wrap; align-items:center; gap:8px;">' +
+          '<span>' + esc(b.scheduledStartTime ? fmt(b.scheduledStartTime) : (b.preferredDate || 'Date Not Specified')) + '</span>' +
+          (b.selectedSlot ? ('<span class="status-pill status-confirmed" style="background:#0284c7; color:#fff; border-color:#0284c7; font-size:12px; font-weight:700;">Selected Timing: ' + esc(b.selectedSlot) + '</span>') : '') +
+          '</div>' +
+          (b.timezone ? '<div style="font-size:11px; color:#4b5563; margin-top:4px;">Timezone: ' + esc(b.timezone) + '</div>' : '') +
+          '</div>' +
+          meetCardHtml +
+          '<div class="modal-field">' +
+          '<span class="modal-field-label">Booking Channel & Event Type</span>' +
+          '<span class="modal-field-val">' + esc(b.source || 'Website') + ' — <em>' + esc(b.calendlyEventName || 'AMC Counselling Session') + '</em></span>' +
+          '</div>' +
+          (b.id ? ('<div class="modal-field"><span class="modal-field-label">Booking ID & Created Timestamp</span><span class="modal-field-val mono" style="font-size:11px; color:var(--text-muted);">' + esc(b.id) + ' • ' + esc(fmt(b.createdAt)) + '</span></div>') : '') +
+          (b.rescheduleUrl ? '<div class="modal-field"><span class="modal-field-label">Calendly Reschedule Link</span><a href="' + esc(b.rescheduleUrl) + '" target="_blank" class="counsellor-url">' + esc(b.rescheduleUrl) + ' ↗</a></div>' : '') +
+          (b.cancelUrl ? '<div class="modal-field"><span class="modal-field-label">Calendly Cancel Link</span><a href="' + esc(b.cancelUrl) + '" target="_blank" class="counsellor-url" style="color:var(--rose);">' + esc(b.cancelUrl) + ' ↗</a></div>' : '') +
+          qnaHtml +
+          (b.notes ? '<div class="modal-field"><span class="modal-field-label">Notes & Remarks</span><div class="modal-field-val" style="background:var(--surface-subtle); padding:8px 12px; border-radius:6px; border:1px solid var(--border); font-size:13px;">' + esc(b.notes) + '</div></div>' : '');
+
+        var statusSelect = document.getElementById('modalStatusSelect');
+        if (statusSelect) statusSelect.value = b.status || 'CONFIRMED';
+
+        var modalEl = document.getElementById('bookingModal');
+        if (modalEl) {
+          modalEl.classList.add('is-open');
+          modalEl.style.display = 'flex';
+          modalEl.style.opacity = '1';
+          modalEl.style.pointerEvents = 'auto';
+        }
+      } catch (modalErr) {
+        console.error('[Open Booking Details Error]', modalErr);
+        showToast('Error opening details: ' + modalErr.message, true);
+      }
     };
 
     // Close Modal
     function closeModal() {
-      document.getElementById('bookingModal').classList.remove('is-open');
+      var modalEl = document.getElementById('bookingModal');
+      if (modalEl) {
+        modalEl.classList.remove('is-open');
+        modalEl.style.display = 'none';
+        modalEl.style.opacity = '0';
+        modalEl.style.pointerEvents = 'none';
+      }
       state.selectedBooking = null;
     }
     document.getElementById('modalCloseBtn').addEventListener('click', closeModal);

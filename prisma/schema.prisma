@@ -34,6 +34,8 @@ model Booking {
   status                BookingStatus @default(PENDING)
   timezone              String?
   notes                 String?
+  googleMeetUrl         String?
+  locationType          String?
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
 }

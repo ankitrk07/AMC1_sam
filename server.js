@@ -256,6 +256,119 @@ async function getEventTypeUri(counsellorId) {
   return matched.uri;
 }
 
+// Isolated Helper: Extract Google Meet / Conference details defensively from Calendly payload
+function extractCalendlyMeetingDetails(eventResource, inviteeResource = null) {
+  if (!eventResource) {
+    return { googleMeetUrl: null, locationType: 'pending', status: null, isPending: true, rawLocation: null };
+  }
+
+  const loc = eventResource.location || {};
+  const rawType = loc.type || (loc.data && loc.data.type) || null;
+  const status = loc.status || (loc.data && loc.data.status) || null;
+
+  const candidates = [
+    loc.join_url,
+    loc.location,
+    loc.data && loc.data.join_url,
+    loc.data && loc.data.location,
+    loc.data && loc.data.url,
+    inviteeResource && inviteeResource.meeting_url,
+    inviteeResource && inviteeResource.location
+  ];
+
+  let resolvedUrl = null;
+  for (const c of candidates) {
+    if (typeof c === 'string' && (c.startsWith('http://') || c.startsWith('https://'))) {
+      resolvedUrl = c.trim();
+      break;
+    }
+  }
+
+  let resolvedType = rawType || 'custom';
+  if (resolvedUrl && (resolvedUrl.includes('google_meet') || resolvedUrl.includes('meet.google.com') || resolvedType === 'google_conference' || resolvedType === 'google_meet')) {
+    resolvedType = 'google_conference';
+  }
+
+  const isConference = (resolvedType === 'google_conference' || resolvedType === 'google_meet' || rawType === 'google_conference');
+  const isPending = (isConference && !resolvedUrl && status !== 'failed') || (!resolvedUrl && (status === 'initiated' || status === 'pending'));
+
+  return {
+    googleMeetUrl: resolvedUrl,
+    locationType: isPending ? 'pending' : resolvedType,
+    status: status,
+    isPending: Boolean(isPending),
+    rawLocation: loc
+  };
+}
+
+// Isolated Helper: Fetch Calendly scheduled event with retry loop for pending conference details
+async function fetchCalendlyEventWithRetry(eventUri, token, maxWaitMs = 42000, intervalMs = 4500) {
+  const uuid = eventUri.split('/').filter(Boolean).pop();
+  const eventApiUrl = `https://api.calendly.com/scheduled_events/${uuid}`;
+  const startTime = Date.now();
+  let lastResource = null;
+  let lastInvitee = null;
+  let meetingDetails = { googleMeetUrl: null, locationType: 'pending', isPending: true };
+
+  while (Date.now() - startTime < maxWaitMs) {
+    try {
+      const resp = await fetch(eventApiUrl, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (resp.ok) {
+        const json = await resp.json();
+        lastResource = json.resource;
+
+        try {
+          const invResp = await fetch(`${eventApiUrl}/invitees`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          if (invResp.ok) {
+            const invJson = await invResp.json();
+            lastInvitee = (invJson.collection && invJson.collection[0]) || null;
+          }
+        } catch (invErr) {
+          console.warn('[Calendly Invitee Fetch Warning]', invErr.message);
+        }
+
+        meetingDetails = extractCalendlyMeetingDetails(lastResource, lastInvitee);
+
+        if (meetingDetails.googleMeetUrl || !meetingDetails.isPending) {
+          return {
+            success: true,
+            resource: lastResource,
+            invitee: lastInvitee,
+            ...meetingDetails
+          };
+        }
+      }
+    } catch (err) {
+      console.warn('[Calendly Fetch Retry Error]', err.message);
+    }
+
+    if (Date.now() - startTime + intervalMs >= maxWaitMs) {
+      break;
+    }
+    await new Promise(resolve => setTimeout(resolve, intervalMs));
+  }
+
+  return {
+    success: Boolean(lastResource),
+    resource: lastResource,
+    invitee: lastInvitee,
+    googleMeetUrl: meetingDetails.googleMeetUrl || null,
+    locationType: 'pending',
+    isPending: true
+  };
+}
+
 // Fetch availability slots for a counsellor with retry for future start_time requirements
 async function fetchAvailability(counsellorId, eventTypeUri, startTimeIso, endTimeIso) {
   const token = counsellorId === 'counsellor1' ? process.env.CALENDLY_API_TOKEN_1 : process.env.CALENDLY_API_TOKEN_2;
@@ -575,6 +688,7 @@ async function fetchCalendlyScheduledEvents(forceRefresh = false, minCreatedAtIs
           });
           const invJson = invResp.ok ? await invResp.json() : { collection: [] };
           const invitee = (invJson.collection && invJson.collection[0]) || {};
+          const meetingDetails = extractCalendlyMeetingDetails(event, invitee);
 
           return {
             id: event.uri,
@@ -590,6 +704,8 @@ async function fetchCalendlyScheduledEvents(forceRefresh = false, minCreatedAtIs
             selectedCounsellorUrl: c.url,
             scheduledStartTime: event.start_time,
             scheduledEndTime: event.end_time,
+            googleMeetUrl: meetingDetails.googleMeetUrl,
+            locationType: meetingDetails.locationType,
             calendlyEventName: event.name || 'AMC Counselling Session',
             status: event.status === 'active' ? 'CONFIRMED' : (event.status === 'canceled' ? 'CANCELLED' : 'PENDING'),
             source: 'Calendly Live',
@@ -603,6 +719,7 @@ async function fetchCalendlyScheduledEvents(forceRefresh = false, minCreatedAtIs
             updatedAt: event.updated_at || new Date().toISOString()
           };
         } catch (invErr) {
+          const meetingDetails = extractCalendlyMeetingDetails(event, null);
           return {
             id: event.uri,
             calendlyEventUri: event.uri,
@@ -614,6 +731,8 @@ async function fetchCalendlyScheduledEvents(forceRefresh = false, minCreatedAtIs
             selectedCounsellorUrl: c.url,
             scheduledStartTime: event.start_time,
             scheduledEndTime: event.end_time,
+            googleMeetUrl: meetingDetails.googleMeetUrl,
+            locationType: meetingDetails.locationType,
             calendlyEventName: event.name || 'AMC Counselling Session',
             status: event.status === 'active' ? 'CONFIRMED' : 'CANCELLED',
             source: 'Calendly Live',
@@ -733,60 +852,68 @@ async function getUnifiedBookings(forceRefresh = false) {
     if (lb.calendlyEventUri && eventMap.has(lb.calendlyEventUri)) {
       matchedEventKey = lb.calendlyEventUri;
     } else {
-      // Find matching live event by contact (phone, email, or name) AND timezone-safe date key
-      const lbDate = getLocalDateStr(lb.scheduledStartTime || lb.preferredDate);
-
+      // Find matching live event by contact (phone, email, or name)
       for (const [key, ev] of eventMap.entries()) {
-        const evDate = getLocalDateStr(ev.scheduledStartTime || ev.preferredDate);
-        if (lbDate && evDate && lbDate === evDate) {
-          let contactMatches = false;
+        let contactMatches = false;
 
-          if (lb.phone && ev.phone) {
-            const cleanLbPhone = String(lb.phone).replace(/\D/g, '').slice(-10);
-            const cleanEvPhone = String(ev.phone).replace(/\D/g, '').slice(-10);
-            if (cleanLbPhone && cleanLbPhone === cleanEvPhone) {
-              contactMatches = true;
-            }
+        if (lb.phone && ev.phone) {
+          const cleanLbPhone = String(lb.phone).replace(/\D/g, '').slice(-10);
+          const cleanEvPhone = String(ev.phone).replace(/\D/g, '').slice(-10);
+          if (cleanLbPhone && cleanEvPhone && cleanLbPhone === cleanEvPhone) {
+            contactMatches = true;
           }
+        }
 
-          if (!contactMatches && lb.email && ev.email) {
-            if (lb.email.trim().toLowerCase() === ev.email.trim().toLowerCase()) {
-              contactMatches = true;
-            }
+        if (!contactMatches && lb.email && ev.email) {
+          if (lb.email.trim().toLowerCase() === ev.email.trim().toLowerCase()) {
+            contactMatches = true;
           }
+        }
 
-          if (!contactMatches && lb.name && ev.name) {
-            if (lb.name.trim().toLowerCase() === ev.name.trim().toLowerCase()) {
-              contactMatches = true;
-            }
+        if (!contactMatches && lb.name && ev.name) {
+          if (lb.name.trim().toLowerCase() === ev.name.trim().toLowerCase()) {
+            contactMatches = true;
           }
+        }
 
-          if (contactMatches) {
-            matchedEventKey = key;
-            break;
-          }
+        if (contactMatches) {
+          matchedEventKey = key;
+          break;
         }
       }
     }
 
     if (matchedEventKey) {
       const existing = eventMap.get(matchedEventKey);
+      let resolvedStatus = existing.status || 'CONFIRMED';
+      if (lb.status === 'COMPLETED' || lb.status === 'CANCELLED') {
+        resolvedStatus = lb.status;
+      } else if (existing.status === 'CONFIRMED' || existing.status === 'active' || lb.status === 'CONFIRMED') {
+        resolvedStatus = 'CONFIRMED';
+      } else {
+        resolvedStatus = lb.status || existing.status || 'PENDING';
+      }
+
       eventMap.set(matchedEventKey, {
         ...existing,
         ...lb,
         id: existing.id || lb.id,
         calendlyEventUri: existing.calendlyEventUri || lb.calendlyEventUri,
-        status: existing.status || lb.status,
+        status: resolvedStatus,
         phone: lb.phone || existing.phone,
         email: existing.email || lb.email,
         name: lb.name || existing.name,
-        selectedSlot: lb.selectedSlot || existing.selectedSlot,
-        preferredDate: lb.preferredDate || existing.preferredDate,
+        googleMeetUrl: existing.googleMeetUrl || lb.googleMeetUrl || null,
+        locationType: existing.locationType || lb.locationType || (existing.googleMeetUrl || lb.googleMeetUrl ? 'google_conference' : 'pending'),
+        selectedSlot: existing.selectedSlot || lb.selectedSlot,
+        preferredDate: existing.preferredDate || lb.preferredDate,
         selectedCounsellor: existing.selectedCounsellor || lb.selectedCounsellor,
         leadSource: leadPlatform,
         sourceOther: sourceOther,
         notes: lb.notes || existing.notes,
-        source: 'Calendly Confirmed + Web Intent'
+        createdAt: lb.createdAt || existing.createdAt || new Date().toISOString(),
+        updatedAt: lb.updatedAt || existing.updatedAt || new Date().toISOString(),
+        source: existing.source === 'Calendly Live' ? 'Calendly Live' : (lb.source || 'Calendly Confirmed + Web Intent')
       });
     } else {
       const key = lb.id || (lb.phone ? `${lb.phone}_${lb.preferredDate}` : `local_${Date.now()}_${Math.random()}`);
@@ -818,9 +945,10 @@ async function getUnifiedBookings(forceRefresh = false) {
     }
   }
 
+  // Sort strictly by latest booking creation timestamp first (newest bookings at top)
   list.sort((a, b) => {
-    const timeA = new Date(a.scheduledStartTime || a.createdAt || 0).getTime();
-    const timeB = new Date(b.scheduledStartTime || b.createdAt || 0).getTime();
+    const timeA = new Date(a.createdAt || a.updatedAt || a.scheduledStartTime || 0).getTime();
+    const timeB = new Date(b.createdAt || b.updatedAt || b.scheduledStartTime || 0).getTime();
     return timeB - timeA;
   });
 
@@ -983,6 +1111,8 @@ app.post('/api/admin/bookings/confirm', async (req, res) => {
     const payload = req.body || {};
     const bookingId = payload.bookingId ? String(payload.bookingId).trim() : null;
     const eventUri = payload.calendlyEventUri ? String(payload.calendlyEventUri).trim() : null;
+    const googleMeetUrl = payload.googleMeetUrl ? String(payload.googleMeetUrl).trim() : null;
+    const locationType = payload.locationType ? String(payload.locationType).trim() : (googleMeetUrl ? 'google_conference' : null);
 
     if (!bookingId && !eventUri) {
       return res.status(400).json({ error: 'bookingId or calendlyEventUri is required' });
@@ -1000,6 +1130,8 @@ app.post('/api/admin/bookings/confirm', async (req, res) => {
         calendlyEventName: payload.calendlyEventName ? String(payload.calendlyEventName).trim() : null,
         scheduledStartTime: payload.scheduledStartTime || null,
         scheduledEndTime: payload.scheduledEndTime || null,
+        googleMeetUrl: googleMeetUrl,
+        locationType: locationType,
         status: normalizeBookingStatus(payload.status || 'CONFIRMED'),
         notes: payload.notes ? String(payload.notes).trim() : 'Confirmed from Calendly',
         createdAt: new Date().toISOString(),
@@ -1011,6 +1143,8 @@ app.post('/api/admin/bookings/confirm', async (req, res) => {
       target.calendlyEventName = payload.calendlyEventName ? String(payload.calendlyEventName).trim() : target.calendlyEventName;
       target.scheduledStartTime = payload.scheduledStartTime || target.scheduledStartTime;
       target.scheduledEndTime = payload.scheduledEndTime || target.scheduledEndTime;
+      if (googleMeetUrl) target.googleMeetUrl = googleMeetUrl;
+      if (locationType) target.locationType = locationType;
       target.status = normalizeBookingStatus(payload.status || 'CONFIRMED');
       target.notes = payload.notes ? String(payload.notes).trim() : target.notes;
       target.updatedAt = new Date().toISOString();
@@ -1031,6 +1165,8 @@ app.post('/api/admin/bookings/confirm', async (req, res) => {
               calendlyEventName: payload.calendlyEventName ? String(payload.calendlyEventName).trim() : null,
               scheduledStartTime: payload.scheduledStartTime ? new Date(payload.scheduledStartTime) : null,
               scheduledEndTime: payload.scheduledEndTime ? new Date(payload.scheduledEndTime) : null,
+              googleMeetUrl: googleMeetUrl,
+              locationType: locationType,
               status: normalizeBookingStatus(payload.status || 'CONFIRMED'),
               notes: payload.notes ? String(payload.notes).trim() : 'Inserted from confirmation callback'
             }
@@ -1043,6 +1179,8 @@ app.post('/api/admin/bookings/confirm', async (req, res) => {
               calendlyEventName: payload.calendlyEventName ? String(payload.calendlyEventName).trim() : existing.calendlyEventName,
               scheduledStartTime: payload.scheduledStartTime ? new Date(payload.scheduledStartTime) : existing.scheduledStartTime,
               scheduledEndTime: payload.scheduledEndTime ? new Date(payload.scheduledEndTime) : existing.scheduledEndTime,
+              googleMeetUrl: googleMeetUrl || existing.googleMeetUrl,
+              locationType: locationType || existing.locationType,
               status: normalizeBookingStatus(payload.status || 'CONFIRMED'),
               notes: payload.notes ? String(payload.notes).trim() : existing.notes
             }
@@ -1056,7 +1194,7 @@ app.post('/api/admin/bookings/confirm', async (req, res) => {
     // Force flush scheduled events cache to immediately reflect confirmation
     scheduledEventsCache.expiresAt = 0;
 
-    return res.json({ success: true, bookingId: target.id });
+    return res.json({ success: true, bookingId: target.id, googleMeetUrl: target.googleMeetUrl, locationType: target.locationType });
   } catch (error) {
     console.error('[Admin Booking Confirm Error]', error);
     return res.status(500).json({ error: error.message || 'Failed to confirm booking' });
@@ -1593,7 +1731,7 @@ app.get('/api/calendly/check-scheduled', async (req, res) => {
 // POST /api/calendly/confirm endpoint
 app.post('/api/calendly/confirm', async (req, res) => {
   try {
-    const { eventUri, counsellor } = req.body;
+    const { eventUri, counsellor, bookingId } = req.body || {};
     if (!eventUri) {
       return res.status(400).json({ error: 'eventUri is required' });
     }
@@ -1601,6 +1739,8 @@ app.post('/api/calendly/confirm', async (req, res) => {
     let token = process.env.CALENDLY_API_TOKEN_1;
     if (counsellor === 'counsellor2') {
       token = process.env.CALENDLY_API_TOKEN_2;
+    } else if (!token || token.startsWith('your_')) {
+      token = process.env.CALENDLY_API_TOKEN_2 || process.env.CALENDLY_API_TOKEN_1;
     }
 
     if (!token || token.startsWith('your_')) {
@@ -1611,29 +1751,9 @@ app.post('/api/calendly/confirm', async (req, res) => {
       });
     }
 
-    const uuid = eventUri.split('/').filter(Boolean).pop();
-    const calendlyApiUrl = `https://api.calendly.com/scheduled_events/${uuid}`;
-
-    const response = await fetch(calendlyApiUrl, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[Calendly REST API Error] Status ${response.status}: ${errorText}`);
-      return res.status(response.status).json({
-        success: false,
-        error: `Could not verify scheduling (status ${response.status})`,
-        fallback: true
-      });
-    }
-
-    const data = await response.json();
-    const resource = data.resource;
+    // Call fetch with retry (up to ~42s, checking every ~4.5s)
+    const eventResult = await fetchCalendlyEventWithRetry(eventUri, token, 42000, 4500);
+    const resource = eventResult.resource;
 
     if (!resource || !resource.start_time) {
       return res.status(404).json({
@@ -1651,16 +1771,94 @@ app.post('/api/calendly/confirm', async (req, res) => {
       });
     }
 
+    const googleMeetUrl = eventResult.googleMeetUrl || null;
+    const locationType = eventResult.locationType || (googleMeetUrl ? 'google_conference' : 'pending');
+
+    // Update Local Store
+    const store = readLocalStore();
+    store.bookings = store.bookings || [];
+    let target = store.bookings.find(b => (bookingId && b.id === bookingId) || (eventUri && b.calendlyEventUri === eventUri));
+
+    if (target) {
+      target.googleMeetUrl = googleMeetUrl || target.googleMeetUrl || null;
+      target.locationType = locationType;
+      target.calendlyEventUri = eventUri;
+      target.scheduledStartTime = resource.start_time || target.scheduledStartTime;
+      target.scheduledEndTime = resource.end_time || target.scheduledEndTime;
+      target.calendlyEventName = resource.name || target.calendlyEventName;
+      target.status = normalizeBookingStatus(resource.status || 'CONFIRMED');
+      target.updatedAt = new Date().toISOString();
+    } else {
+      target = {
+        id: bookingId || ('bk_' + Date.now()),
+        calendlyEventUri: eventUri,
+        calendlyEventName: resource.name || 'AMC Counselling Session',
+        scheduledStartTime: resource.start_time,
+        scheduledEndTime: resource.end_time,
+        googleMeetUrl: googleMeetUrl,
+        locationType: locationType,
+        status: normalizeBookingStatus(resource.status || 'CONFIRMED'),
+        notes: 'Confirmed from Calendly verification',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      store.bookings.unshift(target);
+    }
+    writeLocalStore(store);
+
+    // Update Prisma DB if available
+    if (prisma) {
+      try {
+        const where = bookingId ? { id: bookingId } : { calendlyEventUri: eventUri };
+        const existing = await prisma.booking.findFirst({ where });
+        if (existing) {
+          await prisma.booking.update({
+            where: { id: existing.id },
+            data: {
+              calendlyEventUri: eventUri,
+              calendlyEventName: resource.name || existing.calendlyEventName,
+              scheduledStartTime: new Date(resource.start_time),
+              scheduledEndTime: resource.end_time ? new Date(resource.end_time) : existing.scheduledEndTime,
+              googleMeetUrl: googleMeetUrl || existing.googleMeetUrl,
+              locationType: locationType || existing.locationType,
+              status: normalizeBookingStatus(resource.status || existing.status || 'CONFIRMED'),
+              updatedAt: new Date()
+            }
+          });
+        } else {
+          await prisma.booking.create({
+            data: {
+              calendlyEventUri: eventUri,
+              calendlyEventName: resource.name || 'AMC Counselling Session',
+              scheduledStartTime: new Date(resource.start_time),
+              scheduledEndTime: resource.end_time ? new Date(resource.end_time) : null,
+              googleMeetUrl: googleMeetUrl,
+              locationType: locationType,
+              status: normalizeBookingStatus(resource.status || 'CONFIRMED'),
+              notes: 'Inserted from verification callback'
+            }
+          });
+        }
+      } catch (dbErr) {
+        console.warn('[Prisma Booking Verify Save Non-fatal]', dbErr.message);
+      }
+    }
+
+    scheduledEventsCache.expiresAt = 0;
+
     return res.json({
       success: true,
+      bookingId: target.id,
       start_time: resource.start_time,
       end_time: resource.end_time,
       name: resource.name,
-      status: resource.status
+      status: resource.status,
+      googleMeetUrl: googleMeetUrl,
+      locationType: locationType
     });
 
   } catch (error) {
-    console.error('[Server Error]', error);
+    console.error('[Server Error /api/calendly/confirm]', error);
     return res.status(500).json({
       success: false,
       error: 'Internal server error verifying booking',
@@ -1668,6 +1866,113 @@ app.post('/api/calendly/confirm', async (req, res) => {
     });
   }
 });
+
+// GET /api/bookings/:id/status endpoint (Lightweight polling endpoint for frontend)
+app.get('/api/bookings/:id/status', async (req, res) => {
+  try {
+    const rawId = decodeURIComponent(req.params.id || '').trim();
+    if (!rawId) return res.status(400).json({ error: 'id parameter is required' });
+
+    const store = readLocalStore();
+    let b = (store.bookings || []).find(item => item.id === rawId || item.calendlyEventUri === rawId || (item.calendlyEventUri && item.calendlyEventUri.endsWith(rawId)));
+
+    if (prisma && (!b || !b.googleMeetUrl)) {
+      try {
+        const dbBooking = await prisma.booking.findFirst({
+          where: {
+            OR: [
+              { id: rawId },
+              { calendlyEventUri: rawId },
+              { calendlyEventUri: { contains: rawId } }
+            ]
+          }
+        });
+        if (dbBooking) {
+          b = Object.assign({}, b || {}, dbBooking);
+        }
+      } catch (dbErr) {
+        console.warn('[Prisma Status Lookup Non-fatal]', dbErr.message);
+      }
+    }
+
+    if (!b) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    return res.json({
+      success: true,
+      id: b.id,
+      calendlyEventUri: b.calendlyEventUri,
+      status: b.status,
+      googleMeetUrl: b.googleMeetUrl || null,
+      locationType: b.locationType || (b.googleMeetUrl ? 'google_conference' : 'pending'),
+      scheduledStartTime: b.scheduledStartTime,
+      preferredDate: b.preferredDate,
+      selectedSlot: b.selectedSlot
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message || 'Status check failed' });
+  }
+});
+
+// Periodic background sweep worker: checks any bookings created within the last 1 hour
+// whose Google Meet link is still pending, querying Calendly REST API
+async function runPendingMeetSweep() {
+  try {
+    const store = readLocalStore();
+    const now = Date.now();
+    const ONE_HOUR = 60 * 60 * 1000;
+
+    const pendingBookings = (store.bookings || []).filter(b => {
+      if (!b.calendlyEventUri) return false;
+      const createdTime = new Date(b.createdAt || b.updatedAt || 0).getTime();
+      const isWithinHour = (now - createdTime) < ONE_HOUR;
+      const isPendingMeet = !b.googleMeetUrl && (b.locationType === 'pending' || !b.locationType);
+      return isWithinHour && isPendingMeet;
+    });
+
+    if (pendingBookings.length === 0) return;
+
+    console.log(`[Pending Meet Sweep] Checking ${pendingBookings.length} pending bookings against Calendly API...`);
+    const tokens = [process.env.CALENDLY_API_TOKEN_1, process.env.CALENDLY_API_TOKEN_2].filter(Boolean);
+
+    for (const b of pendingBookings) {
+      for (const token of tokens) {
+        if (!token || token.startsWith('your_')) continue;
+        const result = await fetchCalendlyEventWithRetry(b.calendlyEventUri, token, 6000, 2000);
+        if (result && result.googleMeetUrl) {
+          b.googleMeetUrl = result.googleMeetUrl;
+          b.locationType = result.locationType;
+          b.updatedAt = new Date().toISOString();
+          console.log(`[Pending Meet Sweep] Successfully resolved Google Meet link for booking ${b.id}: ${b.googleMeetUrl}`);
+
+          writeLocalStore(store);
+
+          if (prisma) {
+            try {
+              await prisma.booking.updateMany({
+                where: { OR: [{ id: b.id }, { calendlyEventUri: b.calendlyEventUri }] },
+                data: {
+                  googleMeetUrl: b.googleMeetUrl,
+                  locationType: b.locationType,
+                  updatedAt: new Date()
+                }
+              });
+            } catch (e) {
+              console.warn('[Prisma Sweep Update Non-fatal]', e.message);
+            }
+          }
+          break;
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[Pending Meet Sweep Error]', err);
+  }
+}
+
+// Sweep every 2 minutes
+setInterval(runPendingMeetSweep, 2 * 60 * 1000);
 
 app.listen(PORT, () => {
   console.log(`Server is running at http://localhost:${PORT}`);

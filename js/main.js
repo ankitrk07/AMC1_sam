@@ -702,6 +702,130 @@ document.addEventListener('DOMContentLoaded', function () {
       dateTimeSectionEl.classList.add('is-booked');
     }
 
+  window.copyMeetLink = function (url, btn) {
+    if (!url) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(function () {
+        if (btn) {
+          var old = btn.innerHTML;
+          btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><polyline points="20 6 9 17 4 12"></polyline></svg> Copied';
+          btn.style.background = '#ffffff';
+          btn.style.color = '#047857';
+          setTimeout(function () {
+            btn.innerHTML = old;
+            btn.style.background = 'rgba(255,255,255,0.2)';
+            btn.style.color = '#ffffff';
+          }, 2000);
+        }
+      });
+    } else {
+      prompt('Copy this Google Meet link:', url);
+    }
+  };
+
+  var meetStatusPollInterval = null;
+
+  function renderGoogleMeetCard(data) {
+    var scheduledDateStr = data.date && data.date !== 'Not specified' ? data.date : 'your selected time';
+    var meetHtml = '';
+
+    if (data.googleMeetUrl) {
+      meetHtml = `
+        <div class="meet-action-card" style="background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.32); border-radius: 12px; padding: 16px; margin-top: 16px; text-align: left; backdrop-filter: blur(10px); box-shadow: 0 4px 16px rgba(0,0,0,0.06);">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+              <strong style="color: #ffffff; font-size: 14px; font-weight: 700; letter-spacing: -0.01em;">Google Meet Video Consultation</strong>
+            </div>
+            <span style="display: inline-flex; align-items: center; gap: 5px; background: rgba(0, 0, 0, 0.2); color: #ffffff; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid rgba(255,255,255,0.25);">
+              <span style="width: 6px; height: 6px; border-radius: 50%; background: #34d399; display: inline-block;"></span> Active
+            </span>
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px;">
+            <a href="${data.googleMeetUrl}" target="_blank" rel="noopener noreferrer" class="btn-meet-join" style="flex: 1 1 auto; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #ffffff; color: #047857; font-weight: 700; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-size: 13.5px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: all 0.15s ease;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+              Join Google Meet
+            </a>
+            <button type="button" class="btn-meet-copy" onclick="copyMeetLink('${data.googleMeetUrl}', this)" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: rgba(255,255,255,0.2); color: #ffffff; border: 1px solid rgba(255,255,255,0.35); font-weight: 600; padding: 10px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; transition: all 0.15s ease;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              Copy Link
+            </button>
+          </div>
+          <p style="margin: 10px 0 0 0; font-size: 12px; color: rgba(255,255,255,0.9); line-height: 1.4;">A Google Calendar invitation with this video link has also been sent to your email.</p>
+        </div>
+      `;
+    } else {
+      meetHtml = `
+        <div id="googleMeetPendingBox" class="meet-action-card" style="background: rgba(255, 255, 255, 0.12); border: 1px dashed rgba(255, 255, 255, 0.45); border-radius: 12px; padding: 16px; margin-top: 16px; text-align: left;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div id="meetPendingSpinner" style="width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #ffffff; border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0;"></div>
+            <div>
+              <strong id="meetPendingTitle" style="color: #ffffff; font-size: 13.5px; display: block; font-weight: 700;">Generating video meeting link…</strong>
+              <p id="meetPendingSubtitle" style="margin: 3px 0 0 0; font-size: 12px; color: rgba(255,255,255,0.88); line-height: 1.35;">Syncing video conference with Google Meet & Calendly. Please hold on a moment...</p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <div style="width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.22); border: 1.5px solid rgba(255,255,255,0.4); display: flex; align-items: center; justify-content: center; margin: 0 auto 10px auto; box-shadow: 0 4px 12px rgba(0,0,0,0.06);">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </div>
+      <h3 style="color: white; font-size: 19px; font-weight: 800; margin-bottom: 4px; letter-spacing: -0.01em;">Counselling Session Booked</h3>
+      <p style="color: rgba(255,255,255,0.92); font-size: 13.5px; margin: 0; line-height: 1.4;">We look forward to meeting you on <strong>${scheduledDateStr}</strong>.</p>
+      ${meetHtml}
+    `;
+  }
+
+  function startGoogleMeetPolling(targetId) {
+    if (meetStatusPollInterval) {
+      clearInterval(meetStatusPollInterval);
+      meetStatusPollInterval = null;
+    }
+    if (!targetId) return;
+
+    var attempts = 0;
+    var maxAttempts = 12; // 12 * 5s = 60s
+    meetStatusPollInterval = setInterval(function () {
+      attempts++;
+      var statusUrl = '/api/bookings/' + encodeURIComponent(targetId) + '/status';
+      fetch(statusUrl)
+        .then(function (res) { return res.json(); })
+        .then(function (resData) {
+          if (resData && resData.googleMeetUrl) {
+            clearInterval(meetStatusPollInterval);
+            meetStatusPollInterval = null;
+            if (currentBookingState) {
+              currentBookingState.googleMeetUrl = resData.googleMeetUrl;
+              currentBookingState.locationType = resData.locationType;
+            }
+            var successCard = document.getElementById('bookingSuccessCard');
+            if (successCard) {
+              successCard.innerHTML = renderGoogleMeetCard(Object.assign({}, currentBookingState, { googleMeetUrl: resData.googleMeetUrl }));
+            }
+          } else if (attempts >= maxAttempts) {
+            clearInterval(meetStatusPollInterval);
+            meetStatusPollInterval = null;
+            var sub = document.getElementById('meetPendingSubtitle');
+            var spin = document.getElementById('meetPendingSpinner');
+            var title = document.getElementById('meetPendingTitle');
+            if (spin) spin.style.display = 'none';
+            if (title) title.textContent = 'Google Meet Link Confirmed';
+            if (sub) sub.textContent = 'Your Google Meet link will also be in your confirmation email shortly.';
+          }
+        })
+        .catch(function () {
+          if (attempts >= maxAttempts) {
+            clearInterval(meetStatusPollInterval);
+            meetStatusPollInterval = null;
+          }
+        });
+    }, 5000);
+  }
+
     // 5. Form status message & prominent Success Card
     if (counsellingFine) {
       var dateInfo = data.date && data.date !== 'Not specified' ? ' for ' + data.date : '';
@@ -710,18 +834,23 @@ document.addEventListener('DOMContentLoaded', function () {
       counsellingFine.classList.remove('is-error');
     }
 
-    var existingSuccess = document.getElementById('bookingSuccessCard');
-    if (!existingSuccess && counsellingForm) {
-      var successCard = document.createElement('div');
+    var successCard = document.getElementById('bookingSuccessCard');
+    if (!successCard && counsellingForm) {
+      successCard = document.createElement('div');
       successCard.id = 'bookingSuccessCard';
-      successCard.style.cssText = 'background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: white; padding: 20px 24px; border-radius: 12px; text-align: center; margin-bottom: 20px; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.28); animation: fadeIn 0.4s ease;';
-      var scheduledDateStr = data.date && data.date !== 'Not specified' ? data.date : 'your selected time';
-      successCard.innerHTML = `
-        <div style="font-size: 26px; margin-bottom: 4px;">🎉</div>
-        <h3 style="color: white; font-size: 19px; font-weight: 800; margin-bottom: 4px; letter-spacing: -0.01em;">Counselling Session Booked!</h3>
-        <p style="color: rgba(255,255,255,0.95); font-size: 14px; margin: 0; line-height: 1.4;">We look forward to meeting you on <strong>${scheduledDateStr}</strong>. A calendar invite and meeting details have been sent to you.</p>
-      `;
+      successCard.style.cssText = 'background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: white; padding: 22px 24px; border-radius: 12px; text-align: center; margin-bottom: 20px; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.28); animation: fadeIn 0.4s ease;';
       counsellingForm.prepend(successCard);
+    }
+
+    if (successCard) {
+      successCard.innerHTML = renderGoogleMeetCard(data);
+    }
+
+    if (!data.googleMeetUrl) {
+      var pollId = data.bookingId || data.calendlyEventUri;
+      if (pollId) {
+        startGoogleMeetPolling(pollId);
+      }
     }
 
     // 6. Header & Page CTA updates (Clean, single-line layout)
@@ -917,7 +1046,11 @@ document.addEventListener('DOMContentLoaded', function () {
       fetch('/api/calendly/confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventUri: targetUri, counsellor: currentBookingState && currentBookingState.selectedCounsellor })
+        body: JSON.stringify({
+          eventUri: targetUri,
+          counsellor: currentBookingState && currentBookingState.selectedCounsellor,
+          bookingId: currentBookingState && currentBookingState.bookingId
+        })
       })
         .then(function (res) { return res.json(); })
         .then(function (result) {
@@ -943,12 +1076,17 @@ document.addEventListener('DOMContentLoaded', function () {
             var isAfternoon = startDate.getHours() >= 12;
 
             var updatedState = Object.assign({}, currentBookingState || {}, {
+              bookingId: result.bookingId || (currentBookingState && currentBookingState.bookingId),
+              calendlyEventUri: targetUri,
+              googleMeetUrl: result.googleMeetUrl || null,
+              locationType: result.locationType || (result.googleMeetUrl ? 'google_conference' : 'pending'),
               date: exactScheduledText,
               isoDate: isoDate,
               formattedTime: formattedTime,
               isAfternoon: isAfternoon,
               slot: isAfternoon ? 'After lunch' : 'Before lunch'
             });
+            currentBookingState = updatedState;
 
             postJson('/api/admin/bookings/confirm', {
               bookingId: updatedState.bookingId,
@@ -956,8 +1094,10 @@ document.addEventListener('DOMContentLoaded', function () {
               calendlyEventName: result.name,
               scheduledStartTime: result.start_time,
               scheduledEndTime: result.end_time,
+              googleMeetUrl: result.googleMeetUrl,
+              locationType: result.locationType,
               status: result.status,
-              notes: 'Confirmed from Calendly webhook event'
+              notes: 'Confirmed from Calendly verification'
             }).catch(function (err) {
               console.warn('[Booking Confirm Save Warning]', err);
             });
@@ -973,10 +1113,15 @@ document.addEventListener('DOMContentLoaded', function () {
       var fDate = sDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
       var fTime = sDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
       var stateFromEvent = Object.assign({}, currentBookingState || {}, {
+        bookingId: eventDetails.id || eventDetails.calendlyEventUri,
+        calendlyEventUri: eventDetails.calendlyEventUri,
+        googleMeetUrl: eventDetails.googleMeetUrl || null,
+        locationType: eventDetails.locationType || (eventDetails.googleMeetUrl ? 'google_conference' : 'pending'),
         date: fDate + ' at ' + fTime,
         formattedTime: fTime,
         slot: sDate.getHours() >= 12 ? 'After lunch' : 'Before lunch'
       });
+      currentBookingState = stateFromEvent;
       updateCTAsToConfirmed(stateFromEvent);
     }
   }
@@ -1029,8 +1174,10 @@ document.addEventListener('DOMContentLoaded', function () {
     if (calendlyShimmer) calendlyShimmer.style.display = 'flex';
     if (calendlyFallback) calendlyFallback.style.display = 'none';
     if (calendlyWidgetContainer) {
-      calendlyWidgetContainer.style.display = 'block';
-      calendlyWidgetContainer.style.minHeight = '660px';
+      calendlyWidgetContainer.style.display = 'flex';
+      calendlyWidgetContainer.style.flex = '1 1 auto';
+      calendlyWidgetContainer.style.height = '100%';
+      calendlyWidgetContainer.style.minHeight = '0';
       calendlyWidgetContainer.style.width = '100%';
       calendlyWidgetContainer.innerHTML = '';
     }
@@ -1051,6 +1198,8 @@ document.addEventListener('DOMContentLoaded', function () {
       if (date) urlObj.searchParams.set('a3', date);
       urlObj.searchParams.set('embed_domain', window.location.host || window.location.hostname || 'localhost');
       urlObj.searchParams.set('embed_type', 'Inline');
+      urlObj.searchParams.set('hide_landing_page_details', '1');
+      urlObj.searchParams.set('hide_gdpr_banner', '1');
       finalBookingUrl = urlObj.toString();
     } catch (e) {
       finalBookingUrl = rawUrl;
@@ -1071,12 +1220,13 @@ document.addEventListener('DOMContentLoaded', function () {
     iframe.style.border = '0';
     iframe.style.width = '100%';
     iframe.style.height = '100%';
-    iframe.style.minHeight = '660px';
-    iframe.style.borderRadius = '16px';
+    iframe.style.flex = '1 1 auto';
+    iframe.style.minHeight = '0';
+    iframe.style.borderRadius = '12px';
 
     iframe.onload = function () {
       if (calendlyShimmer) calendlyShimmer.style.display = 'none';
-      if (calendlyWidgetContainer) calendlyWidgetContainer.style.display = 'block';
+      if (calendlyWidgetContainer) calendlyWidgetContainer.style.display = 'flex';
     };
 
     calendlyWidgetContainer.appendChild(iframe);
@@ -1084,7 +1234,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Fallback timer to hide shimmer quickly
     setTimeout(function () {
       if (calendlyShimmer) calendlyShimmer.style.display = 'none';
-      if (calendlyWidgetContainer) calendlyWidgetContainer.style.display = 'block';
+      if (calendlyWidgetContainer) calendlyWidgetContainer.style.display = 'flex';
     }, 600);
 
     // Gentle fallback check (does not spam Calendly while student is filling the form)
@@ -1151,18 +1301,6 @@ document.addEventListener('DOMContentLoaded', function () {
     };
     closeCalendlyModal.addEventListener('click', handleCloseBtn);
     closeCalendlyModal.addEventListener('touchstart', handleCloseBtn);
-  }
-
-  // Manual Fast-Confirm Button
-  var btnConfirmNow = document.getElementById('btnConfirmNow');
-  if (btnConfirmNow) {
-    btnConfirmNow.addEventListener('click', function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-      var overlay = document.getElementById('calendlyConfirmOverlay');
-      if (overlay) overlay.style.display = 'flex';
-      handleBookingCompleted(null, currentBookingState);
-    });
   }
 
   if (calendlyModal) {
