@@ -2096,11 +2096,15 @@ mark.purple-mark {
   }
 
   .stack-row {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-between;
   }
 
   .stack-row__leader {
-    display: none;
+    display: block;
+    flex: 1;
+    min-width: 8px;
   }
 
   .why-card {
@@ -4245,23 +4249,41 @@ input[type="date"] *,
 
   /* Value Stack */
   .stack-card {
-    padding: 6px 12px !important;
+    padding: 6px 10px !important;
     border-radius: var(--radius-m) !important;
   }
 
   .stack-row {
-    padding: 6px 0 !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
     gap: 6px !important;
+    padding: 8px 0 !important;
   }
 
   .stack-row__name {
-    font-size: 12px !important;
+    flex: 0 1 auto !important;
+    min-width: 0 !important;
+    font-size: 11.5px !important;
     line-height: 1.35 !important;
+    white-space: normal !important;
+  }
+
+  .stack-row__leader {
+    display: block !important;
+    flex: 1 1 auto !important;
+    min-width: 8px !important;
+    border-bottom: 1.5px dotted var(--line-strong) !important;
+    height: 0 !important;
   }
 
   .stack-row__badge {
-    font-size: 10px !important;
-    padding: 2px 8px !important;
+    flex-shrink: 0 !important;
+    font-size: 9.5px !important;
+    padding: 3px 8px !important;
+    white-space: nowrap !important;
+    margin-left: auto !important;
   }
 
   .stack-row--total {
