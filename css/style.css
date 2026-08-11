@@ -987,16 +987,6 @@ mark.purple-mark {
   }
 }
 
-@keyframes proof-scroll {
-  from {
-    transform: translateX(0);
-  }
-
-  to {
-    transform: translateX(-50%);
-  }
-}
-
 .review-card {
   width: 300px;
   flex: 0 0 300px;
@@ -4469,200 +4459,6 @@ input[type="date"] *,
   }
 
   .stage__body {
-  .mentor__grid {
-    grid-template-columns: 1fr !important;
-    gap: 12px !important;
-  }
-
-  .mentor__image-col {
-    display: flex !important;
-    justify-content: center !important;
-  }
-
-  .mentor__image-col img {
-    max-width: 110px !important;
-    height: auto !important;
-    border-radius: 50% !important;
-  }
-
-  .mentor__content-col h3 {
-    font-size: 16px !important;
-    text-align: center !important;
-  }
-
-  .mentor__content-col .mentor__tag {
-    text-align: center !important;
-    margin: 3px auto 10px !important;
-    display: block !important;
-    width: fit-content !important;
-    font-size: 11px !important;
-    padding: 3px 8px !important;
-  }
-
-  .mentor__bio {
-    font-size: 12px !important;
-    line-height: 1.45 !important;
-  }
-
-  .mentor__bullet-list {
-    margin-top: 10px !important;
-    gap: 6px !important;
-  }
-
-  .mentor__bullet-list li {
-    font-size: 11.5px !important;
-  }
-
-  /* Payment pricing cards */
-  .payment-card {
-    padding: 16px 12px !important;
-    border-radius: var(--radius-m) !important;
-    gap: 12px !important;
-  }
-
-  .payment-card__content {
-    gap: 10px !important;
-  }
-
-  .payment-card__heading h2 {
-    font-size: 18px !important;
-    margin-bottom: 6px !important;
-  }
-
-  .payment-card__heading p {
-    font-size: 12px !important;
-  }
-
-  .payment-card__price-row {
-    gap: 6px !important;
-    margin: 6px 0 !important;
-  }
-
-  .payment-card__price-box {
-    padding: 10px 14px !important;
-    border-radius: var(--radius-s) !important;
-  }
-
-  .payment-card__price {
-    font-size: 26px !important;
-  }
-
-  .payment-card__price-label {
-    font-size: 10.5px !important;
-  }
-
-  .payment-card__installment-box {
-    padding: 8px 12px !important;
-    border-radius: var(--radius-s) !important;
-  }
-
-  .payment-card__installment-title {
-    font-size: 11.5px !important;
-  }
-
-  .payment-card__installment-desc {
-    font-size: 10.5px !important;
-  }
-
-  .payment-card__list {
-    gap: 6px !important;
-  }
-
-  .payment-card__list li {
-    font-size: 11.5px !important;
-    line-height: 1.4 !important;
-  }
-
-  .payment-card__pill {
-    font-size: 9.5px !important;
-    padding: 2px 6px !important;
-  }
-
-  .payment-card__policy-text {
-    font-size: 10.5px !important;
-  }
-
-  /* Workflow & process steps */
-  .workflow-grid {
-    grid-template-columns: 1fr !important;
-    gap: 10px !important;
-    margin-top: 16px !important;
-    margin-bottom: 16px !important;
-  }
-
-  .workflow-card {
-    padding: 12px 10px !important;
-    border-radius: var(--radius-s) !important;
-  }
-
-  .workflow-card__number {
-    font-size: 11.5px !important;
-    margin-bottom: 6px !important;
-  }
-
-  .workflow-card__title {
-    font-size: 14px !important;
-    margin-bottom: 4px !important;
-  }
-
-  .workflow-card__description {
-    font-size: 12px !important;
-    line-height: 1.4 !important;
-  }
-
-  .workflow-footer {
-    font-size: 12px !important;
-    margin-top: 14px !important;
-  }
-
-  /* Curriculum accordions (Horizontal stage) */
-  .stage-list {
-    gap: 6px !important;
-  }
-
-  .stage {
-    border-radius: var(--radius-s) !important;
-  }
-
-  .stage__head {
-    flex-direction: row !important;
-    align-items: center !important;
-    text-align: left !important;
-    gap: 10px !important;
-    padding: 10px 12px !important;
-    border-bottom: none !important;
-  }
-
-  .stage[data-open="true"] .stage__head {
-    border-bottom: 1px dashed rgba(169, 70, 101, 0.15) !important;
-    padding: 10px 12px 6px !important;
-  }
-
-  .stage__num {
-    font-size: 18px !important;
-  }
-
-  .stage[data-open="true"] .stage__num {
-    font-size: 20px !important;
-  }
-
-  .stage__title {
-    font-size: 12px !important;
-  }
-
-  .stage[data-open="true"] .stage__title {
-    font-size: 12.5px !important;
-  }
-
-  .stage__close {
-    top: 8px !important;
-    right: 10px !important;
-    width: 22px !important;
-    height: 22px !important;
-    font-size: 18px !important;
-  }
-
-  .stage__body {
     max-height: 0 !important;
     padding: 0 12px !important;
     overflow: hidden !important;
@@ -4678,12 +4474,13 @@ input[type="date"] *,
     line-height: 1.4 !important;
   }
 
-  /* Reviews / Testimonials — Horizontal Carousel & Auto Marquee */
+  /* ===== REVIEWS — HORIZONTAL SWIPE CAROUSEL ===== */
   .reviews__marquee {
     overflow-x: auto !important;
+    overflow-y: hidden !important;
     scroll-snap-type: x mandatory !important;
     -webkit-overflow-scrolling: touch !important;
-    padding: 10px 16px 20px !important;
+    padding: 10px 12px 16px !important;
     width: 100% !important;
     box-sizing: border-box !important;
   }
@@ -4691,18 +4488,18 @@ input[type="date"] *,
   .reviews__track {
     display: flex !important;
     flex-wrap: nowrap !important;
+    animation: none !important;
     width: max-content !important;
     gap: 12px !important;
     box-sizing: border-box !important;
-    animation: reviews-scroll 25s linear infinite !important;
   }
 
   .review-card {
-    flex: 0 0 240px !important;
-    width: 240px !important;
-    max-width: 240px !important;
+    flex: 0 0 260px !important;
+    width: 260px !important;
+    max-width: 260px !important;
     scroll-snap-align: start !important;
-    padding: 12px 10px !important;
+    padding: 14px 12px !important;
     border-radius: var(--radius-s) !important;
     margin: 0 !important;
     box-sizing: border-box !important;
@@ -4731,7 +4528,7 @@ input[type="date"] *,
     font-size: 10.5px !important;
   }
 
-  /* Proof Gallery / WhatsApp Chats Swipe Carousel */
+  /* ===== PROOF GALLERY — HORIZONTAL SWIPE CAROUSEL ===== */
   .filter-tabs {
     gap: 4px !important;
     overflow-x: auto !important;
@@ -4746,27 +4543,34 @@ input[type="date"] *,
     white-space: nowrap !important;
   }
 
+  .proof-scroll-arrow {
+    display: none !important;
+  }
+
   .proof-3d-carousel-wrapper {
-    margin: 16px auto 10px !important;
+    margin: 12px auto 10px !important;
     min-height: auto !important;
     display: block !important;
     perspective: none !important;
     width: 100% !important;
     box-sizing: border-box !important;
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch !important;
+    overflow: visible !important;
   }
 
   .proof-3d-stage {
     display: flex !important;
     flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scroll-snap-type: x mandatory !important;
+    -webkit-overflow-scrolling: touch !important;
     gap: 12px !important;
     height: auto !important;
     perspective: none !important;
-    padding: 10px 16px !important;
-    width: max-content !important;
+    padding: 10px 12px !important;
+    width: 100% !important;
     box-sizing: border-box !important;
-    animation: proof-scroll 25s linear infinite !important;
+    animation: none !important;
   }
 
   .proof-3d-stage .proof-card,
@@ -4776,16 +4580,32 @@ input[type="date"] *,
   .card-portrait-medium,
   .card-portrait-tall {
     position: static !important;
-    flex: 0 0 200px !important;
-    width: 200px !important;
-    max-width: 200px !important;
+    flex: 0 0 220px !important;
+    width: 220px !important;
+    max-width: 220px !important;
+    height: auto !important;
+    scroll-snap-align: start !important;
     transform: none !important;
     opacity: 1 !important;
     pointer-events: auto !important;
-    padding: 8px !important;
+    padding: 6px !important;
     border-radius: var(--radius-s) !important;
     box-sizing: border-box !important;
     box-shadow: var(--shadow-card) !important;
+  }
+
+  .proof-card__img-box {
+    width: 100% !important;
+    height: auto !important;
+    overflow: hidden !important;
+    border-radius: var(--radius-s) !important;
+  }
+
+  .proof-card__img-box img {
+    width: 100% !important;
+    height: auto !important;
+    object-fit: contain !important;
+    display: block !important;
   }
 
   .proof-card__text {
@@ -4879,17 +4699,27 @@ input[type="date"] *,
     width: 100vw !important;
     max-width: 100vw !important;
     overflow-x: hidden !important;
+    overflow-y: auto !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    align-items: flex-start !important;
     left: 0 !important;
     right: 0 !important;
   }
 
+  .modal-overlay::-webkit-scrollbar {
+    display: none !important;
+  }
+
   .modal-panel {
     padding: 20px 16px !important;
-    margin: 0 auto !important;
-    width: calc(100% - 16px) !important;
-    max-width: 360px !important;
+    margin: 16px auto !important;
+    width: calc(100% - 24px) !important;
+    max-width: 340px !important;
     border-radius: var(--radius-m) !important;
     box-sizing: border-box !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
 
   .modal-header h2 {
@@ -4924,6 +4754,23 @@ input[type="date"] *,
     border-width: 1px !important;
   }
 
+  .phone-input-group {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+  }
+
+  .country-code-picker {
+    flex-shrink: 0 !important;
+  }
+
+  .phone-input-group input[type="tel"] {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    width: 0 !important;
+  }
+
   .modal-form button[type="submit"] {
     height: 36px !important;
     padding: 0 !important;
@@ -4951,3 +4798,4 @@ input[type="date"] *,
     padding: 5px 6px !important;
     font-size: 11.5px !important;
   }
+}
