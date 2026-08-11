@@ -4044,12 +4044,12 @@ input[type="date"] *,
 
   body {
     overflow-x: hidden !important;
-    padding-bottom: 72px !important;
+    padding-bottom: 56px !important;
   }
 
   /* Global / Container */
   .wrap {
-    padding: 0 16px !important;
+    padding: 0 12px !important;
   }
 
   /* Section Padding */
@@ -4065,105 +4065,105 @@ input[type="date"] *,
   .counselling,
   .faq-section,
   .final-cta {
-    padding: 24px 0 !important;
+    padding: 20px 0 !important;
   }
 
   .section-head {
-    margin-bottom: 20px !important;
+    margin-bottom: 14px !important;
   }
 
   .section-head h2 {
-    font-size: 22px !important;
-    margin-bottom: 8px !important;
+    font-size: 18px !important;
+    margin-bottom: 6px !important;
   }
 
   .section-head p {
-    font-size: 13px !important;
-    line-height: 1.5 !important;
+    font-size: 12px !important;
+    line-height: 1.4 !important;
   }
 
   /* Header Brand */
   .brand__mark img {
-    width: 36px !important;
-    height: 36px !important;
+    width: 30px !important;
+    height: 30px !important;
   }
 
   .brand__text {
-    font-size: 15px !important;
+    font-size: 13.5px !important;
   }
 
   .header__inner {
-    padding-top: 10px !important;
-    padding-bottom: 10px !important;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
   }
 
   /* Hero */
   .hero__inner {
-    margin-bottom: 16px !important;
-  }
-
-  .hero__headline {
-    font-size: 26px !important;
-    line-height: 1.2 !important;
     margin-bottom: 12px !important;
   }
 
+  .hero__headline {
+    font-size: 22px !important;
+    line-height: 1.25 !important;
+    margin-bottom: 8px !important;
+  }
+
   .hero__sub {
-    font-size: 14px !important;
-    line-height: 1.5 !important;
+    font-size: 12.5px !important;
+    line-height: 1.45 !important;
   }
 
   /* VSL Video */
   .hero__marquee {
-    padding: 6px 0 !important;
-    margin-bottom: 12px !important;
+    padding: 4px 0 !important;
+    margin-bottom: 8px !important;
   }
 
   .hero__marquee-track {
-    font-size: 11px !important;
-    gap: 16px !important;
+    font-size: 10px !important;
+    gap: 12px !important;
   }
 
   .vsl__frame {
-    border-radius: var(--radius-m) !important;
-    box-shadow: 0 0 0 2px var(--brand-light), var(--shadow-card) !important;
+    border-radius: var(--radius-s) !important;
+    box-shadow: 0 0 0 1.5px var(--brand-light), var(--shadow-card) !important;
   }
 
   .vsl__center-play {
-    width: 48px !important;
-    height: 48px !important;
+    width: 40px !important;
+    height: 40px !important;
   }
 
   .vsl__center-play svg {
-    width: 18px !important;
-    height: 18px !important;
+    width: 14px !important;
+    height: 14px !important;
   }
 
   .vsl__sound-btn {
-    padding: 5px 10px !important;
-    font-size: 10.5px !important;
-    bottom: 12px !important;
-    right: 12px !important;
+    padding: 4px 8px !important;
+    font-size: 9.5px !important;
+    bottom: 8px !important;
+    right: 8px !important;
   }
 
   .vsl__unmute-overlay-box {
-    padding: 12px 16px !important;
+    padding: 10px 14px !important;
     border-radius: var(--radius-s) !important;
   }
 
   .vsl__unmute-overlay-title {
-    font-size: 13px !important;
+    font-size: 12px !important;
   }
 
   .vsl__unmute-overlay-subtitle {
-    font-size: 11px !important;
+    font-size: 10px !important;
   }
 
   /* Trust Row */
   .trust-row {
     flex-direction: column !important;
-    gap: 8px !important;
-    margin-top: 16px !important;
+    gap: 6px !important;
+    margin-top: 12px !important;
   }
 
   .trust-row__sep {
@@ -4171,40 +4171,42 @@ input[type="date"] *,
   }
 
   .trust-pill {
-    font-size: 12px !important;
-    padding: 4px 10px !important;
+    font-size: 11px !important;
+    padding: 3px 8px !important;
   }
 
   .vsl__cta-text {
-    font-size: 14px !important;
-    margin-bottom: 8px !important;
+    font-size: 12.5px !important;
+    margin-bottom: 6px !important;
   }
 
   .vsl__cta-subtext {
-    font-size: 11.5px !important;
-    line-height: 1.5 !important;
+    font-size: 10.5px !important;
+    line-height: 1.4 !important;
   }
 
   .btn {
-    padding: 10px 18px !important;
-    font-size: 13px !important;
+    padding: 8px 14px !important;
+    font-size: 12px !important;
+    height: 36px !important;
   }
 
   .btn--huge {
-    font-size: 14px !important;
-    padding: 12px 20px !important;
+    font-size: 12.5px !important;
+    padding: 10px 16px !important;
+    height: 40px !important;
   }
 
   /* Sticky floating bar */
   .sticky-cta {
-    padding: 8px 12px !important;
+    padding: 6px 10px !important;
   }
 
   .sticky-cta__inner {
     flex-direction: column !important;
     align-items: stretch !important;
-    gap: 8px !important;
-    padding: 8px 16px !important;
+    gap: 6px !important;
+    padding: 6px 12px !important;
   }
 
   .sticky-cta__text {
@@ -4213,58 +4215,59 @@ input[type="date"] *,
   }
 
   .sticky-cta__text strong {
-    font-size: 13px !important;
+    font-size: 12px !important;
   }
 
   .sticky-cta__text span {
-    font-size: 11px !important;
+    font-size: 10px !important;
     display: inline !important;
   }
 
   .sticky-cta .btn {
     width: 100% !important;
-    padding: 10px 16px !important;
-    font-size: 13px !important;
+    padding: 8px 12px !important;
+    font-size: 12px !important;
+    height: 34px !important;
   }
 
   /* Value Stack */
   .stack-card {
-    padding: 8px 14px !important;
+    padding: 6px 12px !important;
     border-radius: var(--radius-m) !important;
   }
 
   .stack-row {
-    padding: 8px 0 !important;
-    gap: 8px !important;
+    padding: 6px 0 !important;
+    gap: 6px !important;
   }
 
   .stack-row__name {
-    font-size: 13px !important;
-    line-height: 1.4 !important;
+    font-size: 12px !important;
+    line-height: 1.35 !important;
   }
 
   .stack-row__badge {
-    font-size: 11px !important;
-    padding: 3px 10px !important;
+    font-size: 10px !important;
+    padding: 2px 8px !important;
   }
 
   .stack-row--total {
-    padding-top: 10px !important;
+    padding-top: 8px !important;
   }
 
   .stack-section__cta {
-    margin-top: 16px !important;
+    margin-top: 12px !important;
   }
 
   /* Meet Your Mentor */
   .mentor-card {
-    padding: 20px 16px !important;
+    padding: 16px 12px !important;
     border-radius: var(--radius-m) !important;
   }
 
   .mentor__grid {
     grid-template-columns: 1fr !important;
-    gap: 16px !important;
+    gap: 12px !important;
   }
 
   .mentor__image-col {
@@ -4273,140 +4276,144 @@ input[type="date"] *,
   }
 
   .mentor__image-col img {
-    max-width: 140px !important;
+    max-width: 110px !important;
     height: auto !important;
     border-radius: 50% !important;
   }
 
   .mentor__content-col h3 {
-    font-size: 18px !important;
+    font-size: 16px !important;
     text-align: center !important;
   }
 
   .mentor__content-col .mentor__tag {
     text-align: center !important;
-    margin: 4px auto 12px !important;
+    margin: 3px auto 10px !important;
     display: block !important;
     width: fit-content !important;
+    font-size: 11px !important;
+    padding: 3px 8px !important;
   }
 
   .mentor__bio {
-    font-size: 13px !important;
-    line-height: 1.55 !important;
+    font-size: 12px !important;
+    line-height: 1.45 !important;
   }
 
   .mentor__bullet-list {
-    margin-top: 12px !important;
-    gap: 8px !important;
+    margin-top: 10px !important;
+    gap: 6px !important;
   }
 
   .mentor__bullet-list li {
-    font-size: 12.5px !important;
+    font-size: 11.5px !important;
   }
 
   /* Payment pricing cards */
   .payment-card {
-    padding: 20px 16px !important;
+    padding: 16px 12px !important;
     border-radius: var(--radius-m) !important;
-    gap: 16px !important;
-  }
-
-  .payment-card__content {
     gap: 12px !important;
   }
 
+  .payment-card__content {
+    gap: 10px !important;
+  }
+
   .payment-card__heading h2 {
-    font-size: 22px !important;
-    margin-bottom: 8px !important;
+    font-size: 18px !important;
+    margin-bottom: 6px !important;
   }
 
   .payment-card__heading p {
-    font-size: 13px !important;
+    font-size: 12px !important;
   }
 
   .payment-card__price-row {
-    gap: 8px !important;
-    margin: 8px 0 !important;
+    gap: 6px !important;
+    margin: 6px 0 !important;
   }
 
   .payment-card__price-box {
-    padding: 12px 16px !important;
-    border-radius: var(--radius-s) !important;
-  }
-
-  .payment-card__price {
-    font-size: 32px !important;
-  }
-
-  .payment-card__price-label {
-    font-size: 11px !important;
-  }
-
-  .payment-card__installment-box {
     padding: 10px 14px !important;
     border-radius: var(--radius-s) !important;
   }
 
+  .payment-card__price {
+    font-size: 26px !important;
+  }
+
+  .payment-card__price-label {
+    font-size: 10.5px !important;
+  }
+
+  .payment-card__installment-box {
+    padding: 8px 12px !important;
+    border-radius: var(--radius-s) !important;
+  }
+
   .payment-card__installment-title {
-    font-size: 12px !important;
+    font-size: 11.5px !important;
   }
 
   .payment-card__installment-desc {
-    font-size: 11px !important;
+    font-size: 10.5px !important;
   }
 
   .payment-card__list {
-    gap: 8px !important;
+    gap: 6px !important;
   }
 
   .payment-card__list li {
-    font-size: 12.5px !important;
+    font-size: 11.5px !important;
+    line-height: 1.4 !important;
   }
 
   .payment-card__pill {
-    font-size: 10px !important;
-    padding: 3px 8px !important;
+    font-size: 9.5px !important;
+    padding: 2px 6px !important;
   }
 
   .payment-card__policy-text {
-    font-size: 11px !important;
+    font-size: 10.5px !important;
   }
 
   /* Workflow & process steps */
   .workflow-grid {
     grid-template-columns: 1fr !important;
-    gap: 12px !important;
-    margin-top: 24px !important;
-    margin-bottom: 20px !important;
+    gap: 10px !important;
+    margin-top: 16px !important;
+    margin-bottom: 16px !important;
   }
 
   .workflow-card {
-    padding: 16px 14px !important;
+    padding: 12px 10px !important;
     border-radius: var(--radius-s) !important;
   }
 
   .workflow-card__number {
-    font-size: 13px !important;
-    margin-bottom: 8px !important;
-  }
-
-  .workflow-card__title {
-    font-size: 16px !important;
+    font-size: 11.5px !important;
     margin-bottom: 6px !important;
   }
 
+  .workflow-card__title {
+    font-size: 14px !important;
+    margin-bottom: 4px !important;
+  }
+
   .workflow-card__description {
-    font-size: 12.5px !important;
+    font-size: 12px !important;
+    line-height: 1.4 !important;
   }
 
   .workflow-footer {
-    font-size: 13px !important;
-    margin-top: 20px !important;
+    font-size: 12px !important;
+    margin-top: 14px !important;
   }
 
   /* Curriculum accordions (Horizontal stage) */
   .stage-list {
-    gap: 8px !important;
+    gap: 6px !important;
   }
 
   .stage {
@@ -4417,118 +4424,145 @@ input[type="date"] *,
     flex-direction: row !important;
     align-items: center !important;
     text-align: left !important;
-    gap: 12px !important;
-    padding: 12px 14px !important;
+    gap: 10px !important;
+    padding: 10px 12px !important;
     border-bottom: none !important;
   }
 
   .stage[data-open="true"] .stage__head {
     border-bottom: 1px dashed rgba(169, 70, 101, 0.15) !important;
-    padding: 12px 14px 8px !important;
+    padding: 10px 12px 6px !important;
   }
 
   .stage__num {
-    font-size: 24px !important;
+    font-size: 18px !important;
   }
 
   .stage[data-open="true"] .stage__num {
-    font-size: 26px !important;
+    font-size: 20px !important;
   }
 
   .stage__title {
-    font-size: 13.5px !important;
+    font-size: 12px !important;
   }
 
   .stage[data-open="true"] .stage__title {
-    font-size: 14px !important;
+    font-size: 12.5px !important;
   }
 
   .stage__close {
-    top: 10px !important;
-    right: 12px !important;
-    width: 24px !important;
-    height: 24px !important;
-    font-size: 20px !important;
+    top: 8px !important;
+    right: 10px !important;
+    width: 22px !important;
+    height: 22px !important;
+    font-size: 18px !important;
   }
 
   .stage__body {
     max-height: 0 !important;
-    padding: 0 14px !important;
+    padding: 0 12px !important;
     overflow: hidden !important;
   }
 
   .stage[data-open="true"] .stage__body {
     max-height: 350px !important;
-    padding: 10px 14px 12px !important;
+    padding: 8px 12px 10px !important;
   }
 
   .stage__body p {
-    font-size: 12.5px !important;
-    line-height: 1.5 !important;
+    font-size: 11.5px !important;
+    line-height: 1.4 !important;
   }
 
-  /* Reviews / Testimonials */
+  /* Reviews / Testimonials Swipe Carousel */
   .reviews__marquee {
-    overflow: hidden !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 10px 16px 20px !important;
     width: 100% !important;
     box-sizing: border-box !important;
-    padding: 0 16px !important;
   }
 
   .reviews__track {
-    width: 100% !important;
-    box-sizing: border-box !important;
-    display: block !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
     animation: none !important;
+    width: max-content !important;
+    gap: 12px !important;
+    box-sizing: border-box !important;
   }
 
   .review-card {
-    width: auto !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-    padding: 16px 14px !important;
+    flex: 0 0 250px !important;
+    width: 250px !important;
+    max-width: 250px !important;
+    scroll-snap-align: start !important;
+    padding: 12px 10px !important;
     border-radius: var(--radius-s) !important;
-    margin-bottom: 12px !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
     display: block !important;
   }
 
   .review-card blockquote {
     white-space: normal !important;
     word-break: break-word !important;
-    font-size: 12.5px !important;
-    line-height: 1.5 !important;
+    font-size: 11.5px !important;
+    line-height: 1.4 !important;
     margin: 0 !important;
   }
 
-  /* Proof Gallery / WhatsApp Chats */
+  .review-card__who strong {
+    font-size: 11.5px !important;
+  }
+
+  .review-card__who span {
+    font-size: 9.5px !important;
+  }
+
+  .avatar {
+    width: 26px !important;
+    height: 26px !important;
+    font-size: 10.5px !important;
+  }
+
+  /* Proof Gallery / WhatsApp Chats Swipe Carousel */
   .filter-tabs {
-    gap: 6px !important;
+    gap: 4px !important;
     overflow-x: auto !important;
-    padding-bottom: 6px !important;
+    padding-bottom: 4px !important;
     justify-content: flex-start !important;
     -webkit-overflow-scrolling: touch !important;
   }
 
   .filter-tab {
-    padding: 6px 12px !important;
-    font-size: 11.5px !important;
+    padding: 4px 10px !important;
+    font-size: 11px !important;
     white-space: nowrap !important;
   }
 
   .proof-3d-carousel-wrapper {
-    margin: 20px auto 10px !important;
+    margin: 16px auto 10px !important;
     min-height: auto !important;
     display: block !important;
     perspective: none !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .proof-3d-stage {
-    display: grid !important;
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 10px !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory !important;
+    -webkit-overflow-scrolling: touch !important;
+    gap: 12px !important;
     height: auto !important;
     perspective: none !important;
-    overflow: hidden !important;
+    padding: 10px 16px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .proof-3d-stage .proof-card,
@@ -4538,38 +4572,41 @@ input[type="date"] *,
   .card-portrait-medium,
   .card-portrait-tall {
     position: static !important;
+    flex: 0 0 210px !important;
+    width: 210px !important;
+    max-width: 210px !important;
+    scroll-snap-align: start !important;
     transform: none !important;
     opacity: 1 !important;
     pointer-events: auto !important;
-    padding: 10px !important;
+    padding: 8px !important;
     border-radius: var(--radius-s) !important;
-    width: 100% !important;
-    max-width: 100% !important;
     box-sizing: border-box !important;
-    box-shadow: none !important;
+    box-shadow: var(--shadow-card) !important;
   }
 
   .proof-card__text {
-    font-size: 11px !important;
-    line-height: 1.4 !important;
-    margin-bottom: 6px !important;
+    font-size: 10px !important;
+    line-height: 1.35 !important;
+    margin-bottom: 4px !important;
   }
 
   .proof-card__meta {
-    font-size: 10px !important;
+    font-size: 9.5px !important;
   }
 
   /* Counselling Form Overrides */
   .counselling__card {
-    padding: 16px 12px !important;
+    padding: 12px 10px !important;
     border-radius: var(--radius-m) !important;
-    gap: 20px !important;
+    gap: 14px !important;
+    margin: 12px 0 !important;
   }
 
   .counselling__form {
-    padding: 16px 12px !important;
+    padding: 12px 10px !important;
     border-radius: var(--radius-s) !important;
-    gap: 12px !important;
+    gap: 10px !important;
     width: 100% !important;
     box-sizing: border-box !important;
   }
@@ -4579,19 +4616,9 @@ input[type="date"] *,
     box-sizing: border-box !important;
   }
 
-  .phone-input-group {
-    width: 100% !important;
-    box-sizing: border-box !important;
-  }
-
-  #phone {
-    width: 100% !important;
-    box-sizing: border-box !important;
-  }
-
   /* FAQ */
   .faq-list {
-    gap: 8px !important;
+    gap: 6px !important;
   }
 
   .faq-item {
@@ -4599,29 +4626,29 @@ input[type="date"] *,
   }
 
   .faq-question {
-    padding: 12px 14px !important;
-    font-size: 13.5px !important;
+    padding: 10px 12px !important;
+    font-size: 12.5px !important;
   }
 
   .faq-answer {
-    padding: 0 14px 12px !important;
-    font-size: 12.5px !important;
-    line-height: 1.5 !important;
+    padding: 0 12px 10px !important;
+    font-size: 11.5px !important;
+    line-height: 1.4 !important;
   }
 
   /* Final CTA */
   .final-cta {
-    padding: 36px 0 !important;
+    padding: 24px 0 !important;
   }
 
   .final-cta__actions {
-    gap: 10px !important;
+    gap: 8px !important;
   }
 
   /* Footer */
   .footer__grid {
     grid-template-columns: repeat(2, 1fr) !important;
-    gap: 20px 12px !important;
+    gap: 16px 10px !important;
   }
 
   .footer__col--brand {
@@ -4629,18 +4656,18 @@ input[type="date"] *,
   }
 
   .footer__col h3 {
-    font-size: 13px !important;
-    margin-bottom: 10px !important;
+    font-size: 12.5px !important;
+    margin-bottom: 8px !important;
   }
 
   .footer__col a {
-    font-size: 12px !important;
-    margin-bottom: 6px !important;
+    font-size: 11.5px !important;
+    margin-bottom: 4px !important;
   }
 
   .footer__disclaimer {
-    font-size: 10.5px !important;
-    margin-top: 24px !important;
+    font-size: 10px !important;
+    margin-top: 16px !important;
   }
 
   /* Entry Lead Modal */
@@ -4654,32 +4681,32 @@ input[type="date"] *,
   }
 
   .modal-panel {
-    padding: 20px 16px !important;
+    padding: 16px 12px !important;
     margin: 0 auto !important;
-    width: calc(100% - 32px) !important;
-    max-width: 340px !important;
+    width: calc(100% - 24px) !important;
+    max-width: 290px !important;
     border-radius: var(--radius-m) !important;
     box-sizing: border-box !important;
   }
 
   .modal-header h2 {
-    font-size: 20px !important;
-    margin-bottom: 6px !important;
+    font-size: 18px !important;
+    margin-bottom: 4px !important;
   }
 
   .modal-header p {
-    font-size: 11.5px !important;
-    line-height: 1.45 !important;
-    margin-bottom: 12px !important;
-  }
-
-  .modal-form .field {
+    font-size: 10.5px !important;
+    line-height: 1.4 !important;
     margin-bottom: 10px !important;
   }
 
+  .modal-form .field {
+    margin-bottom: 8px !important;
+  }
+
   .modal-form label {
-    font-size: 11px !important;
-    margin-bottom: 3px !important;
+    font-size: 10px !important;
+    margin-bottom: 2px !important;
     letter-spacing: 0.05em !important;
   }
 
@@ -4688,34 +4715,37 @@ input[type="date"] *,
   .modal-form input[type="tel"],
   .select-trigger,
   .country-code-trigger {
-    height: 38px !important;
-    padding: 6px 10px !important;
-    font-size: 12px !important;
-    border-width: 1.5px !important;
+    height: 36px !important;
+    padding: 5px 8px !important;
+    font-size: 11.5px !important;
+    border-width: 1px !important;
   }
 
   .modal-form button[type="submit"] {
-    height: 38px !important;
+    height: 36px !important;
     padding: 0 !important;
-    font-size: 13px !important;
+    font-size: 12.5px !important;
     width: 100% !important;
   }
 
   .select-options {
-    max-height: 180px !important;
+    max-height: 150px !important;
+    overflow-y: auto !important;
   }
 
   .select-option {
-    padding: 8px 12px !important;
-    font-size: 12px !important;
+    padding: 6px 10px !important;
+    font-size: 11.5px !important;
   }
 
   .country-code-dropdown {
-    width: 220px !important;
+    width: 200px !important;
+    max-height: 160px !important;
+    overflow-y: auto !important;
   }
 
   .country-option {
-    padding: 6px 8px !important;
-    font-size: 12px !important;
+    padding: 5px 6px !important;
+    font-size: 11.5px !important;
   }
 }
