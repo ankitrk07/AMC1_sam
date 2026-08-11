@@ -987,6 +987,16 @@ mark.purple-mark {
   }
 }
 
+@keyframes proof-scroll {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
 .review-card {
   width: 300px;
   flex: 0 0 300px;
@@ -4474,12 +4484,10 @@ input[type="date"] *,
     line-height: 1.4 !important;
   }
 
-  /* Reviews / Testimonials Swipe Carousel */
+  /* Reviews / Testimonials — Infinite Auto-Scroll Marquee */
   .reviews__marquee {
-    overflow-x: auto !important;
-    scroll-snap-type: x mandatory !important;
-    -webkit-overflow-scrolling: touch !important;
-    padding: 10px 16px 20px !important;
+    overflow: hidden !important;
+    padding: 10px 0 16px !important;
     width: 100% !important;
     box-sizing: border-box !important;
   }
@@ -4487,17 +4495,20 @@ input[type="date"] *,
   .reviews__track {
     display: flex !important;
     flex-wrap: nowrap !important;
-    animation: none !important;
     width: max-content !important;
     gap: 12px !important;
     box-sizing: border-box !important;
+    animation: reviews-scroll 20s linear infinite !important;
+  }
+
+  .reviews__marquee:active .reviews__track {
+    animation-play-state: paused !important;
   }
 
   .review-card {
-    flex: 0 0 250px !important;
-    width: 250px !important;
-    max-width: 250px !important;
-    scroll-snap-align: start !important;
+    flex: 0 0 240px !important;
+    width: 240px !important;
+    max-width: 240px !important;
     padding: 12px 10px !important;
     border-radius: var(--radius-s) !important;
     margin: 0 !important;
@@ -4549,20 +4560,23 @@ input[type="date"] *,
     perspective: none !important;
     width: 100% !important;
     box-sizing: border-box !important;
+    overflow: hidden !important;
   }
 
   .proof-3d-stage {
     display: flex !important;
     flex-wrap: nowrap !important;
-    overflow-x: auto !important;
-    scroll-snap-type: x mandatory !important;
-    -webkit-overflow-scrolling: touch !important;
     gap: 12px !important;
     height: auto !important;
     perspective: none !important;
-    padding: 10px 16px !important;
-    width: 100% !important;
+    padding: 10px 0 !important;
+    width: max-content !important;
     box-sizing: border-box !important;
+    animation: proof-scroll 25s linear infinite !important;
+  }
+
+  .proof-3d-carousel-wrapper:active .proof-3d-stage {
+    animation-play-state: paused !important;
   }
 
   .proof-3d-stage .proof-card,
@@ -4572,10 +4586,9 @@ input[type="date"] *,
   .card-portrait-medium,
   .card-portrait-tall {
     position: static !important;
-    flex: 0 0 210px !important;
-    width: 210px !important;
-    max-width: 210px !important;
-    scroll-snap-align: start !important;
+    flex: 0 0 200px !important;
+    width: 200px !important;
+    max-width: 200px !important;
     transform: none !important;
     opacity: 1 !important;
     pointer-events: auto !important;
@@ -4681,10 +4694,10 @@ input[type="date"] *,
   }
 
   .modal-panel {
-    padding: 16px 12px !important;
+    padding: 20px 16px !important;
     margin: 0 auto !important;
-    width: calc(100% - 24px) !important;
-    max-width: 290px !important;
+    width: calc(100% - 16px) !important;
+    max-width: 360px !important;
     border-radius: var(--radius-m) !important;
     box-sizing: border-box !important;
   }

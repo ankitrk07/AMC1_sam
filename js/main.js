@@ -1896,156 +1896,170 @@ var lightboxCaption = document.getElementById('lightboxCaption');
 var closeLightboxBtn = document.getElementById('closeLightboxBtn');
 
 if (proofStage) {
-  var cards = Array.from(proofStage.querySelectorAll('.proof-card'));
-  var currentIndex = 0;
-  var totalCards = cards.length;
-  var autoPlayTimer = null;
+  var isMobileProof = window.matchMedia('(max-width: 600px)').matches;
 
-  function update3DCarousel() {
-    if (totalCards === 0) return;
-    cards.forEach(function (card, idx) {
-      card.classList.remove('pos-center', 'pos-prev-1', 'pos-prev-2', 'pos-next-1', 'pos-next-2', 'pos-hidden');
-
-      var diff = (idx - currentIndex + totalCards) % totalCards;
-      if (diff > totalCards / 2) {
-        diff -= totalCards;
-      }
-
-      if (diff === 0) {
-        card.classList.add('pos-center');
-      } else if (diff === 1) {
-        card.classList.add('pos-next-1');
-      } else if (diff === 2) {
-        card.classList.add('pos-next-2');
-      } else if (diff === -1) {
-        card.classList.add('pos-prev-1');
-      } else if (diff === -2) {
-        card.classList.add('pos-prev-2');
-      } else {
-        card.classList.add('pos-hidden');
-      }
+  if (isMobileProof) {
+    // ---- MOBILE: Infinite CSS marquee (duplicate cards for seamless loop) ----
+    var origCards = Array.from(proofStage.querySelectorAll('.proof-card'));
+    origCards.forEach(function (card) {
+      var clone = card.cloneNode(true);
+      clone.setAttribute('aria-hidden', 'true');
+      clone.removeAttribute('data-index');
+      proofStage.appendChild(clone);
     });
-  }
+  } else {
+    // ---- DESKTOP: 3D Rotary Cover-Flow Carousel ----
+    var cards = Array.from(proofStage.querySelectorAll('.proof-card'));
+    var currentIndex = 0;
+    var totalCards = cards.length;
+    var autoPlayTimer = null;
 
-  function next3DCard() {
-    currentIndex = (currentIndex + 1) % totalCards;
-    update3DCarousel();
-  }
+    function update3DCarousel() {
+      if (totalCards === 0) return;
+      cards.forEach(function (card, idx) {
+        card.classList.remove('pos-center', 'pos-prev-1', 'pos-prev-2', 'pos-next-1', 'pos-next-2', 'pos-hidden');
 
-  function prev3DCard() {
-    currentIndex = (currentIndex - 1 + totalCards) % totalCards;
-    update3DCarousel();
-  }
+        var diff = (idx - currentIndex + totalCards) % totalCards;
+        if (diff > totalCards / 2) {
+          diff -= totalCards;
+        }
 
-  function startAutoPlay() {
-    stopAutoPlay();
-    autoPlayTimer = setInterval(next3DCard, 1600);
-  }
-
-  function stopAutoPlay() {
-    if (autoPlayTimer) clearInterval(autoPlayTimer);
-  }
-
-  // CLICK HANDLER FOR STAGE CARDS
-  proofStage.addEventListener('click', function (e) {
-    var card = e.target.closest('.proof-card');
-    if (!card) return;
-    var cardIdx = parseInt(card.getAttribute('data-index'), 10);
-
-    if (cardIdx === currentIndex) {
-      // Active center card clicked -> Open Lightbox zoom modal
-      var imgSrc = card.getAttribute('data-img');
-      var title = card.getAttribute('data-title') || '';
-      if (imgSrc && lightboxModal && lightboxImg) {
-        lightboxImg.src = imgSrc;
-        if (lightboxCaption) lightboxCaption.textContent = title;
-        lightboxModal.classList.add('is-active');
-      }
-    } else {
-      // Non-active card clicked -> Rotate into center focus
-      currentIndex = cardIdx;
-      update3DCarousel();
-      startAutoPlay();
+        if (diff === 0) {
+          card.classList.add('pos-center');
+        } else if (diff === 1) {
+          card.classList.add('pos-next-1');
+        } else if (diff === 2) {
+          card.classList.add('pos-next-2');
+        } else if (diff === -1) {
+          card.classList.add('pos-prev-1');
+        } else if (diff === -2) {
+          card.classList.add('pos-prev-2');
+        } else {
+          card.classList.add('pos-hidden');
+        }
+      });
     }
-  });
 
-  // CLOSE LIGHTBOX HANDLERS
-  if (closeLightboxBtn && lightboxModal) {
-    closeLightboxBtn.addEventListener('click', function () {
-      lightboxModal.classList.remove('is-active');
+    function next3DCard() {
+      currentIndex = (currentIndex + 1) % totalCards;
+      update3DCarousel();
+    }
+
+    function prev3DCard() {
+      currentIndex = (currentIndex - 1 + totalCards) % totalCards;
+      update3DCarousel();
+    }
+
+    function startAutoPlay() {
+      stopAutoPlay();
+      autoPlayTimer = setInterval(next3DCard, 1600);
+    }
+
+    function stopAutoPlay() {
+      if (autoPlayTimer) clearInterval(autoPlayTimer);
+    }
+
+    // CLICK HANDLER FOR STAGE CARDS
+    proofStage.addEventListener('click', function (e) {
+      var card = e.target.closest('.proof-card');
+      if (!card) return;
+      var cardIdx = parseInt(card.getAttribute('data-index'), 10);
+
+      if (cardIdx === currentIndex) {
+        // Active center card clicked -> Open Lightbox zoom modal
+        var imgSrc = card.getAttribute('data-img');
+        var title = card.getAttribute('data-title') || '';
+        if (imgSrc && lightboxModal && lightboxImg) {
+          lightboxImg.src = imgSrc;
+          if (lightboxCaption) lightboxCaption.textContent = title;
+          lightboxModal.classList.add('is-active');
+        }
+      } else {
+        // Non-active card clicked -> Rotate into center focus
+        currentIndex = cardIdx;
+        update3DCarousel();
+        startAutoPlay();
+      }
     });
-  }
 
-  if (lightboxModal) {
-    lightboxModal.addEventListener('click', function (e) {
-      if (e.target === lightboxModal) {
+    // CLOSE LIGHTBOX HANDLERS
+    if (closeLightboxBtn && lightboxModal) {
+      closeLightboxBtn.addEventListener('click', function () {
+        lightboxModal.classList.remove('is-active');
+      });
+    }
+
+    if (lightboxModal) {
+      lightboxModal.addEventListener('click', function (e) {
+        if (e.target === lightboxModal) {
+          lightboxModal.classList.remove('is-active');
+        }
+      });
+    }
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && lightboxModal && lightboxModal.classList.contains('is-active')) {
         lightboxModal.classList.remove('is-active');
       }
     });
-  }
 
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && lightboxModal && lightboxModal.classList.contains('is-active')) {
-      lightboxModal.classList.remove('is-active');
-    }
-  });
-
-  if (scrollLeftBtn) {
-    scrollLeftBtn.addEventListener('click', function () {
-      prev3DCard();
-      startAutoPlay();
-    });
-  }
-
-  if (scrollRightBtn) {
-    scrollRightBtn.addEventListener('click', function () {
-      next3DCard();
-      startAutoPlay();
-    });
-  }
-
-  // CATEGORY FILTER TABS FOR PROOF GALLERY
-  var proofFilters = document.getElementById('proofFilters');
-  if (proofFilters) {
-    proofFilters.addEventListener('click', function (e) {
-      var filterBtn = e.target.closest('.proof-filter-btn');
-      if (!filterBtn) return;
-
-      var filterValue = filterBtn.getAttribute('data-filter');
-      proofFilters.querySelectorAll('.proof-filter-btn').forEach(function (btn) {
-        btn.classList.remove('active');
+    if (scrollLeftBtn) {
+      scrollLeftBtn.addEventListener('click', function () {
+        prev3DCard();
+        startAutoPlay();
       });
-      filterBtn.classList.add('active');
-
-      // Filter cards and reset 3D carousel focus
-      cards.forEach(function (card) {
-        var cardCat = card.getAttribute('data-category');
-        if (filterValue === 'all' || cardCat === filterValue || cardCat === 'all') {
-          card.style.display = 'block';
-        } else {
-          card.style.display = 'none';
-        }
-      });
-    });
-  }
-
-  // PAUSE AUTOPLAY ONLY WHEN CURSOR IS DIRECTLY ON THE CENTER SCREENSHOT
-  proofStage.addEventListener('mouseover', function (e) {
-    var centerCard = e.target.closest('.proof-card.pos-center');
-    if (centerCard) {
-      stopAutoPlay();
-    } else {
-      startAutoPlay();
     }
-  });
 
-  proofStage.addEventListener('mouseleave', function () {
+    if (scrollRightBtn) {
+      scrollRightBtn.addEventListener('click', function () {
+        next3DCard();
+        startAutoPlay();
+      });
+    }
+
+    // CATEGORY FILTER TABS FOR PROOF GALLERY
+    var proofFilters = document.getElementById('proofFilters');
+    if (proofFilters) {
+      proofFilters.addEventListener('click', function (e) {
+        var filterBtn = e.target.closest('.proof-filter-btn');
+        if (!filterBtn) return;
+
+        var filterValue = filterBtn.getAttribute('data-filter');
+        proofFilters.querySelectorAll('.proof-filter-btn').forEach(function (btn) {
+          btn.classList.remove('active');
+        });
+        filterBtn.classList.add('active');
+
+        // Filter cards and reset 3D carousel focus
+        cards.forEach(function (card) {
+          var cardCat = card.getAttribute('data-category');
+          if (filterValue === 'all' || cardCat === filterValue || cardCat === 'all') {
+            card.style.display = 'block';
+          } else {
+            card.style.display = 'none';
+          }
+        });
+      });
+    }
+
+    // PAUSE AUTOPLAY ONLY WHEN CURSOR IS DIRECTLY ON THE CENTER SCREENSHOT
+    proofStage.addEventListener('mouseover', function (e) {
+      var centerCard = e.target.closest('.proof-card.pos-center');
+      if (centerCard) {
+        stopAutoPlay();
+      } else {
+        startAutoPlay();
+      }
+    });
+
+    proofStage.addEventListener('mouseleave', function () {
+      startAutoPlay();
+    });
+
+    // INITIAL RENDER & START AUTOPLAY
+    update3DCarousel();
     startAutoPlay();
-  });
-
-  // INITIAL RENDER & START AUTOPLAY
-  update3DCarousel();
-  startAutoPlay();
+  }
 }
 
 // --- SEARCHABLE COUNTRY CODE PICKERS ---
