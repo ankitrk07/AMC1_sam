@@ -4469,6 +4469,200 @@ input[type="date"] *,
   }
 
   .stage__body {
+  .mentor__grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .mentor__image-col {
+    display: flex !important;
+    justify-content: center !important;
+  }
+
+  .mentor__image-col img {
+    max-width: 110px !important;
+    height: auto !important;
+    border-radius: 50% !important;
+  }
+
+  .mentor__content-col h3 {
+    font-size: 16px !important;
+    text-align: center !important;
+  }
+
+  .mentor__content-col .mentor__tag {
+    text-align: center !important;
+    margin: 3px auto 10px !important;
+    display: block !important;
+    width: fit-content !important;
+    font-size: 11px !important;
+    padding: 3px 8px !important;
+  }
+
+  .mentor__bio {
+    font-size: 12px !important;
+    line-height: 1.45 !important;
+  }
+
+  .mentor__bullet-list {
+    margin-top: 10px !important;
+    gap: 6px !important;
+  }
+
+  .mentor__bullet-list li {
+    font-size: 11.5px !important;
+  }
+
+  /* Payment pricing cards */
+  .payment-card {
+    padding: 16px 12px !important;
+    border-radius: var(--radius-m) !important;
+    gap: 12px !important;
+  }
+
+  .payment-card__content {
+    gap: 10px !important;
+  }
+
+  .payment-card__heading h2 {
+    font-size: 18px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .payment-card__heading p {
+    font-size: 12px !important;
+  }
+
+  .payment-card__price-row {
+    gap: 6px !important;
+    margin: 6px 0 !important;
+  }
+
+  .payment-card__price-box {
+    padding: 10px 14px !important;
+    border-radius: var(--radius-s) !important;
+  }
+
+  .payment-card__price {
+    font-size: 26px !important;
+  }
+
+  .payment-card__price-label {
+    font-size: 10.5px !important;
+  }
+
+  .payment-card__installment-box {
+    padding: 8px 12px !important;
+    border-radius: var(--radius-s) !important;
+  }
+
+  .payment-card__installment-title {
+    font-size: 11.5px !important;
+  }
+
+  .payment-card__installment-desc {
+    font-size: 10.5px !important;
+  }
+
+  .payment-card__list {
+    gap: 6px !important;
+  }
+
+  .payment-card__list li {
+    font-size: 11.5px !important;
+    line-height: 1.4 !important;
+  }
+
+  .payment-card__pill {
+    font-size: 9.5px !important;
+    padding: 2px 6px !important;
+  }
+
+  .payment-card__policy-text {
+    font-size: 10.5px !important;
+  }
+
+  /* Workflow & process steps */
+  .workflow-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    margin-top: 16px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .workflow-card {
+    padding: 12px 10px !important;
+    border-radius: var(--radius-s) !important;
+  }
+
+  .workflow-card__number {
+    font-size: 11.5px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .workflow-card__title {
+    font-size: 14px !important;
+    margin-bottom: 4px !important;
+  }
+
+  .workflow-card__description {
+    font-size: 12px !important;
+    line-height: 1.4 !important;
+  }
+
+  .workflow-footer {
+    font-size: 12px !important;
+    margin-top: 14px !important;
+  }
+
+  /* Curriculum accordions (Horizontal stage) */
+  .stage-list {
+    gap: 6px !important;
+  }
+
+  .stage {
+    border-radius: var(--radius-s) !important;
+  }
+
+  .stage__head {
+    flex-direction: row !important;
+    align-items: center !important;
+    text-align: left !important;
+    gap: 10px !important;
+    padding: 10px 12px !important;
+    border-bottom: none !important;
+  }
+
+  .stage[data-open="true"] .stage__head {
+    border-bottom: 1px dashed rgba(169, 70, 101, 0.15) !important;
+    padding: 10px 12px 6px !important;
+  }
+
+  .stage__num {
+    font-size: 18px !important;
+  }
+
+  .stage[data-open="true"] .stage__num {
+    font-size: 20px !important;
+  }
+
+  .stage__title {
+    font-size: 12px !important;
+  }
+
+  .stage[data-open="true"] .stage__title {
+    font-size: 12.5px !important;
+  }
+
+  .stage__close {
+    top: 8px !important;
+    right: 10px !important;
+    width: 22px !important;
+    height: 22px !important;
+    font-size: 18px !important;
+  }
+
+  .stage__body {
     max-height: 0 !important;
     padding: 0 12px !important;
     overflow: hidden !important;
@@ -4484,10 +4678,12 @@ input[type="date"] *,
     line-height: 1.4 !important;
   }
 
-  /* Reviews / Testimonials — Infinite Auto-Scroll Marquee */
+  /* Reviews / Testimonials — Horizontal Carousel & Auto Marquee */
   .reviews__marquee {
-    overflow: hidden !important;
-    padding: 10px 0 16px !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 10px 16px 20px !important;
     width: 100% !important;
     box-sizing: border-box !important;
   }
@@ -4498,17 +4694,14 @@ input[type="date"] *,
     width: max-content !important;
     gap: 12px !important;
     box-sizing: border-box !important;
-    animation: reviews-scroll 20s linear infinite !important;
-  }
-
-  .reviews__marquee:active .reviews__track {
-    animation-play-state: paused !important;
+    animation: reviews-scroll 25s linear infinite !important;
   }
 
   .review-card {
     flex: 0 0 240px !important;
     width: 240px !important;
     max-width: 240px !important;
+    scroll-snap-align: start !important;
     padding: 12px 10px !important;
     border-radius: var(--radius-s) !important;
     margin: 0 !important;
@@ -4560,7 +4753,8 @@ input[type="date"] *,
     perspective: none !important;
     width: 100% !important;
     box-sizing: border-box !important;
-    overflow: hidden !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
   }
 
   .proof-3d-stage {
@@ -4569,14 +4763,10 @@ input[type="date"] *,
     gap: 12px !important;
     height: auto !important;
     perspective: none !important;
-    padding: 10px 0 !important;
+    padding: 10px 16px !important;
     width: max-content !important;
     box-sizing: border-box !important;
     animation: proof-scroll 25s linear infinite !important;
-  }
-
-  .proof-3d-carousel-wrapper:active .proof-3d-stage {
-    animation-play-state: paused !important;
   }
 
   .proof-3d-stage .proof-card,
@@ -4742,8 +4932,8 @@ input[type="date"] *,
   }
 
   .select-options {
-    max-height: 150px !important;
-    overflow-y: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
 
   .select-option {
@@ -4761,4 +4951,3 @@ input[type="date"] *,
     padding: 5px 6px !important;
     font-size: 11.5px !important;
   }
-}
