@@ -987,6 +987,16 @@ mark.purple-mark {
   }
 }
 
+@keyframes proof-scroll {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
 .review-card {
   width: 300px;
   flex: 0 0 300px;
@@ -1051,19 +1061,22 @@ mark.purple-mark {
 }
 
 @media (max-width: 720px) {
+  .reviews__marquee {
+    overflow: hidden;
+  }
+
   .reviews__track {
-    animation: none;
-    flex-direction: column;
-    width: 100%;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    width: max-content;
+    gap: 12px;
+    animation: reviews-scroll 20s linear infinite;
   }
 
   .review-card {
-    width: 100%;
-    flex: 1 1 auto;
-  }
-
-  .reviews__marquee {
-    overflow: visible;
+    width: 260px;
+    flex: 0 0 260px;
   }
 }
 
@@ -4474,13 +4487,10 @@ input[type="date"] *,
     line-height: 1.4 !important;
   }
 
-  /* ===== REVIEWS — HORIZONTAL SWIPE CAROUSEL ===== */
+  /* ===== REVIEWS — HORIZONTAL AUTO-SCROLL MARQUEE ===== */
   .reviews__marquee {
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    scroll-snap-type: x mandatory !important;
-    -webkit-overflow-scrolling: touch !important;
-    padding: 10px 12px 16px !important;
+    overflow: hidden !important;
+    padding: 10px 0 16px !important;
     width: 100% !important;
     box-sizing: border-box !important;
   }
@@ -4488,10 +4498,15 @@ input[type="date"] *,
   .reviews__track {
     display: flex !important;
     flex-wrap: nowrap !important;
-    animation: none !important;
     width: max-content !important;
     gap: 12px !important;
     box-sizing: border-box !important;
+    animation: reviews-scroll 20s linear infinite !important;
+  }
+
+  .reviews__marquee:hover .reviews__track,
+  .reviews__marquee:active .reviews__track {
+    animation-play-state: paused !important;
   }
 
   .review-card {
@@ -4547,6 +4562,7 @@ input[type="date"] *,
     display: none !important;
   }
 
+  /* ===== PROOF GALLERY — HORIZONTAL AUTO-SCROLL MARQUEE ===== */
   .proof-3d-carousel-wrapper {
     margin: 12px auto 10px !important;
     min-height: auto !important;
@@ -4554,23 +4570,24 @@ input[type="date"] *,
     perspective: none !important;
     width: 100% !important;
     box-sizing: border-box !important;
-    overflow: visible !important;
+    overflow: hidden !important;
   }
 
   .proof-3d-stage {
     display: flex !important;
     flex-wrap: nowrap !important;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    scroll-snap-type: x mandatory !important;
-    -webkit-overflow-scrolling: touch !important;
     gap: 12px !important;
     height: auto !important;
     perspective: none !important;
-    padding: 10px 12px !important;
-    width: 100% !important;
+    padding: 10px 0 !important;
+    width: max-content !important;
     box-sizing: border-box !important;
-    animation: none !important;
+    animation: proof-scroll 25s linear infinite !important;
+  }
+
+  .proof-3d-carousel-wrapper:hover .proof-3d-stage,
+  .proof-3d-carousel-wrapper:active .proof-3d-stage {
+    animation-play-state: paused !important;
   }
 
   .proof-3d-stage .proof-card,
