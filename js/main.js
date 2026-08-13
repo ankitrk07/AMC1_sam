@@ -231,6 +231,10 @@ document.addEventListener('DOMContentLoaded', function () {
   var selectedCounsellorUrl = '';
   var selectedCounsellorId = 'counsellor1';
   var primaryCounsellorScope = 'both';
+  var resolvedCounsellorNames = {
+    counsellor1: 'starsamir9955',
+    counsellor2: 'Aryan Raj'
+  };
 
   function getBrowserTimezone() {
     try {
@@ -286,6 +290,9 @@ document.addEventListener('DOMContentLoaded', function () {
           if (data.urls) {
             counsellorUrls['counsellor1'] = data.urls.counsellor1 || '';
             counsellorUrls['counsellor2'] = data.urls.counsellor2 || '';
+          }
+          if (data.counsellorNames) {
+            resolvedCounsellorNames = data.counsellorNames;
           }
           fetchedTimeSlots = data.timeSlots || [];
 
@@ -479,8 +486,15 @@ document.addEventListener('DOMContentLoaded', function () {
     fetch(apiUrl)
       .then(function (res) { return res.json(); })
       .then(function (data) {
-        if (data.success && Array.isArray(data.availableDates) && data.availableDates.length > 0) {
-          availableDateSet = new Set(data.availableDates);
+        if (data.success) {
+          if (data.availableDates && Array.isArray(data.availableDates) && data.availableDates.length > 0) {
+            availableDateSet = new Set(data.availableDates);
+          } else {
+            fallbackWeekdayDates();
+          }
+          if (data.counsellorNames) {
+            resolvedCounsellorNames = data.counsellorNames;
+          }
         } else {
           fallbackWeekdayDates();
         }
@@ -1169,6 +1183,14 @@ document.addEventListener('DOMContentLoaded', function () {
       calendlyModal.style.display = 'flex';
       calendlyModal.style.filter = 'none';
       calendlyModal.style.pointerEvents = 'auto';
+      calendlyModal.style.opacity = '1';
+      calendlyModal.style.visibility = 'visible';
+
+      var panel = calendlyModal.querySelector('.calendly-modal-panel');
+      if (panel) {
+        panel.style.opacity = '1';
+        panel.style.transform = 'scale(1)';
+      }
     }
 
     if (calendlyShimmer) calendlyShimmer.style.display = 'flex';
@@ -1273,6 +1295,13 @@ document.addEventListener('DOMContentLoaded', function () {
     if (calendlyModal) {
       calendlyModal.setAttribute('aria-hidden', 'true');
       calendlyModal.style.display = 'none';
+      calendlyModal.style.opacity = '0';
+      calendlyModal.style.visibility = 'hidden';
+      var panel = calendlyModal.querySelector('.calendly-modal-panel');
+      if (panel) {
+        panel.style.opacity = '0';
+        panel.style.transform = 'scale(0.96)';
+      }
     }
     if (lastActiveElement && typeof lastActiveElement.focus === 'function') {
       lastActiveElement.focus();
@@ -1425,7 +1454,9 @@ document.addEventListener('DOMContentLoaded', function () {
       savedLead = JSON.parse(sessionStorage.getItem('amc_lead_user') || localStorage.getItem('amc_lead_user') || '{}');
     } catch (e) { }
 
-    var counsellorName = (selectedCounsellorId === 'counsellor2' || selectedCounsellorId === 'aryan') ? 'Counsellor 2 (Aryan Raj)' : 'Counsellor 1 (starsamir9955)';
+    var c1Name = resolvedCounsellorNames.counsellor1 || 'starsamir9955';
+    var c2Name = resolvedCounsellorNames.counsellor2 || 'Aryan Raj';
+    var counsellorName = (selectedCounsellorId === 'counsellor2' || selectedCounsellorId === 'aryan') ? ('Counsellor 2 (' + c2Name + ')') : ('Counsellor 1 (' + c1Name + ')');
 
     postJson('/api/admin/bookings/intent', {
       name: validation.name,

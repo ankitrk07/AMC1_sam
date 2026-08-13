@@ -193,27 +193,71 @@ async function getCounsellorName(counsellorId) {
     return counsellorId === 'counsellor1' ? 'Counsellor 1' : 'Counsellor 2';
   }
 
+  const userUri = `https://api.calendly.com/users/${userUuid}`;
+
   try {
-    const response = await fetch(`https://api.calendly.com/users/${userUuid}`, {
+    // 1. Try users profile endpoint (might fail due to scope)
+    const response = await fetch(userUri, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     });
 
-    if (!response.ok) {
-      return counsellorId === 'counsellor1' ? 'Counsellor 1' : 'Counsellor 2';
+    if (response.ok) {
+      const data = await response.json();
+      const apiName = (data && data.resource && data.resource.name) ? String(data.resource.name).trim() : '';
+      const apiEmail = (data && data.resource && data.resource.email) ? String(data.resource.email).trim() : '';
+      if (apiName) {
+        counsellorProfileCache[counsellorId] = { name: apiName, email: apiEmail, expiresAt: Date.now() + CACHE_TTL };
+        return apiName;
+      }
     }
-
-    const data = await response.json();
-    const apiName = (data && data.resource && data.resource.name) ? String(data.resource.name).trim() : '';
-    const apiEmail = (data && data.resource && data.resource.email) ? String(data.resource.email).trim() : '';
-    const resolved = apiName || (counsellorId === 'counsellor1' ? 'Counsellor 1' : 'Counsellor 2');
-    counsellorProfileCache[counsellorId] = { name: resolved, email: apiEmail, expiresAt: Date.now() + CACHE_TTL };
-    return resolved;
   } catch (err) {
-    return counsellorId === 'counsellor1' ? 'Counsellor 1' : 'Counsellor 2';
+    console.warn(`[getCounsellorName users/me warning for ${counsellorId}]`, err);
   }
+
+  try {
+    // 2. Fallback to event_types endpoint (requires event_types:read which is present)
+    const url = `https://api.calendly.com/event_types?user=${encodeURIComponent(userUri)}`;
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const collection = data.collection || [];
+      if (collection.length > 0) {
+        const profileName = collection[0].profile ? collection[0].profile.name : '';
+        if (profileName) {
+          const resolvedName = String(profileName).trim();
+          counsellorProfileCache[counsellorId] = { name: resolvedName, email: '', expiresAt: Date.now() + CACHE_TTL };
+          return resolvedName;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn(`[getCounsellorName event_types warning for ${counsellorId}]`, err);
+  }
+
+  // 3. Final fallback to parse from URL if possible
+  const configUrl = counsellorId === 'counsellor1' ? process.env.CALENDLY_URL_1 : process.env.CALENDLY_URL_2;
+  if (configUrl) {
+    try {
+      const parsed = new URL(configUrl);
+      const parts = parsed.pathname.split('/').filter(Boolean);
+      if (parts.length > 0) {
+        const resolvedName = parts[0];
+        counsellorProfileCache[counsellorId] = { name: resolvedName, email: '', expiresAt: Date.now() + CACHE_TTL };
+        return resolvedName;
+      }
+    } catch (e) { }
+  }
+
+  return counsellorId === 'counsellor1' ? 'Counsellor 1' : 'Counsellor 2';
 }
 
 // Helper to decode user_uuid from Calendly Personal Access Token (JWT)
@@ -1469,10 +1513,12 @@ app.get('/api/admin/dashboard', async (req, res) => {
     const liveTz = resolveTimeZone(req.query.tz, process.env.CALENDLY_TIMEZONE || 'Asia/Kolkata');
     const includeAvailability = req.query.includeAvailability !== 'false';
 
-    const [bookings, leads, liveAvailability] = await Promise.all([
+    const [bookings, leads, liveAvailability, c1Name, c2Name] = await Promise.all([
       getUnifiedBookings(true),
       getUnifiedLeads(),
-      includeAvailability ? buildLiveAvailabilitySnapshot(liveTz) : Promise.resolve(null)
+      includeAvailability ? buildLiveAvailabilitySnapshot(liveTz) : Promise.resolve(null),
+      getCounsellorName('counsellor1'),
+      getCounsellorName('counsellor2')
     ]);
 
     const confirmedCount = bookings.filter(b => b.status === 'CONFIRMED' || b.status === 'ACTIVE').length;
@@ -1486,6 +1532,10 @@ app.get('/api/admin/dashboard', async (req, res) => {
       storageMode: prisma ? 'Prisma Postgres + Persistent JSON' : 'Persistent Local Storage (Active)',
       dbConnected: Boolean(prisma),
       calendlyConnected: Boolean(process.env.CALENDLY_API_TOKEN_1 || process.env.CALENDLY_API_TOKEN_2),
+      counsellorNames: {
+        counsellor1: c1Name,
+        counsellor2: c2Name
+      },
       metrics: {
         totalBookings: bookings.length,
         confirmedBookings: confirmedCount,
@@ -1550,8 +1600,12 @@ app.get('/api/calendly/month-availability', async (req, res) => {
 
     const tzName = resolveTimeZone(req.query.tz, process.env.CALENDLY_TIMEZONE || 'Asia/Kolkata');
     const counsellorScope = resolveCounsellorScope(req.query.counsellor);
-    const uris1 = counsellorScope === 'counsellor2' ? [] : await getAllActiveEventUris('counsellor1');
-    const uris2 = counsellorScope === 'counsellor1' ? [] : await getAllActiveEventUris('counsellor2');
+    const [uris1, uris2, c1Name, c2Name] = await Promise.all([
+      counsellorScope === 'counsellor2' ? Promise.resolve([]) : getAllActiveEventUris('counsellor1'),
+      counsellorScope === 'counsellor1' ? Promise.resolve([]) : getAllActiveEventUris('counsellor2'),
+      getCounsellorName('counsellor1'),
+      getCounsellorName('counsellor2')
+    ]);
 
     const now = Date.now();
     const chunks = [
@@ -1611,6 +1665,10 @@ app.get('/api/calendly/month-availability', async (req, res) => {
       availableDates: availableDates,
       c1Dates: c1Map,
       c2Dates: c2Map,
+      counsellorNames: {
+        counsellor1: c1Name,
+        counsellor2: c2Name
+      },
       cached: false
     });
   } catch (error) {

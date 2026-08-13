@@ -1656,8 +1656,8 @@
 
           <select class="filter-select" id="counsellorFilterSelect">
             <option value="ALL">All Counsellors</option>
-            <option value="counsellor1">Counsellor 1 (starsamir9955)</option>
-            <option value="counsellor2">Counsellor 2 (Aryan Raj)</option>
+            <option value="counsellor1" id="counsellor1Option">Counsellor 1 (starsamir9955)</option>
+            <option value="counsellor2" id="counsellor2Option">Counsellor 2 (Aryan Raj)</option>
           </select>
         </div>
       </div>
@@ -1765,7 +1765,7 @@
           <!-- Counsellor 1 Calendar -->
           <div>
             <div class="calendar-counsellor-header">
-              <h4>Counsellor 1 (starsamir9955)</h4>
+              <h4 id="counsellor1Header">Counsellor 1 (starsamir9955)</h4>
               <span class="tab-count" id="c1CalBookingsCount">0 Bookings</span>
             </div>
             <div class="custom-admin-calendar-wrapper">
@@ -1787,7 +1787,7 @@
           <!-- Counsellor 2 Calendar -->
           <div>
             <div class="calendar-counsellor-header">
-              <h4>Counsellor 2 (Aryan Raj)</h4>
+              <h4 id="counsellor2Header">Counsellor 2 (Aryan Raj)</h4>
               <span class="tab-count" id="c2CalBookingsCount">0 Bookings</span>
             </div>
             <div class="custom-admin-calendar-wrapper">
@@ -2518,6 +2518,22 @@
         state.leads = data.leads || [];
         state.availability = data.liveAvailability;
         state.health = data;
+
+        // Dynamic Counselor Name population from env/API
+        if (data.counsellorNames) {
+          var c1Name = data.counsellorNames.counsellor1 || 'starsamir9955';
+          var c2Name = data.counsellorNames.counsellor2 || 'Aryan Raj';
+          
+          var opt1 = document.getElementById('counsellor1Option');
+          if (opt1) opt1.textContent = 'Counsellor 1 (' + c1Name + ')';
+          var opt2 = document.getElementById('counsellor2Option');
+          if (opt2) opt2.textContent = 'Counsellor 2 (' + c2Name + ')';
+
+          var h1 = document.getElementById('counsellor1Header');
+          if (h1) h1.textContent = 'Counsellor 1 (' + c1Name + ')';
+          var h2 = document.getElementById('counsellor2Header');
+          if (h2) h2.textContent = 'Counsellor 2 (' + c2Name + ')';
+        }
 
         renderMetrics(data);
         renderBookingsTable();
