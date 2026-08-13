@@ -1,6 +1,16 @@
 {
   "leads": [
     {
+      "id": "lead_1786653527580_a0vkuz",
+      "name": "aavag ss",
+      "email": "radharani05029@gmail.com",
+      "phone": "+91 8789558731",
+      "source": "WhatsApp",
+      "sourceOther": null,
+      "countryCode": "+91",
+      "createdAt": "2026-08-13T20:38:47.580Z"
+    },
+    {
       "id": "lead_1786482425480_gvb6ye",
       "name": "John Doe",
       "email": "john.doe@example.com",
@@ -742,6 +752,32 @@
     }
   ],
   "bookings": [
+    {
+      "id": "bk_1786653541896_1aj4jz",
+      "name": "aavag ss",
+      "email": "radharani05029@gmail.com",
+      "phone": "+91 8789558731",
+      "countryCode": "+91",
+      "preferredDate": "15 August 2026",
+      "selectedSlot": "12:30 PM",
+      "selectedCounsellor": "Counsellor 1 (starsamir9955)",
+      "selectedCounsellorUrl": "https://calendly.com/starsamir9955/new-meeting/2026-08-15T07:00:00Z",
+      "timezone": "Asia/Calcutta",
+      "leadSource": "WhatsApp",
+      "notes": "Confirmed from Calendly verification",
+      "status": "CONFIRMED",
+      "source": "Website Booking Intent",
+      "createdAt": "2026-08-13T20:39:01.896Z",
+      "updatedAt": "2026-08-13T20:39:15.137Z",
+      "googleMeetUrl": "https://calendly.com/events/1481a449-fb95-4216-9215-3e1c2c9834f4/google_meet",
+      "locationType": "google_conference",
+      "calendlyEventUri": "https://api.calendly.com/scheduled_events/1481a449-fb95-4216-9215-3e1c2c9834f4",
+      "scheduledStartTime": "2026-08-15T07:00:00.000000Z",
+      "scheduledEndTime": "2026-08-15T07:15:00.000000Z",
+      "calendlyEventName": "AMC",
+      "emailSent": true,
+      "emailSentAt": "2026-08-13T20:39:16.135Z"
+    },
     {
       "id": "bk_1786456771771_5739hg",
       "name": "mohan",
