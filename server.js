@@ -102,8 +102,8 @@ app.use(express.static(path.join(__dirname), {
 
 // Cache for event type URIs
 const eventTypeCache = {
-  counsellor1: { uri: null, expiresAt: 0 },
-  counsellor2: { uri: null, expiresAt: 0 }
+  counsellor1: { uri: null, duration: null, name: null, expiresAt: 0 },
+  counsellor2: { uri: null, duration: null, name: null, expiresAt: 0 }
 };
 const CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours cache TTL
 
@@ -133,8 +133,8 @@ function reloadCalendlyEnv() {
 }
 
 function resetCalendlyCaches() {
-  eventTypeCache.counsellor1 = { uri: null, expiresAt: 0 };
-  eventTypeCache.counsellor2 = { uri: null, expiresAt: 0 };
+  eventTypeCache.counsellor1 = { uri: null, duration: null, name: null, expiresAt: 0 };
+  eventTypeCache.counsellor2 = { uri: null, duration: null, name: null, expiresAt: 0 };
   counsellorProfileCache.counsellor1 = { name: null, email: null, expiresAt: 0 };
   counsellorProfileCache.counsellor2 = { name: null, email: null, expiresAt: 0 };
   monthAvailCache = {
@@ -175,6 +175,27 @@ function normalizeBookingStatus(value) {
   if (raw === 'CANCELLED' || raw === 'CANCELED') return 'CANCELLED';
   if (raw === 'COMPLETED') return 'COMPLETED';
   return 'PENDING';
+}
+
+function getLastAssignedCounsellor() {
+  try {
+    const store = readLocalStore();
+    const bookings = store.bookings || [];
+    // Find the most recent booking that has a counselor specified (intent or confirmed)
+    const lastBooking = bookings.find(b => b.selectedCounsellorId || b.selectedCounsellor);
+    if (lastBooking) {
+      const counsellorStr = String(lastBooking.selectedCounsellorId || lastBooking.selectedCounsellor || '').toLowerCase();
+      if (counsellorStr.includes('counsellor2') || counsellorStr.includes('aryan') || counsellorStr.includes('manasvi')) {
+        return 'counsellor2';
+      }
+      if (counsellorStr.includes('counsellor1') || counsellorStr.includes('samir')) {
+        return 'counsellor1';
+      }
+    }
+  } catch (err) {
+    console.error('[getLastAssignedCounsellor Error]', err);
+  }
+  return null;
 }
 
 async function getCounsellorName(counsellorId) {
@@ -319,6 +340,8 @@ async function getEventTypeUri(counsellorId) {
   }
 
   cache.uri = matched.uri;
+  cache.duration = matched.duration;
+  cache.name = matched.name;
   cache.expiresAt = Date.now() + CACHE_TTL;
   return matched.uri;
 }
@@ -546,7 +569,7 @@ async function sendBookingConfirmationEmail(booking) {
     console.log('[Brevo Email]   📤 Calling Brevo sendTransacEmail API...');
     console.log('[Brevo Email]     Sender:', BREVO_SENDER.name, '<' + BREVO_SENDER.email + '>');
     console.log('[Brevo Email]     To:', recipientEmail, '(' + recipientName + ')');
-    if (bccList.length > 0) console.log('[Brevo Email]     BCC:', bccList.map(function(b) { return b.email; }).join(', '));
+    if (bccList.length > 0) console.log('[Brevo Email]     BCC:', bccList.map(function (b) { return b.email; }).join(', '));
     console.log('[Brevo Email]     Subject:', subject);
 
     const result = await brevoClient.sendTransacEmail(sendSmtpEmail);
@@ -1780,6 +1803,19 @@ app.get('/api/calendly/availability', async (req, res) => {
     processSlots(slots1, 'counsellor1');
     processSlots(slots2, 'counsellor2');
 
+    // Enforce alternate load balancing: check history of last assigned counsellor
+    const lastAssigned = getLastAssignedCounsellor();
+    const primaryCounsellor = lastAssigned === 'counsellor1' ? 'counsellor2' : 'counsellor1';
+    const secondaryCounsellor = primaryCounsellor === 'counsellor1' ? 'counsellor2' : 'counsellor1';
+    console.log(`[Load Balance] Last assigned counsellor: ${lastAssigned || 'NONE'}. Priority assigned to: ${primaryCounsellor}`);
+
+    for (const timeLabel in timeSlotMap) {
+      const slotObj = timeSlotMap[timeLabel];
+      if (slotObj.counsellors && slotObj.counsellors.length > 1) {
+        slotObj.counsellors = [primaryCounsellor, secondaryCounsellor];
+      }
+    }
+
     for (const slot of slots1) {
       if (slot.status !== 'available') continue;
       const localHour = getLocalHour(new Date(slot.start_time), tzName);
@@ -1846,10 +1882,12 @@ app.get('/api/calendly/availability', async (req, res) => {
     const availC1 = slots1.filter(s => s.status === 'available').sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
     if (availC1.length > 0) {
       const dateObj = new Date(availC1[0].start_time);
+      await getEventTypeUri('counsellor1');
+      const durationVal = eventTypeCache.counsellor1.duration || 15;
       counsellor1Slot = {
         counsellor: 'counsellor1',
         name: c1Name,
-        duration: '15 min Session',
+        duration: `${durationVal} min Session`,
         time: formatLocalTime(dateObj, tzName).replace(/\s+/g, ' ').trim(),
         isoStart: availC1[0].start_time,
         available: true,
@@ -1862,10 +1900,12 @@ app.get('/api/calendly/availability', async (req, res) => {
     const availC2 = slots2.filter(s => s.status === 'available').sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
     if (availC2.length > 0) {
       const dateObj = new Date(availC2[0].start_time);
+      await getEventTypeUri('counsellor2');
+      const durationVal = eventTypeCache.counsellor2.duration || 30;
       counsellor2Slot = {
         counsellor: 'counsellor2',
         name: c2Name,
-        duration: '30 min Session',
+        duration: `${durationVal} min Session`,
         time: formatLocalTime(dateObj, tzName).replace(/\s+/g, ' ').trim(),
         isoStart: availC2[0].start_time,
         available: true,
@@ -1959,15 +1999,19 @@ app.post('/api/calendly/confirm', async (req, res) => {
 
     // Fix: Match counsellor by display name OR ID (frontend sends display name like "Counsellor 2 (Aryan Raj)")
     let token = process.env.CALENDLY_API_TOKEN_1;
+    let counsellorIdResolved = 'counsellor1';
     const counsellorStr = String(counsellor || '').toLowerCase();
-    if (counsellorStr === 'counsellor2' || counsellorStr.includes('counsellor 2') || counsellorStr.includes('aryan')) {
+    if (counsellorStr === 'counsellor2' || counsellorStr.includes('counsellor 2') || counsellorStr.includes('aryan') || counsellorStr.includes('manasvi')) {
       token = process.env.CALENDLY_API_TOKEN_2;
+      counsellorIdResolved = 'counsellor2';
       console.log('[Calendly Confirm]   Using Token 2 (Counsellor 2)');
-    } else if (counsellorStr === 'counsellor1' || counsellorStr.includes('counsellor 1')) {
+    } else if (counsellorStr === 'counsellor1' || counsellorStr.includes('counsellor 1') || counsellorStr.includes('samir')) {
       token = process.env.CALENDLY_API_TOKEN_1;
+      counsellorIdResolved = 'counsellor1';
       console.log('[Calendly Confirm]   Using Token 1 (Counsellor 1)');
     } else if (!token || token.startsWith('your_')) {
       token = process.env.CALENDLY_API_TOKEN_2 || process.env.CALENDLY_API_TOKEN_1;
+      counsellorIdResolved = process.env.CALENDLY_API_TOKEN_2 ? 'counsellor2' : 'counsellor1';
       console.log('[Calendly Confirm]   Using fallback token');
     } else {
       console.log('[Calendly Confirm]   Using Token 1 (default)');
@@ -2044,6 +2088,8 @@ app.post('/api/calendly/confirm', async (req, res) => {
 
     console.log('[Calendly Confirm]   Target found:', !!target, target ? target.id : 'will create new');
 
+    const resolvedName = await getCounsellorName(counsellorIdResolved);
+
     if (target) {
       target.googleMeetUrl = googleMeetUrl || target.googleMeetUrl || null;
       target.locationType = locationType;
@@ -2056,6 +2102,11 @@ app.post('/api/calendly/confirm', async (req, res) => {
       if (inviteeEmail && !target.email) target.email = inviteeEmail;
       if (inviteeName && !target.name) target.name = inviteeName;
       target.updatedAt = new Date().toISOString();
+      
+      // Ensure counsellor info is set
+      if (!target.selectedCounsellorId) target.selectedCounsellorId = counsellorIdResolved;
+      if (!target.selectedCounsellor) target.selectedCounsellor = `Counsellor ${counsellorIdResolved === 'counsellor1' ? '1' : '2'} (${resolvedName})`;
+      if (!target.selectedCounsellorUrl) target.selectedCounsellorUrl = counsellorIdResolved === 'counsellor1' ? process.env.CALENDLY_URL_1 : process.env.CALENDLY_URL_2;
     } else {
       target = {
         id: bookingId || ('bk_' + Date.now()),
@@ -2071,7 +2122,12 @@ app.post('/api/calendly/confirm', async (req, res) => {
         status: normalizeBookingStatus(resource.status || 'CONFIRMED'),
         notes: 'Confirmed from Calendly verification',
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        
+        // Populate counsellor fields!
+        selectedCounsellorId: counsellorIdResolved,
+        selectedCounsellor: `Counsellor ${counsellorIdResolved === 'counsellor1' ? '1' : '2'} (${resolvedName})`,
+        selectedCounsellorUrl: counsellorIdResolved === 'counsellor1' ? process.env.CALENDLY_URL_1 : process.env.CALENDLY_URL_2
       };
       store.bookings.unshift(target);
     }
@@ -2095,7 +2151,9 @@ app.post('/api/calendly/confirm', async (req, res) => {
               googleMeetUrl: googleMeetUrl || existing.googleMeetUrl,
               locationType: locationType || existing.locationType,
               status: normalizeBookingStatus(resource.status || existing.status || 'CONFIRMED'),
-              updatedAt: new Date()
+              updatedAt: new Date(),
+              selectedCounsellor: existing.selectedCounsellor || `Counsellor ${counsellorIdResolved === 'counsellor1' ? '1' : '2'} (${resolvedName})`,
+              selectedCounsellorUrl: existing.selectedCounsellorUrl || (counsellorIdResolved === 'counsellor1' ? process.env.CALENDLY_URL_1 : process.env.CALENDLY_URL_2)
             }
           });
         } else {
@@ -2108,7 +2166,9 @@ app.post('/api/calendly/confirm', async (req, res) => {
               googleMeetUrl: googleMeetUrl,
               locationType: locationType,
               status: normalizeBookingStatus(resource.status || 'CONFIRMED'),
-              notes: 'Inserted from verification callback'
+              notes: 'Inserted from verification callback',
+              selectedCounsellor: `Counsellor ${counsellorIdResolved === 'counsellor1' ? '1' : '2'} (${resolvedName})`,
+              selectedCounsellorUrl: counsellorIdResolved === 'counsellor1' ? process.env.CALENDLY_URL_1 : process.env.CALENDLY_URL_2
             }
           });
         }
@@ -2132,16 +2192,16 @@ app.post('/api/calendly/confirm', async (req, res) => {
         selectedCounsellor: target.selectedCounsellor,
         calendlyEventName: resource.name || target.calendlyEventName || 'AMC Counselling Session',
         timezone: target.timezone
-      }).then(function(emailResult) {
+      }).then(function (emailResult) {
         if (emailResult.sent) {
           try {
             const freshStore = readLocalStore();
-            const bk = (freshStore.bookings || []).find(function(x) { return x.id === target.id; });
+            const bk = (freshStore.bookings || []).find(function (x) { return x.id === target.id; });
             if (bk) { bk.emailSent = true; bk.emailSentAt = new Date().toISOString(); writeLocalStore(freshStore); }
             console.log('[Calendly Confirm] emailSent flag saved for booking', target.id);
           } catch (flagErr) { console.warn('[Calendly Confirm] Could not save emailSent flag:', flagErr.message); }
         }
-      }).catch(function(err) { console.error('[Calendly Confirm] Email error (non-fatal):', err.message || err); });
+      }).catch(function (err) { console.error('[Calendly Confirm] Email error (non-fatal):', err.message || err); });
     } else if (!googleMeetUrl) {
       console.log('[Calendly Confirm] Meet URL pending — confirmation email will send when link resolves via background sweep');
     } else if (!target.email) {

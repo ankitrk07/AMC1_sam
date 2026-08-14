@@ -716,35 +716,35 @@ document.addEventListener('DOMContentLoaded', function () {
       dateTimeSectionEl.classList.add('is-booked');
     }
 
-  window.copyMeetLink = function (url, btn) {
-    if (!url) return;
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(url).then(function () {
-        if (btn) {
-          var old = btn.innerHTML;
-          btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><polyline points="20 6 9 17 4 12"></polyline></svg> Copied';
-          btn.style.background = '#ffffff';
-          btn.style.color = '#047857';
-          setTimeout(function () {
-            btn.innerHTML = old;
-            btn.style.background = 'rgba(255,255,255,0.2)';
-            btn.style.color = '#ffffff';
-          }, 2000);
-        }
-      });
-    } else {
-      prompt('Copy this Google Meet link:', url);
-    }
-  };
+    window.copyMeetLink = function (url, btn) {
+      if (!url) return;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(function () {
+          if (btn) {
+            var old = btn.innerHTML;
+            btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><polyline points="20 6 9 17 4 12"></polyline></svg> Copied';
+            btn.style.background = '#ffffff';
+            btn.style.color = '#047857';
+            setTimeout(function () {
+              btn.innerHTML = old;
+              btn.style.background = 'rgba(255,255,255,0.2)';
+              btn.style.color = '#ffffff';
+            }, 2000);
+          }
+        });
+      } else {
+        prompt('Copy this Google Meet link:', url);
+      }
+    };
 
-  var meetStatusPollInterval = null;
+    var meetStatusPollInterval = null;
 
-  function renderGoogleMeetCard(data) {
-    var scheduledDateStr = data.date && data.date !== 'Not specified' ? data.date : 'your selected time';
-    var meetHtml = '';
+    function renderGoogleMeetCard(data) {
+      var scheduledDateStr = data.date && data.date !== 'Not specified' ? data.date : 'your selected time';
+      var meetHtml = '';
 
-    if (data.googleMeetUrl) {
-      meetHtml = `
+      if (data.googleMeetUrl) {
+        meetHtml = `
         <div class="meet-action-card" style="background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.32); border-radius: 12px; padding: 16px; margin-top: 16px; text-align: left; backdrop-filter: blur(10px); box-shadow: 0 4px 16px rgba(0,0,0,0.06);">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
             <div style="display: flex; align-items: center; gap: 8px;">
@@ -768,8 +768,8 @@ document.addEventListener('DOMContentLoaded', function () {
           <p style="margin: 10px 0 0 0; font-size: 12px; color: rgba(255,255,255,0.9); line-height: 1.4;">A Google Calendar invitation with this video link has also been sent to your email.</p>
         </div>
       `;
-    } else {
-      meetHtml = `
+      } else {
+        meetHtml = `
         <div id="googleMeetPendingBox" class="meet-action-card" style="background: rgba(255, 255, 255, 0.12); border: 1px dashed rgba(255, 255, 255, 0.45); border-radius: 12px; padding: 16px; margin-top: 16px; text-align: left;">
           <div style="display: flex; align-items: center; gap: 12px;">
             <div id="meetPendingSpinner" style="width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #ffffff; border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0;"></div>
@@ -780,9 +780,9 @@ document.addEventListener('DOMContentLoaded', function () {
           </div>
         </div>
       `;
-    }
+      }
 
-    return `
+      return `
       <div style="width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.22); border: 1.5px solid rgba(255,255,255,0.4); display: flex; align-items: center; justify-content: center; margin: 0 auto 10px auto; box-shadow: 0 4px 12px rgba(0,0,0,0.06);">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="20 6 9 17 4 12"></polyline>
@@ -792,53 +792,53 @@ document.addEventListener('DOMContentLoaded', function () {
       <p style="color: rgba(255,255,255,0.92); font-size: 13.5px; margin: 0; line-height: 1.4;">We look forward to meeting you on <strong>${scheduledDateStr}</strong>.</p>
       ${meetHtml}
     `;
-  }
-
-  function startGoogleMeetPolling(targetId) {
-    if (meetStatusPollInterval) {
-      clearInterval(meetStatusPollInterval);
-      meetStatusPollInterval = null;
     }
-    if (!targetId) return;
 
-    var attempts = 0;
-    var maxAttempts = 12; // 12 * 5s = 60s
-    meetStatusPollInterval = setInterval(function () {
-      attempts++;
-      var statusUrl = '/api/bookings/' + encodeURIComponent(targetId) + '/status';
-      fetch(statusUrl)
-        .then(function (res) { return res.json(); })
-        .then(function (resData) {
-          if (resData && resData.googleMeetUrl) {
-            clearInterval(meetStatusPollInterval);
-            meetStatusPollInterval = null;
-            if (currentBookingState) {
-              currentBookingState.googleMeetUrl = resData.googleMeetUrl;
-              currentBookingState.locationType = resData.locationType;
+    function startGoogleMeetPolling(targetId) {
+      if (meetStatusPollInterval) {
+        clearInterval(meetStatusPollInterval);
+        meetStatusPollInterval = null;
+      }
+      if (!targetId) return;
+
+      var attempts = 0;
+      var maxAttempts = 12; // 12 * 5s = 60s
+      meetStatusPollInterval = setInterval(function () {
+        attempts++;
+        var statusUrl = '/api/bookings/' + encodeURIComponent(targetId) + '/status';
+        fetch(statusUrl)
+          .then(function (res) { return res.json(); })
+          .then(function (resData) {
+            if (resData && resData.googleMeetUrl) {
+              clearInterval(meetStatusPollInterval);
+              meetStatusPollInterval = null;
+              if (currentBookingState) {
+                currentBookingState.googleMeetUrl = resData.googleMeetUrl;
+                currentBookingState.locationType = resData.locationType;
+              }
+              var successCard = document.getElementById('bookingSuccessCard');
+              if (successCard) {
+                successCard.innerHTML = renderGoogleMeetCard(Object.assign({}, currentBookingState, { googleMeetUrl: resData.googleMeetUrl }));
+              }
+            } else if (attempts >= maxAttempts) {
+              clearInterval(meetStatusPollInterval);
+              meetStatusPollInterval = null;
+              var sub = document.getElementById('meetPendingSubtitle');
+              var spin = document.getElementById('meetPendingSpinner');
+              var title = document.getElementById('meetPendingTitle');
+              if (spin) spin.style.display = 'none';
+              if (title) title.textContent = 'Google Meet Link Confirmed';
+              if (sub) sub.textContent = 'Your Google Meet link will also be in your confirmation email shortly.';
             }
-            var successCard = document.getElementById('bookingSuccessCard');
-            if (successCard) {
-              successCard.innerHTML = renderGoogleMeetCard(Object.assign({}, currentBookingState, { googleMeetUrl: resData.googleMeetUrl }));
+          })
+          .catch(function () {
+            if (attempts >= maxAttempts) {
+              clearInterval(meetStatusPollInterval);
+              meetStatusPollInterval = null;
             }
-          } else if (attempts >= maxAttempts) {
-            clearInterval(meetStatusPollInterval);
-            meetStatusPollInterval = null;
-            var sub = document.getElementById('meetPendingSubtitle');
-            var spin = document.getElementById('meetPendingSpinner');
-            var title = document.getElementById('meetPendingTitle');
-            if (spin) spin.style.display = 'none';
-            if (title) title.textContent = 'Google Meet Link Confirmed';
-            if (sub) sub.textContent = 'Your Google Meet link will also be in your confirmation email shortly.';
-          }
-        })
-        .catch(function () {
-          if (attempts >= maxAttempts) {
-            clearInterval(meetStatusPollInterval);
-            meetStatusPollInterval = null;
-          }
-        });
-    }, 5000);
-  }
+          });
+      }, 5000);
+    }
 
     // 5. Form status message & prominent Success Card
     if (counsellingFine) {
@@ -1117,6 +1117,12 @@ document.addEventListener('DOMContentLoaded', function () {
             });
 
             updateCTAsToConfirmed(updatedState);
+
+            // Fetch fresh availability and reload slots without using cache
+            fetchMonthAvailability(function () {
+              renderCalendarGrid(currentCalYear, currentCalMonth);
+              checkAvailability();
+            });
           }
         })
         .catch(function (err) {
@@ -1204,7 +1210,7 @@ document.addEventListener('DOMContentLoaded', function () {
       calendlyWidgetContainer.innerHTML = '';
     }
 
-    var rawUrl = targetUrl || selectedCounsellorUrl || counsellorUrls['counsellor1'] || 'https://calendly.com/starsamir9955/new-meeting';
+    var rawUrl = targetUrl || selectedCounsellorUrl || counsellorUrls[selectedCounsellorId] || counsellorUrls['counsellor1'] || 'https://calendly.com/starsamir9955/new-meeting';
     var finalBookingUrl = rawUrl;
     try {
       var savedLeadObj = {};
@@ -1218,7 +1224,7 @@ document.addEventListener('DOMContentLoaded', function () {
       if (finalPhone) urlObj.searchParams.set('a1', finalPhone);
       if (slot) urlObj.searchParams.set('a2', slot);
       if (date) urlObj.searchParams.set('a3', date);
-      urlObj.searchParams.set('embed_domain', window.location.host || window.location.hostname || 'localhost');
+      urlObj.searchParams.set('embed_domain', window.location.hostname || 'localhost');
       urlObj.searchParams.set('embed_type', 'Inline');
       urlObj.searchParams.set('hide_landing_page_details', '1');
       urlObj.searchParams.set('hide_gdpr_banner', '1');
@@ -1230,6 +1236,10 @@ document.addEventListener('DOMContentLoaded', function () {
     var directLink = document.getElementById('calendlyDirectLink');
     if (directLink) {
       directLink.href = finalBookingUrl;
+    }
+    var directHelperLink = document.getElementById('calendlyDirectHelperLink');
+    if (directHelperLink) {
+      directHelperLink.href = finalBookingUrl;
     }
 
     // Direct Full-Size Iframe Render
@@ -1447,7 +1457,7 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     }
 
-    var targetUrl = selectedCounsellorUrl || counsellorUrls['counsellor1'] || 'https://calendly.com/starsamir9955/new-meeting';
+    var targetUrl = selectedCounsellorUrl || counsellorUrls[selectedCounsellorId] || counsellorUrls['counsellor1'] || 'https://calendly.com/starsamir9955/new-meeting';
 
     var savedLead = {};
     try {
