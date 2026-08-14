@@ -1294,7 +1294,7 @@
         font-size: 10px !important;
       }
 
-      /* STRUCTURED TAB BAR: Clean 2-column Grid on Mobile */
+      /* STRUCTURED TAB BAR: Clean 2-column Grid on Mobile (4 Tabs = 2x2) */
       .tabs-wrapper {
         display: grid !important;
         grid-template-columns: repeat(2, 1fr) !important;
@@ -1310,11 +1310,6 @@
         font-size: 11.5px !important;
         justify-content: center !important;
         border-radius: var(--radius-sm) !important;
-      }
-
-      /* Make 5th tab span full width on 2-col grid */
-      .tab-btn:last-child {
-        grid-column: span 2 !important;
       }
 
       /* Search & Filter Bar */
@@ -1514,7 +1509,8 @@
       .cal-admin-day-cell {
         min-width: 0 !important;
         aspect-ratio: auto !important;
-        height: 52px !important;
+        height: 38px !important;
+        min-height: 38px !important;
         padding: 2px !important;
         box-sizing: border-box !important;
         overflow: hidden !important;
@@ -1541,19 +1537,26 @@
     }
 
     /* Custom Admin Calendar styling */
+    .calendar-grid-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 12px;
+      width: 100%;
+    }
+
     .calendar-counsellor-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
       background: #0f172a;
-      padding: 6px 12px;
+      padding: 4px 10px;
       border-radius: var(--radius-md);
       border: 1px solid #1e293b;
     }
 
     .calendar-counsellor-header h4 {
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 800;
       color: #f8fafc;
     }
@@ -1578,9 +1581,9 @@
       border-bottom: 1px solid #1e293b;
       text-align: center;
       font-weight: 700;
-      font-size: 10.5px;
+      font-size: 9px;
       color: #94a3b8;
-      padding: 6px 0;
+      padding: 3px 0;
     }
 
     .cal-admin-days-grid {
@@ -1592,11 +1595,12 @@
 
     .cal-admin-day-cell {
       background: #0f172a;
-      aspect-ratio: 1;
-      padding: 4px 5px;
+      min-height: 28px;
+      height: 32px;
+      padding: 2px 3px;
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 1px;
       transition: background 0.15s ease;
       position: relative;
       overflow: hidden;
@@ -1614,30 +1618,31 @@
 
     .cal-admin-day-num {
       font-weight: 800;
-      font-size: 10.5px;
+      font-size: 9px;
       color: #cbd5e1;
-      margin-bottom: 2px;
+      margin-bottom: 0px;
+      line-height: 1;
     }
 
     .cal-admin-day-cell.today .cal-admin-day-num {
       color: #38bdf8;
       background: #0c4a6e;
-      width: 18px;
-      height: 18px;
+      width: 14px;
+      height: 14px;
       border-radius: 50%;
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      font-size: 8px;
     }
 
     .cal-admin-events-list {
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 1px;
       overflow-y: auto;
       flex-grow: 1;
       min-height: 0;
-      padding-right: 2px;
     }
 
     .cal-admin-events-list::-webkit-scrollbar {
@@ -1650,14 +1655,18 @@
     }
 
     .cal-admin-event-badge {
-      font-size: 8.5px;
+      font-size: 7.5px;
       font-weight: 600;
-      padding: 2px 3px;
-      border-radius: 4px;
+      padding: 0px 2px;
+      border-radius: 3px;
       cursor: pointer;
       text-overflow: ellipsis;
       white-space: nowrap;
       overflow: hidden;
+      line-height: 1.1;
+      height: 11px;
+      display: block;
+    }
       border-left: 2px solid transparent;
       transition: transform 0.15s ease, opacity 0.15s ease;
       display: block;
@@ -1849,13 +1858,6 @@
         </svg>
         View Calendars
       </button>
-      <button class="tab-btn" data-tab="health">
-        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-        </svg>
-        System & Integrations
-      </button>
     </div>
 
     <!-- TAB 1: ALL BOOKINGS -->
@@ -1983,9 +1985,7 @@
         </div>
       </div>
 
-      <div style="padding: 16px;">
-        <div
-          style="display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 20px; width: 100%;">
+      <div class="calendar-grid-container" style="padding: 12px;">
           <!-- Counsellor 1 Calendar -->
           <div>
             <div class="calendar-counsellor-header">
@@ -2033,15 +2033,7 @@
       </div>
     </div>
 
-    <!-- TAB 4: SYSTEM HEALTH & INTEGRATIONS -->
-    <div class="content-card tab-pane" id="pane-health" style="display:none;">
-      <div class="card-header-bar">
-        <h3 style="font-size:16px; font-weight:800;">Backend Health & Integration Diagnostics</h3>
-      </div>
-      <div class="diag-grid" id="healthGrid">
-        <!-- Rendered by JS -->
-      </div>
-    </div>
+
 
   </div>
 
@@ -2476,6 +2468,7 @@
     // Render Health & System
     function renderHealth(data) {
       var root = document.getElementById('healthGrid');
+      if (!root) return;
       var html = '';
 
       var items = [
