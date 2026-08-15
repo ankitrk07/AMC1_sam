@@ -1,6 +1,16 @@
 {
   "leads": [
     {
+      "id": "lead_1786792395871_474s21",
+      "name": "ankit",
+      "email": "radharani05029@gmail.com",
+      "phone": "+91 1231225566",
+      "source": "YouTube",
+      "sourceOther": null,
+      "countryCode": "+91",
+      "createdAt": "2026-08-15T11:13:15.871Z"
+    },
+    {
       "id": "lead_1786792091230_5izmzl",
       "name": "aadi",
       "email": "a32117123@gmail.com",
@@ -22,6 +32,33 @@
     }
   ],
   "bookings": [
+    {
+      "id": "bk_1786792443911_xkl0ag",
+      "name": "ankit",
+      "email": "radharani05029@gmail.com",
+      "phone": "+91 1231225566",
+      "countryCode": "+91",
+      "preferredDate": "26 August 2026",
+      "selectedSlot": "5:30 PM",
+      "selectedCounsellor": "Counsellor 1 (Samir)",
+      "selectedCounsellorUrl": "https://calendly.com/starsamir9955/new-meeting/2026-08-26T12:00:00Z",
+      "timezone": "Asia/Calcutta",
+      "leadSource": "YouTube",
+      "notes": "Confirmed from Calendly verification",
+      "status": "CONFIRMED",
+      "source": "Website Booking Intent",
+      "createdAt": "2026-08-15T11:14:03.911Z",
+      "updatedAt": "2026-08-15T11:14:11.453Z",
+      "googleMeetUrl": "https://calendly.com/events/aaf89bce-14a9-40c7-b5cd-d56ffab7c956/google_meet",
+      "locationType": "google_conference",
+      "calendlyEventUri": "https://api.calendly.com/scheduled_events/aaf89bce-14a9-40c7-b5cd-d56ffab7c956",
+      "scheduledStartTime": "2026-08-26T12:00:00.000000Z",
+      "scheduledEndTime": "2026-08-26T12:15:00.000000Z",
+      "calendlyEventName": "AMC",
+      "selectedCounsellorId": "counsellor1",
+      "emailSent": true,
+      "emailSentAt": "2026-08-15T11:14:12.585Z"
+    },
     {
       "id": "bk_1786792126406_wef1na",
       "name": "aadi",

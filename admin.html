@@ -1834,10 +1834,6 @@
               <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
               Clear Data Month-Wise...
             </a>
-            <a href="#" id="menuOptClearSelected" style="display:flex; align-items:center; gap:10px; padding:10px 16px; color:#334155; font-weight:600; text-decoration:none; font-size:13.5px; transition:background 0.2s;">
-              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-              Clear Selected Rows
-            </a>
           </div>
         </div>
 
@@ -3447,40 +3443,6 @@
                 loadDashboard(true);
               } else {
                 showToast('Failed to clear month data: ' + (data.error || 'Unknown error'), true);
-              }
-            })
-            .catch(function (err) {
-              showToast('Error: ' + err.message, true);
-            });
-        }
-      });
-    }
-
-    // 3. Option: Clear Selected Rows
-    var menuOptClearSelected = document.getElementById('menuOptClearSelected');
-    if (menuOptClearSelected) {
-      menuOptClearSelected.addEventListener('click', function (e) {
-        e.preventDefault();
-        var checkedBoxes = document.querySelectorAll('.row-select-cb:checked');
-        if (checkedBoxes.length === 0) {
-          alert('Please check at least one row checkbox in the table to delete.');
-          return;
-        }
-
-        var ids = Array.from(checkedBoxes).map(function (cb) { return cb.value; });
-        if (confirm('Delete ' + ids.length + ' selected item(s)?')) {
-          fetch('/api/admin/clear-selected', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ids: ids })
-          })
-            .then(function (res) { return res.json(); })
-            .then(function (data) {
-              if (data.success) {
-                showToast(data.message || 'Selected items deleted!');
-                loadDashboard(true);
-              } else {
-                showToast('Failed: ' + (data.error || 'Unknown error'), true);
               }
             })
             .catch(function (err) {
