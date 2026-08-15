@@ -993,6 +993,7 @@ async function fetchCalendlyScheduledEvents(forceRefresh = false, minCreatedAtIs
 async function getUnifiedBookings(forceRefresh = false) {
   const store = readLocalStore();
   let localBookings = store.bookings || [];
+  const deletedUris = new Set(store.deletedCalendlyUris || []);
   const leads = await getUnifiedLeads();
 
   // Create lookup maps by phone (last 10 digits) and by name
@@ -1029,6 +1030,9 @@ async function getUnifiedBookings(forceRefresh = false) {
 
   // First add live Calendly events
   for (const ev of calendlyEvents) {
+    if (deletedUris.has(ev.calendlyEventUri) || deletedUris.has(ev.id) || deletedUris.has(ev.uri)) {
+      continue;
+    }
     let matchedLead = null;
     if (ev.name && leadNameMap.has(ev.name.trim().toLowerCase())) {
       matchedLead = leadNameMap.get(ev.name.trim().toLowerCase());
@@ -1051,6 +1055,9 @@ async function getUnifiedBookings(forceRefresh = false) {
 
   // Next merge local/db booking entries
   for (const lb of localBookings) {
+    if (deletedUris.has(lb.id) || deletedUris.has(lb.calendlyEventUri)) {
+      continue;
+    }
     let matchedLead = null;
     if (lb.phone) {
       const cleanPhone = String(lb.phone).replace(/\D/g, '').slice(-10);
@@ -1469,6 +1476,10 @@ app.delete('/api/admin/bookings/:id', async (req, res) => {
   try {
     const id = req.params.id;
     const store = readLocalStore();
+    if (!store.deletedCalendlyUris) store.deletedCalendlyUris = [];
+    if (!store.deletedCalendlyUris.includes(id)) {
+      store.deletedCalendlyUris.push(id);
+    }
     store.bookings = (store.bookings || []).filter(b => b.id !== id && b.calendlyEventUri !== id);
     writeLocalStore(store);
 
@@ -1485,6 +1496,141 @@ app.delete('/api/admin/bookings/:id', async (req, res) => {
     return res.json({ success: true });
   } catch (error) {
     return res.status(500).json({ error: error.message || 'Failed to delete booking' });
+  }
+});
+
+// Clear all test leads, bookings, and active Calendly event references
+app.post('/api/admin/clear-all', async (req, res) => {
+  try {
+    const store = readLocalStore();
+    const calendlyEvents = await fetchCalendlyScheduledEvents(true);
+    const calendlyUris = calendlyEvents.map(e => e.calendlyEventUri || e.uri || e.id).filter(Boolean);
+    const existingDeleted = store.deletedCalendlyUris || [];
+    const allDeleted = Array.from(new Set([...existingDeleted, ...calendlyUris]));
+
+    store.leads = [];
+    store.bookings = [];
+    store.deletedCalendlyUris = allDeleted;
+    writeLocalStore(store);
+
+    if (prisma) {
+      try {
+        await prisma.booking.deleteMany({});
+        await prisma.lead.deleteMany({});
+      } catch (e) {
+        console.warn('[Prisma Clear All Error]', e.message);
+      }
+    }
+
+    return res.json({ success: true, message: 'All data cleared successfully.' });
+  } catch (err) {
+    console.error('[Clear All Error]', err);
+    return res.status(500).json({ error: err.message || 'Failed to clear data' });
+  }
+});
+
+// Clear data month-wise
+app.post('/api/admin/clear-month', async (req, res) => {
+  try {
+    const { yearMonth } = req.body; // e.g. "2026-08" or "2026-07"
+    if (!yearMonth) {
+      return res.status(400).json({ error: 'yearMonth is required (e.g., 2026-08)' });
+    }
+
+    const store = readLocalStore();
+    if (!store.deletedCalendlyUris) store.deletedCalendlyUris = [];
+
+    // Filter bookings matching yearMonth in createdAt or date
+    const matchedBookingIds = [];
+    store.bookings = (store.bookings || []).filter(b => {
+      const dStr = String(b.createdAt || b.date || b.start_time || '');
+      if (dStr.includes(yearMonth)) {
+        if (b.calendlyEventUri) store.deletedCalendlyUris.push(b.calendlyEventUri);
+        if (b.id) matchedBookingIds.push(b.id);
+        return false;
+      }
+      return true;
+    });
+
+    // Filter leads matching yearMonth
+    const matchedLeadIds = [];
+    store.leads = (store.leads || []).filter(l => {
+      const dStr = String(l.createdAt || l.preferredDate || '');
+      if (dStr.includes(yearMonth)) {
+        if (l.id) matchedLeadIds.push(l.id);
+        return false;
+      }
+      return true;
+    });
+
+    // Also block active Calendly events from that month
+    const calendlyEvents = await fetchCalendlyScheduledEvents(true);
+    for (const ev of calendlyEvents) {
+      const dStr = String(ev.start_time || ev.createdAt || '');
+      if (dStr.includes(yearMonth)) {
+        const uri = ev.calendlyEventUri || ev.uri || ev.id;
+        if (uri && !store.deletedCalendlyUris.includes(uri)) {
+          store.deletedCalendlyUris.push(uri);
+        }
+      }
+    }
+
+    store.deletedCalendlyUris = Array.from(new Set(store.deletedCalendlyUris));
+    writeLocalStore(store);
+
+    if (prisma) {
+      try {
+        if (matchedBookingIds.length > 0) {
+          await prisma.booking.deleteMany({ where: { id: { in: matchedBookingIds } } });
+        }
+        if (matchedLeadIds.length > 0) {
+          await prisma.lead.deleteMany({ where: { id: { in: matchedLeadIds } } });
+        }
+      } catch (e) {
+        console.warn('[Prisma Clear Month Error]', e.message);
+      }
+    }
+
+    return res.json({ success: true, message: `Data for ${yearMonth} cleared successfully.` });
+  } catch (err) {
+    console.error('[Clear Month Error]', err);
+    return res.status(500).json({ error: err.message || 'Failed to clear month data' });
+  }
+});
+
+// Clear selected rows (by array of IDs)
+app.post('/api/admin/clear-selected', async (req, res) => {
+  try {
+    const { ids } = req.body; // Array of lead/booking IDs or URIs
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'ids array is required' });
+    }
+
+    const store = readLocalStore();
+    if (!store.deletedCalendlyUris) store.deletedCalendlyUris = [];
+
+    const idSet = new Set(ids);
+    ids.forEach(id => store.deletedCalendlyUris.push(id));
+    store.deletedCalendlyUris = Array.from(new Set(store.deletedCalendlyUris));
+
+    store.bookings = (store.bookings || []).filter(b => !idSet.has(b.id) && !idSet.has(b.calendlyEventUri));
+    store.leads = (store.leads || []).filter(l => !idSet.has(l.id));
+
+    writeLocalStore(store);
+
+    if (prisma) {
+      try {
+        await prisma.booking.deleteMany({ where: { id: { in: ids } } });
+        await prisma.lead.deleteMany({ where: { id: { in: ids } } });
+      } catch (e) {
+        console.warn('[Prisma Clear Selected Error]', e.message);
+      }
+    }
+
+    return res.json({ success: true, message: `${ids.length} item(s) deleted successfully.` });
+  } catch (err) {
+    console.error('[Clear Selected Error]', err);
+    return res.status(500).json({ error: err.message || 'Failed to delete selected items' });
   }
 });
 
@@ -2102,7 +2248,7 @@ app.post('/api/calendly/confirm', async (req, res) => {
       if (inviteeEmail && !target.email) target.email = inviteeEmail;
       if (inviteeName && !target.name) target.name = inviteeName;
       target.updatedAt = new Date().toISOString();
-      
+
       // Ensure counsellor info is set
       if (!target.selectedCounsellorId) target.selectedCounsellorId = counsellorIdResolved;
       if (!target.selectedCounsellor) target.selectedCounsellor = `Counsellor ${counsellorIdResolved === 'counsellor1' ? '1' : '2'} (${resolvedName})`;
@@ -2123,7 +2269,7 @@ app.post('/api/calendly/confirm', async (req, res) => {
         notes: 'Confirmed from Calendly verification',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        
+
         // Populate counsellor fields!
         selectedCounsellorId: counsellorIdResolved,
         selectedCounsellor: `Counsellor ${counsellorIdResolved === 'counsellor1' ? '1' : '2'} (${resolvedName})`,

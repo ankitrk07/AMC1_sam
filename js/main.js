@@ -1680,6 +1680,11 @@ document.addEventListener('DOMContentLoaded', function () {
     var openModal = function () {
       if (hasSubmittedOnVisit) return;
       entryModal.setAttribute('aria-hidden', 'false');
+      entryModal.style.display = 'flex';
+      entryModal.style.opacity = '1';
+      entryModal.style.visibility = 'visible';
+      entryModal.style.pointerEvents = 'auto';
+
       pageContent.style.filter = 'blur(10px)';
       pageContent.style.pointerEvents = 'none';
       pageContent.style.userSelect = 'none';
@@ -1698,6 +1703,11 @@ document.addEventListener('DOMContentLoaded', function () {
         modalTimer = null;
       }
       entryModal.setAttribute('aria-hidden', 'true');
+      entryModal.style.display = 'none';
+      entryModal.style.opacity = '0';
+      entryModal.style.visibility = 'hidden';
+      entryModal.style.pointerEvents = 'none';
+
       pageContent.style.filter = '';
       pageContent.style.pointerEvents = '';
       pageContent.style.userSelect = '';
@@ -1710,8 +1720,8 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     };
 
-    // Open popup after 1.5 seconds on reload
-    modalTimer = setTimeout(openModal, 1500);
+    // Open entry popup immediately on landing page load (400ms delay)
+    modalTimer = setTimeout(openModal, 400);
 
     var entryNameInput = document.getElementById('entryName');
     var entryPhoneInput = document.getElementById('entryPhone');
@@ -2204,6 +2214,28 @@ function initCountryCodePicker(config) {
 }
 
 // Initialize main form country code picker
+initCountryCodePicker({
+  pickerId: 'countryCodePicker',
+  triggerId: 'countryCodeTrigger',
+  dropdownId: 'countryCodeDropdown',
+  searchInputId: 'countrySearchInput',
+  listId: 'countryOptionsList',
+  flagElId: 'selectedCountryFlag',
+  codeElId: 'selectedCountryCode',
+  hiddenInputId: 'countryCode'
+});
+
+// Initialize entry modal country code picker
+initCountryCodePicker({
+  pickerId: 'entryCountryCodePicker',
+  triggerId: 'entryCountryCodeTrigger',
+  dropdownId: 'entryCountryCodeDropdown',
+  searchInputId: 'entryCountrySearchInput',
+  listId: 'entryCountryOptionsList',
+  flagElId: 'entrySelectedCountryFlag',
+  codeElId: 'entrySelectedCountryCode',
+  hiddenInputId: 'entryCountryCode'
+});
 initCountryCodePicker({
   pickerId: 'countryCodePicker',
   triggerId: 'countryCodeTrigger',

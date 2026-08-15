@@ -1770,6 +1770,7 @@
       .cal-admin-count-txt {
         display: none;
       }
+
       .cal-admin-count-pill {
         padding: 2px 4px;
         border-radius: 10px;
@@ -1813,6 +1814,32 @@
           </svg>
           Export CSV
         </button>
+
+        <!-- Red Clear Data Dropdown -->
+        <div class="clear-data-dropdown-container" style="position: relative; display: inline-block;">
+          <button class="btn btn-danger" id="clearDataMenuBtn" title="Delete testing data or specific records" style="background:#ef4444; border-color:#ef4444; color:#fff; display:flex; align-items:center; gap:6px; font-weight:700;">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Clear Data ▾
+          </button>
+          
+          <div class="clear-data-menu" id="clearDataMenu" style="display:none; position:absolute; right:0; top:calc(100% + 6px); background:#ffffff; border:1px solid #e2e8f0; border-radius:10px; box-shadow:0 10px 25px rgba(0,0,0,0.15); width:230px; z-index:1000; padding:6px 0; overflow:hidden;">
+            <a href="#" id="menuOptClearAll" style="display:flex; align-items:center; gap:10px; padding:10px 16px; color:#dc2626; font-weight:700; text-decoration:none; font-size:13.5px; transition:background 0.2s;">
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+              Clear All Data (Purge)
+            </a>
+            <div style="height:1px; background:#f1f5f9; margin:4px 0;"></div>
+            <a href="#" id="menuOptClearMonth" style="display:flex; align-items:center; gap:10px; padding:10px 16px; color:#334155; font-weight:600; text-decoration:none; font-size:13.5px; transition:background 0.2s;">
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+              Clear Data Month-Wise...
+            </a>
+            <a href="#" id="menuOptClearSelected" style="display:flex; align-items:center; gap:10px; padding:10px 16px; color:#334155; font-weight:600; text-decoration:none; font-size:13.5px; transition:background 0.2s;">
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              Clear Selected Rows
+            </a>
+          </div>
+        </div>
 
         <button class="btn btn-primary" id="syncBtn" title="Sync real-time data from Calendly">
           <svg id="syncIcon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -2135,17 +2162,56 @@
       </div>
     </div>
   </div>
+  <!-- CLEAR MONTH-WISE MODAL -->
+  <div class="modal-backdrop" id="clearMonthModal">
+    <div class="modal-card" style="max-width: 480px; width: 92vw; box-sizing: border-box; margin: auto;">
+      <div class="modal-header" style="background:#ef4444; color:#ffffff; padding:14px 18px; display:flex; justify-content:space-between; align-items:center;">
+        <h3 class="modal-title" style="font-size:16px; font-weight:800; color:#ffffff; margin:0; display:flex; align-items:center; gap:8px;">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          Clear Data Month-Wise
+        </h3>
+        <button class="modal-close" id="closeClearMonthModal" style="color:#ffffff;">&times;</button>
+      </div>
+      <div class="modal-body" style="padding:20px 24px; color:#334155;">
+        <p style="font-size:13.5px; color:#64748b; margin-top:0; margin-bottom:16px;">Select the target month to delete all associated test leads & bookings:</p>
+        
+        <label style="font-size:13px; font-weight:700; color:#1e293b; display:block; margin-bottom:8px;">Select Month & Year:</label>
+        <select id="clearMonthSelect" style="width:100%; padding:10px 12px; font-size:14px; font-weight:600; border-radius:8px; border:1px solid #cbd5e1; background:#ffffff; color:#0f172a; margin-bottom:20px;">
+          <option value="2026-08">August 2026 (Current Month)</option>
+          <option value="2026-07">July 2026</option>
+          <option value="2026-06">June 2026</option>
+          <option value="2026-05">May 2026</option>
+          <option value="2026-04">April 2026</option>
+          <option value="2026-03">March 2026</option>
+          <option value="2026-02">February 2026</option>
+          <option value="2026-01">January 2026</option>
+        </select>
+        
+        <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:12px 14px; font-size:12.5px; color:#991b1b; font-weight:600;">
+          ⚠️ Warning: All bookings and leads from the selected month will be permanently deleted from the database.
+        </div>
+      </div>
+      <div class="modal-footer" style="padding:14px 20px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:flex-end; gap:12px;">
+        <button class="btn btn-secondary btn-sm" id="cancelClearMonthBtn">Cancel</button>
+        <button class="btn btn-danger btn-sm" id="submitClearMonthBtn" style="background:#ef4444; border-color:#ef4444; color:#fff; font-weight:700;">Delete Selected Month Data</button>
+      </div>
+    </div>
+  </div>
 
   <!-- DATE ENROLLMENTS LIST MODAL -->
   <div class="modal-backdrop" id="dateEnrollmentsModal">
     <div class="modal-card" style="max-width: 640px; width: 94vw; box-sizing: border-box; margin: auto;">
-      <div class="modal-header" style="background:#0f172a; border-bottom:1px solid #1e293b; padding:14px 18px; display:flex; justify-content:space-between; align-items:center; gap:10px; width:100%; box-sizing:border-box;">
+      <div class="modal-header"
+        style="background:#0f172a; border-bottom:1px solid #1e293b; padding:14px 18px; display:flex; justify-content:space-between; align-items:center; gap:10px; width:100%; box-sizing:border-box;">
         <div style="flex:1; min-width:0; overflow:hidden;">
-          <h3 class="modal-title" id="dateModalTitle" style="font-size:15px; font-weight:800; color:#f8fafc; margin:0; word-break:break-word; line-height:1.25; overflow:hidden; text-overflow:ellipsis;">
+          <h3 class="modal-title" id="dateModalTitle"
+            style="font-size:15px; font-weight:800; color:#f8fafc; margin:0; word-break:break-word; line-height:1.25; overflow:hidden; text-overflow:ellipsis;">
             Enrollments on Date</h3>
-          <div id="dateModalSubTitle" style="font-size:11.5px; color:#34d399; font-weight:600; margin-top:3px; word-break:break-word;"></div>
+          <div id="dateModalSubTitle"
+            style="font-size:11.5px; color:#34d399; font-weight:600; margin-top:3px; word-break:break-word;"></div>
         </div>
-        <button class="modal-close" id="dateModalCloseBtn" style="color:#94a3b8; flex-shrink:0; cursor:pointer; padding:6px; background:rgba(255,255,255,0.05); border-radius:8px;">
+        <button class="modal-close" id="dateModalCloseBtn"
+          style="color:#94a3b8; flex-shrink:0; cursor:pointer; padding:6px; background:rgba(255,255,255,0.05); border-radius:8px;">
           <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
@@ -3286,6 +3352,141 @@
       calCounsellorSelect.addEventListener('change', function (e) {
         state.calendarFilter.counsellor = e.target.value;
         renderCustomCalendar();
+      });
+    }
+
+    // ---------- CLEAR DATA DROPDOWN & MODAL CONTROLLERS ----------
+    var clearDataBtn = document.getElementById('clearDataMenuBtn');
+    var clearDataMenu = document.getElementById('clearDataMenu');
+
+    if (clearDataBtn && clearDataMenu) {
+      clearDataBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var isOpen = clearDataMenu.style.display === 'block';
+        clearDataMenu.style.display = isOpen ? 'none' : 'block';
+      });
+
+      document.addEventListener('click', function () {
+        clearDataMenu.style.display = 'none';
+      });
+    }
+
+    // 1. Option: Clear All Data
+    var menuOptClearAll = document.getElementById('menuOptClearAll');
+    if (menuOptClearAll) {
+      menuOptClearAll.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (confirm('Are you sure you want to PERMANENTLY delete ALL testing data (leads & bookings) from the Admin Panel?')) {
+          fetch('/api/admin/clear-all', { method: 'POST' })
+            .then(function (res) { return res.json(); })
+            .then(function (data) {
+              if (data.success) {
+                showToast('All testing data cleared successfully!');
+                loadDashboard(true);
+              } else {
+                showToast('Failed to clear data: ' + (data.error || 'Unknown error'), true);
+              }
+            })
+            .catch(function (err) {
+              showToast('Error clearing data: ' + err.message, true);
+            });
+        }
+      });
+    }
+
+    // 2. Option: Clear Month-Wise Data
+    var clearMonthModal = document.getElementById('clearMonthModal');
+    var menuOptClearMonth = document.getElementById('menuOptClearMonth');
+    var closeClearMonthModal = document.getElementById('closeClearMonthModal');
+    var cancelClearMonthBtn = document.getElementById('cancelClearMonthBtn');
+    var submitClearMonthBtn = document.getElementById('submitClearMonthBtn');
+
+    function openClearMonthModal() {
+      if (clearMonthModal) {
+        clearMonthModal.style.display = 'flex';
+        clearMonthModal.style.opacity = '1';
+        clearMonthModal.style.pointerEvents = 'auto';
+      }
+    }
+
+    function closeClearMonthModalFunc() {
+      if (clearMonthModal) {
+        clearMonthModal.style.display = 'none';
+        clearMonthModal.style.opacity = '0';
+        clearMonthModal.style.pointerEvents = 'none';
+      }
+    }
+
+    if (menuOptClearMonth) {
+      menuOptClearMonth.addEventListener('click', function (e) {
+        e.preventDefault();
+        openClearMonthModal();
+      });
+    }
+
+    if (closeClearMonthModal) closeClearMonthModal.addEventListener('click', closeClearMonthModalFunc);
+    if (cancelClearMonthBtn) cancelClearMonthBtn.addEventListener('click', closeClearMonthModalFunc);
+
+    if (submitClearMonthBtn) {
+      submitClearMonthBtn.addEventListener('click', function () {
+        var selMonth = document.getElementById('clearMonthSelect').value;
+        if (!selMonth) return;
+        var monthText = document.getElementById('clearMonthSelect').options[document.getElementById('clearMonthSelect').selectedIndex].text;
+
+        if (confirm('Delete all data for month ' + monthText + '?')) {
+          fetch('/api/admin/clear-month', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ yearMonth: selMonth })
+          })
+            .then(function (res) { return res.json(); })
+            .then(function (data) {
+              if (data.success) {
+                showToast(data.message || 'Month data cleared!');
+                closeClearMonthModalFunc();
+                loadDashboard(true);
+              } else {
+                showToast('Failed to clear month data: ' + (data.error || 'Unknown error'), true);
+              }
+            })
+            .catch(function (err) {
+              showToast('Error: ' + err.message, true);
+            });
+        }
+      });
+    }
+
+    // 3. Option: Clear Selected Rows
+    var menuOptClearSelected = document.getElementById('menuOptClearSelected');
+    if (menuOptClearSelected) {
+      menuOptClearSelected.addEventListener('click', function (e) {
+        e.preventDefault();
+        var checkedBoxes = document.querySelectorAll('.row-select-cb:checked');
+        if (checkedBoxes.length === 0) {
+          alert('Please check at least one row checkbox in the table to delete.');
+          return;
+        }
+
+        var ids = Array.from(checkedBoxes).map(function (cb) { return cb.value; });
+        if (confirm('Delete ' + ids.length + ' selected item(s)?')) {
+          fetch('/api/admin/clear-selected', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids: ids })
+          })
+            .then(function (res) { return res.json(); })
+            .then(function (data) {
+              if (data.success) {
+                showToast(data.message || 'Selected items deleted!');
+                loadDashboard(true);
+              } else {
+                showToast('Failed: ' + (data.error || 'Unknown error'), true);
+              }
+            })
+            .catch(function (err) {
+              showToast('Error: ' + err.message, true);
+            });
+        }
       });
     }
 
