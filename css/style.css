@@ -448,7 +448,6 @@ mark.purple-mark {
   width: min(100%, 920px);
   max-width: 920px;
   margin: 0 auto;
-  aspect-ratio: 16 / 9;
   border-radius: var(--radius-l);
   overflow: hidden;
   background: #120a0c;

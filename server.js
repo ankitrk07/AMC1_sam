@@ -2514,6 +2514,13 @@ async function runPendingMeetSweep() {
 // Sweep every 2 minutes
 setInterval(runPendingMeetSweep, 2 * 60 * 1000);
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server is running at http://localhost:${PORT}`);
+});
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`\n❌ Error: Port ${PORT} is already in use by another process.`);
+    console.error(`💡 Tip: Run "Stop-Process -Id (Get-NetTCPConnection -LocalPort ${PORT}).OwningProcess -Force" in PowerShell to free port ${PORT}.\n`);
+  }
 });
