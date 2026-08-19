@@ -1,2 +1,6 @@
 node_modules/
 .envdata/admin_store.json
+.env
+.env.*
+node_modules/
+data/
