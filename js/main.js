@@ -220,7 +220,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // --- API URL HELPER ---
   function getApiUrl(endpoint) {
     if (window.location.protocol === 'file:' || (window.location.port && window.location.port !== '3000')) {
-      return 'http://localhost:3000' + endpoint;
+      return endpoint;
     }
     return endpoint;
   }
