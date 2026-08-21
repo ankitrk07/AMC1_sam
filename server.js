@@ -7,6 +7,98 @@ const SibApiV3Sdk = require('sib-api-v3-sdk');
 require('dotenv').config();
 
 // ──────────────────────────────────────────────────────
+// Crash visibility
+// Node >= 15 terminates on an unhandled rejection. Without these handlers a
+// crash is silent and a process-manager restart looks like "it broke for a
+// few seconds then fixed itself". Log the full stack, then exit non-zero so
+// the supervisor restarts a clean process rather than continuing in an
+// undefined state.
+// ──────────────────────────────────────────────────────
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('──────── UNHANDLED PROMISE REJECTION ────────');
+  console.error('  pid       :', process.pid);
+  console.error('  time      :', new Date().toISOString());
+  console.error('  reason    :', reason && reason.message ? reason.message : reason);
+  console.error('  stack     :', reason && reason.stack ? reason.stack : '(no stack)');
+  console.error('  promise   :', promise);
+  console.error('─────────────────────────────────────────────');
+  process.exit(1);
+});
+
+process.on('uncaughtException', (err, origin) => {
+  console.error('──────── UNCAUGHT EXCEPTION ────────');
+  console.error('  pid       :', process.pid);
+  console.error('  time      :', new Date().toISOString());
+  console.error('  origin    :', origin);
+  console.error('  message   :', err && err.message);
+  console.error('  stack     :', err && err.stack ? err.stack : '(no stack)');
+  console.error('────────────────────────────────────');
+  process.exit(1);
+});
+
+// ──────────────────────────────────────────────────────
+// Environment validation — fail closed, never silently change mode.
+//
+// The bug this codebase was built around was DATABASE_URL being absent
+// locally: server.js silently fell back to a JSON-only code path, so the
+// laptop and the server ran different programs. An absent required variable
+// must stop the process, not quietly alter behaviour.
+// ──────────────────────────────────────────────────────
+const REQUIRED_ENV = [
+  { key: 'DATABASE_URL', why: 'PostgreSQL connection string — the single source of truth for leads and bookings' },
+];
+
+const OPTIONAL_ENV = [
+  { key: 'PORT', why: 'HTTP port (defaults to 3000)' },
+  { key: 'CALENDLY_API_TOKEN_1', why: 'Calendly personal access token for counsellor 1' },
+  { key: 'CALENDLY_API_TOKEN_2', why: 'Calendly personal access token for counsellor 2' },
+  { key: 'CALENDLY_URL_1', why: 'Calendly scheduling URL for counsellor 1' },
+  { key: 'CALENDLY_URL_2', why: 'Calendly scheduling URL for counsellor 2' },
+  { key: 'CALENDLY_TIMEZONE', why: 'IANA timezone for slot display (defaults to Asia/Kolkata)' },
+  { key: 'CALENDLY_TIMEZONE_OFFSET', why: 'UTC offset used to build day ranges (defaults to +05:30)' },
+  { key: 'BREVO_API_KEY', why: 'Brevo transactional email key — without it emails are logged only' },
+];
+
+function describeEnvValue(key) {
+  const raw = process.env[key];
+  if (raw === undefined || raw === null || String(raw).trim() === '') return { set: false, note: 'MISSING' };
+  if (String(raw).startsWith('your_')) return { set: false, note: 'PLACEHOLDER' };
+  return { set: true, note: 'SET' };
+}
+
+function validateEnvironment() {
+  console.log('──────── ENVIRONMENT CHECK ────────');
+  const missing = [];
+
+  for (const { key, why } of REQUIRED_ENV) {
+    const { set, note } = describeEnvValue(key);
+    console.log(`  [${set ? 'SET    ' : 'MISSING'}] ${key}  — ${why}`);
+    if (!set) missing.push({ key, why, note });
+  }
+  for (const { key, why } of OPTIONAL_ENV) {
+    const { set, note } = describeEnvValue(key);
+    console.log(`  [${set ? 'SET    ' : note.padEnd(7)}] ${key}  — ${why}`);
+  }
+  console.log('───────────────────────────────────');
+
+  if (missing.length > 0) {
+    console.error('');
+    console.error('REFUSING TO START — required environment variables are missing:');
+    for (const m of missing) {
+      console.error(`  - ${m.key} (${m.note}): ${m.why}`);
+    }
+    console.error('');
+    console.error('Set them in .env (see .env.example for the full list) and start again.');
+    console.error('The server deliberately does NOT fall back to a degraded mode: doing so');
+    console.error('is what made the laptop and the server run different code paths.');
+    console.error('');
+    process.exit(1);
+  }
+}
+
+validateEnvironment();
+
+// ──────────────────────────────────────────────────────
 // Brevo (Sendinblue) Transactional Email Client Setup
 // ──────────────────────────────────────────────────────
 let brevoClient = null;
@@ -30,52 +122,67 @@ if (process.env.BREVO_API_KEY && process.env.BREVO_API_KEY.trim() && !process.en
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const hasDatabaseUrl = Boolean(process.env.DATABASE_URL && process.env.DATABASE_URL.trim());
-const prisma = hasDatabaseUrl ? new PrismaClient() : null;
 
-// Persistent Local Fallback Store
+// ──────────────────────────────────────────────────────
+// Single source of truth.
+//
+// DATABASE_URL is validated above, so this is always a real client. There is
+// no JSON fallback mode any more, and no `if (prisma)` guards: the app either
+// has a database or it refuses to start.
+//
+// data/admin_store.json used to be a SECOND source of truth written alongside
+// Postgres. The two stores could not hold the same fields (the Booking table
+// had no email column), so records silently lost email / leadSource /
+// emailSent, status changes appeared to revert, and ids diverged between the
+// stores. Worse, two processes writing that file whole-file lost 35% of
+// concurrent writes. It is no longer a write target.
+// ──────────────────────────────────────────────────────
+const prisma = new PrismaClient({
+  log: [
+    { level: 'warn', emit: 'stdout' },
+    { level: 'error', emit: 'stdout' },
+  ],
+});
+
 const DATA_DIR = path.join(__dirname, 'data');
-const STORE_PATH = path.join(DATA_DIR, 'admin_store.json');
+const LEGACY_STORE_PATH = path.join(DATA_DIR, 'admin_store.json');
 
-function ensureDataStore() {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    if (!fs.existsSync(STORE_PATH)) {
-      const initial = {
-        leads: [],
-        bookings: [],
-        meta: { createdAt: new Date().toISOString(), version: '1.0' }
-      };
-      fs.writeFileSync(STORE_PATH, JSON.stringify(initial, null, 2), 'utf8');
-    }
-  } catch (err) {
-    console.error('[Data Store Init Error]', err);
-  }
-}
-ensureDataStore();
-
-function readLocalStore() {
-  try {
-    ensureDataStore();
-    const content = fs.readFileSync(STORE_PATH, 'utf8');
-    return JSON.parse(content || '{"leads":[],"bookings":[]}');
-  } catch (err) {
-    console.error('[Data Store Read Error]', err);
-    return { leads: [], bookings: [] };
-  }
+// Suppression list for records that still exist as live Calendly events.
+// Replaces store.deletedCalendlyUris, which lived in the JSON file.
+async function getDeletedRefs() {
+  const rows = await prisma.deletedEvent.findMany({ select: { ref: true } });
+  return new Set(rows.map(r => r.ref));
 }
 
-function writeLocalStore(data) {
-  try {
-    ensureDataStore();
-    fs.writeFileSync(STORE_PATH, JSON.stringify(data, null, 2), 'utf8');
-    return true;
-  } catch (err) {
-    console.error('[Data Store Write Error]', err);
-    return false;
-  }
+async function addDeletedRefs(refs) {
+  const clean = Array.from(new Set((refs || []).filter(Boolean).map(String)));
+  if (clean.length === 0) return 0;
+  const result = await prisma.deletedEvent.createMany({
+    data: clean.map(ref => ({ ref })),
+    skipDuplicates: true,
+  });
+  return result.count;
+}
+
+// Read-only JSON export, generated from Postgres on demand. The file on disk
+// is never written by the app; this is the replacement for anyone who was
+// reading data/admin_store.json directly.
+async function buildStoreExport() {
+  const [bookings, leads, deleted] = await Promise.all([
+    prisma.booking.findMany({ orderBy: { createdAt: 'desc' } }),
+    prisma.lead.findMany({ orderBy: { createdAt: 'desc' } }),
+    prisma.deletedEvent.findMany({ select: { ref: true } }),
+  ]);
+  return {
+    meta: {
+      generatedAt: new Date().toISOString(),
+      source: 'postgresql',
+      note: 'Read-only export generated from the database. data/admin_store.json is no longer written.',
+    },
+    bookings,
+    leads,
+    deletedCalendlyUris: deleted.map(d => d.ref),
+  };
 }
 
 app.use(cors());
@@ -169,6 +276,12 @@ function toDisplayDateTime(value) {
   });
 }
 
+// Must stay in lockstep with the BookingStatus enum in prisma/schema.prisma.
+// Previously normalizeBookingStatus could return COMPLETED, which the enum did
+// not contain: Prisma threw, a "non-fatal" catch swallowed it, the API still
+// reported success, and the panel showed the old value on the next refresh.
+const SUPPORTED_BOOKING_STATUSES = ['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED'];
+
 function normalizeBookingStatus(value) {
   const raw = String(value || '').trim().toUpperCase();
   if (raw === 'CONFIRMED' || raw === 'ACTIVE') return 'CONFIRMED';
@@ -177,12 +290,27 @@ function normalizeBookingStatus(value) {
   return 'PENDING';
 }
 
-function getLastAssignedCounsellor() {
+function isSupportedBookingStatus(value) {
+  const raw = String(value || '').trim().toUpperCase();
+  const aliases = { ACTIVE: 'CONFIRMED', CANCELED: 'CANCELLED' };
+  return SUPPORTED_BOOKING_STATUSES.includes(aliases[raw] || raw);
+}
+
+async function getLastAssignedCounsellor() {
   try {
-    const store = readLocalStore();
-    const bookings = store.bookings || [];
-    // Find the most recent booking that has a counselor specified (intent or confirmed)
-    const lastBooking = bookings.find(b => b.selectedCounsellorId || b.selectedCounsellor);
+    // Most recent booking that names a counsellor, resolved by the database
+    // rather than by scanning a whole JSON array in memory.
+    const lastBooking = await prisma.booking.findFirst({
+      where: {
+        OR: [
+          { selectedCounsellorId: { not: null } },
+          { selectedCounsellor: { not: null } },
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+      select: { selectedCounsellorId: true, selectedCounsellor: true },
+    });
+
     if (lastBooking) {
       const counsellorStr = String(lastBooking.selectedCounsellorId || lastBooking.selectedCounsellor || '').toLowerCase();
       if (counsellorStr.includes('counsellor2') || counsellorStr.includes('aryan') || counsellorStr.includes('manasvi')) {
@@ -193,7 +321,7 @@ function getLastAssignedCounsellor() {
       }
     }
   } catch (err) {
-    console.error('[getLastAssignedCounsellor Error]', err);
+    console.error('[getLastAssignedCounsellor Error]', err && err.stack ? err.stack : err);
   }
   return null;
 }
@@ -391,8 +519,13 @@ function extractCalendlyMeetingDetails(eventResource, inviteeResource = null) {
   };
 }
 
+// How long POST /api/calendly/confirm will wait for a Google Meet link before
+// answering "pending" and leaving it to the frontend poller and the sweep.
+const CONFIRM_RETRY_MS = 9000;
+const CONFIRM_RETRY_INTERVAL_MS = 3000;
+
 // Isolated Helper: Fetch Calendly scheduled event with retry loop for pending conference details
-async function fetchCalendlyEventWithRetry(eventUri, token, maxWaitMs = 42000, intervalMs = 4500) {
+async function fetchCalendlyEventWithRetry(eventUri, token, maxWaitMs = 9000, intervalMs = 3000) {
   const uuid = eventUri.split('/').filter(Boolean).pop();
   const eventApiUrl = `https://api.calendly.com/scheduled_events/${uuid}`;
   const startTime = Date.now();
@@ -712,24 +845,37 @@ function normalizeDateStr(dateStr) {
 
   const parts = dateStr.split(/[-/]/);
   if (parts.length === 3) {
-    if (parts[0].length === 4) {
-      return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
-    } else if (parts[2].length === 4) {
-      const p1 = parseInt(parts[0], 10);
-      const p2 = parseInt(parts[1], 10);
-      let day, month;
-      if (p1 > 12) {
-        day = String(p1).padStart(2, '0');
-        month = String(p2).padStart(2, '0');
-      } else if (p2 > 12) {
-        month = String(p1).padStart(2, '0');
-        day = String(p2).padStart(2, '0');
-      } else {
-        day = String(p1).padStart(2, '0');
-        month = String(p2).padStart(2, '0');
+    // Every component must be numeric. Without this check "not-a-date" split to
+    // ['not','a','date'], parseInt gave NaN, and the function returned the
+    // string "date-NaN-NaN" — which is truthy, so validation passed and the
+    // request 500'd later when the range was built.
+    const nums = parts.map(p => parseInt(p, 10));
+    const allNumeric = parts.every(p => /^\d+$/.test(p.trim())) && nums.every(n => Number.isInteger(n));
+
+    if (allNumeric) {
+      if (parts[0].length === 4) {
+        const y = nums[0], m = nums[1], d = nums[2];
+        if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+          return `${parts[0]}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        }
+        return null;
       }
-      return `${parts[2]}-${month}-${day}`;
+      if (parts[2].length === 4) {
+        const p1 = nums[0];
+        const p2 = nums[1];
+        let day, month;
+        if (p1 > 12) {
+          day = p1; month = p2;
+        } else if (p2 > 12) {
+          month = p1; day = p2;
+        } else {
+          day = p1; month = p2;
+        }
+        if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+        return `${parts[2]}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      }
     }
+    return null;
   }
 
   const d = new Date(dateStr);
@@ -774,6 +920,41 @@ function resolveCounsellorScope(raw) {
   return 'both';
 }
 
+// ──────────────────────────────────────────────────────
+// Per-counsellor failure isolation.
+//
+// getAllActiveEventUris throws when Calendly rejects a token or times out.
+// Under Promise.all a single rejection took down availability for BOTH
+// counsellors, so one stale token produced a total outage that looked
+// intermittent — it healed the moment the transient passed. These helpers let
+// each counsellor fail on its own while the other still serves real slots.
+// ──────────────────────────────────────────────────────
+function settle(promise) {
+  return Promise.resolve(promise).then(
+    value => ({ ok: true, value }),
+    error => ({ ok: false, error })
+  );
+}
+
+function unwrapUris(result) {
+  if (Array.isArray(result)) return result;          // scope-skipped counsellor
+  if (result && result.ok) return result.value || [];
+  return [];
+}
+
+function collectCounsellorErrors(...results) {
+  const errors = [];
+  results.forEach((result, index) => {
+    if (!Array.isArray(result) && result && result.ok === false) {
+      errors.push({
+        counsellor: `counsellor${index + 1}`,
+        error: (result.error && result.error.message) ? result.error.message : String(result.error),
+      });
+    }
+  });
+  return errors;
+}
+
 // Helper to resolve the configured event type URI for a counsellor.
 // This intentionally uses the .env scheduling URL so data is fetched for the intended meeting type only.
 async function getAllActiveEventUris(counsellorId) {
@@ -786,8 +967,20 @@ async function buildLiveAvailabilitySnapshot(tzName) {
     getCounsellorName('counsellor1'),
     getCounsellorName('counsellor2')
   ]);
-  const uris1 = await getAllActiveEventUris('counsellor1');
-  const uris2 = await getAllActiveEventUris('counsellor2');
+
+  // Isolated per counsellor: an unreachable Calendly account for one must not
+  // blank the admin dashboard's availability panel for the other.
+  const [uriRes1, uriRes2] = await Promise.all([
+    settle(getAllActiveEventUris('counsellor1')),
+    settle(getAllActiveEventUris('counsellor2')),
+  ]);
+  const uris1 = unwrapUris(uriRes1);
+  const uris2 = unwrapUris(uriRes2);
+  const counsellorErrors = collectCounsellorErrors(uriRes1, uriRes2);
+  if (counsellorErrors.length > 0) {
+    console.warn('[Availability Snapshot] degraded:',
+      counsellorErrors.map(e => `${e.counsellor}: ${e.error}`).join(' | '));
+  }
 
   const now = Date.now();
   const chunks = [
@@ -829,13 +1022,19 @@ async function buildLiveAvailabilitySnapshot(tzName) {
     c2Map[dKey] = (c2Map[dKey] || 0) + 1;
   }
 
+  const failedFor = new Set(counsellorErrors.map(e => e.counsellor));
+
   return {
     success: true,
+    degraded: counsellorErrors.length > 0,
+    counsellorErrors,
     counsellor1: {
       id: 'counsellor1',
       name: c1Name,
       url: process.env.CALENDLY_URL_1,
       totalSlots: slots1.length,
+      // Distinguishes "genuinely no slots" from "we could not ask".
+      reachable: !failedFor.has('counsellor1'),
       availableDates: c1Map
     },
     counsellor2: {
@@ -843,6 +1042,7 @@ async function buildLiveAvailabilitySnapshot(tzName) {
       name: c2Name,
       url: process.env.CALENDLY_URL_2,
       totalSlots: slots2.length,
+      reachable: !failedFor.has('counsellor2'),
       availableDates: c2Map
     }
   };
@@ -989,12 +1189,16 @@ async function fetchCalendlyScheduledEvents(forceRefresh = false, minCreatedAtIs
   return allEvents;
 }
 
-// Get unified bookings from DB / Local Store + Calendly Live
+// Get unified bookings: stored bookings (Postgres) merged with live Calendly events.
 async function getUnifiedBookings(forceRefresh = false) {
-  const store = readLocalStore();
-  let localBookings = store.bookings || [];
-  const deletedUris = new Set(store.deletedCalendlyUris || []);
-  const leads = await getUnifiedLeads();
+  // Postgres is simply the store now. There is no second array to fall back to
+  // and no wholesale `localBookings = dbBookings` replacement that used to drop
+  // every field the Booking table could not hold.
+  const [localBookings, deletedUris, leads] = await Promise.all([
+    prisma.booking.findMany({ orderBy: { createdAt: 'desc' }, take: 300 }),
+    getDeletedRefs(),
+    getUnifiedLeads(),
+  ]);
 
   // Create lookup maps by phone (last 10 digits) and by name
   const leadPhoneMap = new Map();
@@ -1006,20 +1210,6 @@ async function getUnifiedBookings(forceRefresh = false) {
     }
     if (l.name) {
       leadNameMap.set(l.name.trim().toLowerCase(), l);
-    }
-  }
-
-  if (prisma) {
-    try {
-      const dbBookings = await prisma.booking.findMany({
-        orderBy: { createdAt: 'desc' },
-        take: 300
-      });
-      if (dbBookings && dbBookings.length > 0) {
-        localBookings = dbBookings;
-      }
-    } catch (e) {
-      console.warn('[Prisma Bookings Read Warning]', e.message);
     }
   }
 
@@ -1187,26 +1377,9 @@ async function getUnifiedBookings(forceRefresh = false) {
   return list;
 }
 
-// Get unified leads from DB / Local Store
+// Get leads from the database.
 async function getUnifiedLeads() {
-  const store = readLocalStore();
-  let leads = store.leads || [];
-
-  if (prisma) {
-    try {
-      const dbLeads = await prisma.lead.findMany({
-        orderBy: { createdAt: 'desc' },
-        take: 300
-      });
-      if (dbLeads && dbLeads.length > 0) {
-        leads = dbLeads;
-      }
-    } catch (e) {
-      console.warn('[Prisma Leads Read Warning]', e.message);
-    }
-  }
-
-  return leads;
+  return prisma.lead.findMany({ orderBy: { createdAt: 'desc' }, take: 300 });
 }
 
 app.post('/api/admin/leads', async (req, res) => {
@@ -1221,45 +1394,25 @@ app.post('/api/admin/leads', async (req, res) => {
       return res.status(400).json({ error: 'name, email, phone and source are required' });
     }
 
-    const newLead = {
-      id: 'lead_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
-      name,
-      email,
-      phone,
-      source,
-      sourceOther: payload.sourceOther ? String(payload.sourceOther).trim() : null,
-      countryCode: payload.countryCode ? String(payload.countryCode).trim() : null,
-      createdAt: new Date().toISOString()
-    };
+    // One write, one id. The lead's id is whatever Postgres assigned — there is
+    // no second store handing out a different one.
+    const created = await prisma.lead.create({
+      data: {
+        name,
+        email,
+        phone,
+        source,
+        sourceOther: payload.sourceOther ? String(payload.sourceOther).trim() : null,
+        countryCode: payload.countryCode ? String(payload.countryCode).trim() : null,
+      },
+    });
 
-    // Save to local store
-    const store = readLocalStore();
-    store.leads = store.leads || [];
-    store.leads.unshift(newLead);
-    writeLocalStore(store);
-
-    // Save to Prisma DB if available
-    if (prisma) {
-      try {
-        await prisma.lead.create({
-          data: {
-            name: newLead.name,
-            email: newLead.email,
-            phone: newLead.phone,
-            source: newLead.source,
-            sourceOther: newLead.sourceOther,
-            countryCode: newLead.countryCode
-          }
-        });
-      } catch (dbErr) {
-        console.warn('[Prisma Lead Save Non-fatal]', dbErr.message);
-      }
-    }
-
-    return res.json({ success: true, leadId: newLead.id });
+    return res.json({ success: true, leadId: created.id });
   } catch (error) {
-    console.error('[Admin Lead Save Error]', error);
-    return res.status(500).json({ error: error.message || 'Failed to save lead' });
+    // A failed write must never report success. This used to be a "non-fatal"
+    // catch that logged a warning and returned {success:true} anyway.
+    console.error('[Admin Lead Save Error]', error && error.stack ? error.stack : error);
+    return res.status(500).json({ success: false, error: 'Failed to save lead' });
   }
 });
 
@@ -1268,73 +1421,48 @@ app.post('/api/admin/bookings/intent', async (req, res) => {
     const payload = req.body || {};
     let email = payload.email ? String(payload.email).trim() : null;
     let leadSource = payload.source ? String(payload.source).trim() : null;
-    let sourceOther = payload.sourceOther ? String(payload.sourceOther).trim() : null;
+    const sourceOther = payload.sourceOther ? String(payload.sourceOther).trim() : null;
 
-    // Automatic lookup from leads if email not directly supplied
+    // Automatic lookup from leads if email not directly supplied.
     if (!email && payload.phone) {
       const cleanPhone = String(payload.phone).replace(/\D/g, '').slice(-10);
-      const store = readLocalStore();
-      const matched = (store.leads || []).find(l => String(l.phone || '').replace(/\D/g, '').slice(-10) === cleanPhone);
-      if (matched) {
-        email = matched.email;
-        if (!leadSource) {
-          leadSource = matched.sourceOther ? `${matched.source} (${matched.sourceOther})` : matched.source;
+      if (cleanPhone) {
+        const matched = await prisma.lead.findFirst({
+          where: { phone: { endsWith: cleanPhone } },
+          orderBy: { createdAt: 'desc' },
+        });
+        if (matched) {
+          email = matched.email;
+          if (!leadSource) {
+            leadSource = matched.sourceOther ? `${matched.source} (${matched.sourceOther})` : matched.source;
+          }
         }
       }
     }
 
-    const newBooking = {
-      id: 'bk_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
-      name: payload.name ? String(payload.name).trim() : null,
-      email: email,
-      phone: payload.phone ? String(payload.phone).trim() : null,
-      countryCode: payload.countryCode ? String(payload.countryCode).trim() : null,
-      preferredDate: payload.preferredDate ? String(payload.preferredDate).trim() : null,
-      selectedSlot: payload.selectedSlot ? String(payload.selectedSlot).trim() : null,
-      selectedCounsellor: payload.selectedCounsellor ? String(payload.selectedCounsellor).trim() : null,
-      selectedCounsellorUrl: payload.selectedCounsellorUrl ? String(payload.selectedCounsellorUrl).trim() : null,
-      timezone: payload.timezone ? String(payload.timezone).trim() : null,
-      leadSource: leadSource || (sourceOther ? `${leadSource} (${sourceOther})` : null),
-      notes: payload.notes ? String(payload.notes).trim() : null,
-      status: 'PENDING',
-      source: 'Website Booking Intent',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+    const created = await prisma.booking.create({
+      data: {
+        name: payload.name ? String(payload.name).trim() : null,
+        email: email,
+        phone: payload.phone ? String(payload.phone).trim() : null,
+        countryCode: payload.countryCode ? String(payload.countryCode).trim() : null,
+        preferredDate: payload.preferredDate ? String(payload.preferredDate).trim() : null,
+        selectedSlot: payload.selectedSlot ? String(payload.selectedSlot).trim() : null,
+        selectedCounsellor: payload.selectedCounsellor ? String(payload.selectedCounsellor).trim() : null,
+        selectedCounsellorUrl: payload.selectedCounsellorUrl ? String(payload.selectedCounsellorUrl).trim() : null,
+        timezone: payload.timezone ? String(payload.timezone).trim() : null,
+        leadSource: leadSource,
+        sourceOther: sourceOther,
+        notes: payload.notes ? String(payload.notes).trim() : null,
+        status: 'PENDING',
+        source: 'Website Booking Intent',
+      },
+    });
 
-    // Save to local store
-    const store = readLocalStore();
-    store.bookings = store.bookings || [];
-    store.bookings.unshift(newBooking);
-    writeLocalStore(store);
-
-    // Save to Prisma DB if available
-    if (prisma) {
-      try {
-        const created = await prisma.booking.create({
-          data: {
-            name: newBooking.name,
-            phone: newBooking.phone,
-            countryCode: newBooking.countryCode,
-            preferredDate: newBooking.preferredDate,
-            selectedSlot: newBooking.selectedSlot,
-            selectedCounsellor: newBooking.selectedCounsellor,
-            selectedCounsellorUrl: newBooking.selectedCounsellorUrl,
-            timezone: newBooking.timezone,
-            notes: newBooking.notes,
-            status: 'PENDING'
-          }
-        });
-        newBooking.id = created.id;
-      } catch (dbErr) {
-        console.warn('[Prisma Booking Intent Save Non-fatal]', dbErr.message);
-      }
-    }
-
-    return res.json({ success: true, bookingId: newBooking.id });
+    return res.json({ success: true, bookingId: created.id });
   } catch (error) {
-    console.error('[Admin Booking Intent Error]', error);
-    return res.status(500).json({ error: error.message || 'Failed to save booking intent' });
+    console.error('[Admin Booking Intent Error]', error && error.stack ? error.stack : error);
+    return res.status(500).json({ success: false, error: 'Failed to save booking intent' });
   }
 });
 
@@ -1350,86 +1478,56 @@ app.post('/api/admin/bookings/confirm', async (req, res) => {
       return res.status(400).json({ error: 'bookingId or calendlyEventUri is required' });
     }
 
-    const store = readLocalStore();
-    store.bookings = store.bookings || [];
+    const data = {
+      calendlyEventName: payload.calendlyEventName ? String(payload.calendlyEventName).trim() : undefined,
+      scheduledStartTime: payload.scheduledStartTime ? new Date(payload.scheduledStartTime) : undefined,
+      scheduledEndTime: payload.scheduledEndTime ? new Date(payload.scheduledEndTime) : undefined,
+      googleMeetUrl: googleMeetUrl || undefined,
+      locationType: locationType || undefined,
+      status: normalizeBookingStatus(payload.status || 'CONFIRMED'),
+      notes: payload.notes ? String(payload.notes).trim() : undefined,
+    };
 
-    let target = store.bookings.find(b => (bookingId && b.id === bookingId) || (eventUri && b.calendlyEventUri === eventUri));
+    let saved;
 
-    if (!target) {
-      target = {
-        id: bookingId || ('bk_' + Date.now()),
-        calendlyEventUri: eventUri,
-        calendlyEventName: payload.calendlyEventName ? String(payload.calendlyEventName).trim() : null,
-        scheduledStartTime: payload.scheduledStartTime || null,
-        scheduledEndTime: payload.scheduledEndTime || null,
-        googleMeetUrl: googleMeetUrl,
-        locationType: locationType,
-        status: normalizeBookingStatus(payload.status || 'CONFIRMED'),
-        notes: payload.notes ? String(payload.notes).trim() : 'Confirmed from Calendly',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      store.bookings.unshift(target);
-    } else {
-      target.calendlyEventUri = eventUri || target.calendlyEventUri;
-      target.calendlyEventName = payload.calendlyEventName ? String(payload.calendlyEventName).trim() : target.calendlyEventName;
-      target.scheduledStartTime = payload.scheduledStartTime || target.scheduledStartTime;
-      target.scheduledEndTime = payload.scheduledEndTime || target.scheduledEndTime;
-      if (googleMeetUrl) target.googleMeetUrl = googleMeetUrl;
-      if (locationType) target.locationType = locationType;
-      target.status = normalizeBookingStatus(payload.status || 'CONFIRMED');
-      target.notes = payload.notes ? String(payload.notes).trim() : target.notes;
-      target.updatedAt = new Date().toISOString();
-    }
-
-    writeLocalStore(store);
-
-    // Save to Prisma DB if available
-    if (prisma) {
-      try {
-        const where = bookingId ? { id: bookingId } : { calendlyEventUri: eventUri };
-        const existing = await prisma.booking.findFirst({ where });
-
-        if (!existing) {
-          await prisma.booking.create({
-            data: {
-              calendlyEventUri: eventUri,
-              calendlyEventName: payload.calendlyEventName ? String(payload.calendlyEventName).trim() : null,
-              scheduledStartTime: payload.scheduledStartTime ? new Date(payload.scheduledStartTime) : null,
-              scheduledEndTime: payload.scheduledEndTime ? new Date(payload.scheduledEndTime) : null,
-              googleMeetUrl: googleMeetUrl,
-              locationType: locationType,
-              status: normalizeBookingStatus(payload.status || 'CONFIRMED'),
-              notes: payload.notes ? String(payload.notes).trim() : 'Inserted from confirmation callback'
-            }
-          });
-        } else {
-          await prisma.booking.update({
-            where: { id: existing.id },
-            data: {
-              calendlyEventUri: eventUri || existing.calendlyEventUri,
-              calendlyEventName: payload.calendlyEventName ? String(payload.calendlyEventName).trim() : existing.calendlyEventName,
-              scheduledStartTime: payload.scheduledStartTime ? new Date(payload.scheduledStartTime) : existing.scheduledStartTime,
-              scheduledEndTime: payload.scheduledEndTime ? new Date(payload.scheduledEndTime) : existing.scheduledEndTime,
-              googleMeetUrl: googleMeetUrl || existing.googleMeetUrl,
-              locationType: locationType || existing.locationType,
-              status: normalizeBookingStatus(payload.status || 'CONFIRMED'),
-              notes: payload.notes ? String(payload.notes).trim() : existing.notes
-            }
-          });
-        }
-      } catch (dbErr) {
-        console.warn('[Prisma Booking Confirm Non-fatal]', dbErr.message);
+    if (bookingId) {
+      // Scoped to the one record. If it does not exist, say so rather than
+      // silently creating a duplicate under a different id.
+      const existing = await prisma.booking.findUnique({ where: { id: bookingId } });
+      if (!existing) {
+        return res.status(404).json({ success: false, error: 'Booking not found', bookingId });
       }
+      saved = await prisma.booking.update({
+        where: { id: bookingId },
+        data: { ...data, calendlyEventUri: eventUri || undefined },
+      });
+    } else {
+      // Atomic upsert on the unique calendlyEventUri. This is what makes a
+      // double-clicked confirmation idempotent without any lock: two parallel
+      // requests for the same event resolve to one row, decided by Postgres.
+      saved = await prisma.booking.upsert({
+        where: { calendlyEventUri: eventUri },
+        update: data,
+        create: {
+          ...data,
+          calendlyEventUri: eventUri,
+          notes: payload.notes ? String(payload.notes).trim() : 'Inserted from confirmation callback',
+        },
+      });
     }
 
     // Force flush scheduled events cache to immediately reflect confirmation
     scheduledEventsCache.expiresAt = 0;
 
-    return res.json({ success: true, bookingId: target.id, googleMeetUrl: target.googleMeetUrl, locationType: target.locationType });
+    return res.json({
+      success: true,
+      bookingId: saved.id,
+      googleMeetUrl: saved.googleMeetUrl,
+      locationType: saved.locationType,
+    });
   } catch (error) {
-    console.error('[Admin Booking Confirm Error]', error);
-    return res.status(500).json({ error: error.message || 'Failed to confirm booking' });
+    console.error('[Admin Booking Confirm Error]', error && error.stack ? error.stack : error);
+    return res.status(500).json({ success: false, error: 'Failed to confirm booking' });
   }
 });
 
@@ -1439,93 +1537,78 @@ app.post('/api/admin/bookings/status', async (req, res) => {
     const { id, status, notes } = req.body || {};
     if (!id) return res.status(400).json({ error: 'id is required' });
 
-    const store = readLocalStore();
-    store.bookings = store.bookings || [];
-    const b = store.bookings.find(item => item.id === id || item.calendlyEventUri === id);
-
-    if (b) {
-      if (status) b.status = normalizeBookingStatus(status);
-      if (notes !== undefined) b.notes = String(notes).trim();
-      b.updatedAt = new Date().toISOString();
-      writeLocalStore(store);
+    if (status && !isSupportedBookingStatus(status)) {
+      return res.status(400).json({
+        success: false,
+        error: `Unsupported status "${status}". Allowed: ${SUPPORTED_BOOKING_STATUSES.join(', ')}`,
+      });
     }
 
-    if (prisma) {
-      try {
-        await prisma.booking.updateMany({
-          where: { OR: [{ id: id }, { calendlyEventUri: id }] },
-          data: {
-            ...(status ? { status: normalizeBookingStatus(status) } : {}),
-            ...(notes !== undefined ? { notes: String(notes).trim() } : {})
-          }
-        });
-      } catch (e) {
-        console.warn('[Prisma Status Update Non-fatal]', e.message);
-      }
+    const result = await prisma.booking.updateMany({
+      where: { OR: [{ id: String(id) }, { calendlyEventUri: String(id) }] },
+      data: {
+        ...(status ? { status: normalizeBookingStatus(status) } : {}),
+        ...(notes !== undefined ? { notes: String(notes).trim() } : {}),
+        updatedAt: new Date(),
+      },
+    });
+
+    // A write that matched nothing is not a success.
+    if (result.count === 0) {
+      return res.status(404).json({ success: false, error: 'Booking not found', id });
     }
 
-    return res.json({ success: true, message: 'Booking updated successfully' });
+    return res.json({ success: true, updated: result.count, message: 'Booking updated successfully' });
   } catch (error) {
-    console.error('[Admin Status Update Error]', error);
-    return res.status(500).json({ error: error.message || 'Failed to update booking status' });
+    console.error('[Admin Status Update Error]', error && error.stack ? error.stack : error);
+    return res.status(500).json({ success: false, error: 'Failed to update booking status' });
   }
 });
 
 // Delete a booking record
 app.delete('/api/admin/bookings/:id', async (req, res) => {
   try {
-    const id = req.params.id;
-    const store = readLocalStore();
-    if (!store.deletedCalendlyUris) store.deletedCalendlyUris = [];
-    if (!store.deletedCalendlyUris.includes(id)) {
-      store.deletedCalendlyUris.push(id);
-    }
-    store.bookings = (store.bookings || []).filter(b => b.id !== id && b.calendlyEventUri !== id);
-    writeLocalStore(store);
+    const id = String(req.params.id);
 
-    if (prisma) {
-      try {
-        await prisma.booking.deleteMany({
-          where: { OR: [{ id: id }, { calendlyEventUri: id }] }
-        });
-      } catch (e) {
-        console.warn('[Prisma Delete Booking Non-fatal]', e.message);
-      }
-    }
+    // Suppress the reference so a live Calendly event does not reappear on the
+    // next sync, then delete the stored row. Both go to Postgres.
+    await addDeletedRefs([id]);
+    const result = await prisma.booking.deleteMany({
+      where: { OR: [{ id }, { calendlyEventUri: id }] },
+    });
 
-    return res.json({ success: true });
+    scheduledEventsCache.expiresAt = 0;
+    return res.json({ success: true, deleted: result.count });
   } catch (error) {
-    return res.status(500).json({ error: error.message || 'Failed to delete booking' });
+    console.error('[Admin Delete Booking Error]', error && error.stack ? error.stack : error);
+    return res.status(500).json({ success: false, error: 'Failed to delete booking' });
   }
 });
 
 // Clear all test leads, bookings, and active Calendly event references
 app.post('/api/admin/clear-all', async (req, res) => {
   try {
-    const store = readLocalStore();
+    // Suppress every currently-live Calendly event so cleared bookings do not
+    // reappear on the next sync.
     const calendlyEvents = await fetchCalendlyScheduledEvents(true);
-    const calendlyUris = calendlyEvents.map(e => e.calendlyEventUri || e.uri || e.id).filter(Boolean);
-    const existingDeleted = store.deletedCalendlyUris || [];
-    const allDeleted = Array.from(new Set([...existingDeleted, ...calendlyUris]));
+    const calendlyUris = calendlyEvents.map(e => e.calendlyEventUri || e.id).filter(Boolean);
+    await addDeletedRefs(calendlyUris);
 
-    store.leads = [];
-    store.bookings = [];
-    store.deletedCalendlyUris = allDeleted;
-    writeLocalStore(store);
+    const [bookingsDeleted, leadsDeleted] = await Promise.all([
+      prisma.booking.deleteMany({}),
+      prisma.lead.deleteMany({}),
+    ]);
 
-    if (prisma) {
-      try {
-        await prisma.booking.deleteMany({});
-        await prisma.lead.deleteMany({});
-      } catch (e) {
-        console.warn('[Prisma Clear All Error]', e.message);
-      }
-    }
-
-    return res.json({ success: true, message: 'All data cleared successfully.' });
+    scheduledEventsCache.expiresAt = 0;
+    return res.json({
+      success: true,
+      bookingsDeleted: bookingsDeleted.count,
+      leadsDeleted: leadsDeleted.count,
+      message: 'All data cleared successfully.',
+    });
   } catch (err) {
-    console.error('[Clear All Error]', err);
-    return res.status(500).json({ error: err.message || 'Failed to clear data' });
+    console.error('[Clear All Error]', err && err.stack ? err.stack : err);
+    return res.status(500).json({ success: false, error: 'Failed to clear data' });
   }
 });
 
@@ -1537,122 +1620,121 @@ app.post('/api/admin/clear-month', async (req, res) => {
       return res.status(400).json({ error: 'yearMonth is required (e.g., 2026-08)' });
     }
 
-    const store = readLocalStore();
-    if (!store.deletedCalendlyUris) store.deletedCalendlyUris = [];
+    // Month is matched on the stored timestamp rather than by substring-scanning
+    // a JSON array. yearMonth is "YYYY-MM".
+    const [yearStr, monthStr] = String(yearMonth).split('-');
+    const year = parseInt(yearStr, 10);
+    const month = parseInt(monthStr, 10);
+    if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) {
+      return res.status(400).json({ error: 'yearMonth must be in YYYY-MM format (e.g., 2026-08)' });
+    }
+    const rangeStart = new Date(Date.UTC(year, month - 1, 1));
+    const rangeEnd = new Date(Date.UTC(month === 12 ? year + 1 : year, month === 12 ? 0 : month, 1));
+    const range = { gte: rangeStart, lt: rangeEnd };
 
-    // Filter bookings matching yearMonth in createdAt or date
-    const matchedBookingIds = [];
-    store.bookings = (store.bookings || []).filter(b => {
-      const dStr = String(b.createdAt || b.date || b.start_time || '');
-      if (dStr.includes(yearMonth)) {
-        if (b.calendlyEventUri) store.deletedCalendlyUris.push(b.calendlyEventUri);
-        if (b.id) matchedBookingIds.push(b.id);
-        return false;
-      }
-      return true;
-    });
-
-    // Filter leads matching yearMonth
-    const matchedLeadIds = [];
-    store.leads = (store.leads || []).filter(l => {
-      const dStr = String(l.createdAt || l.preferredDate || '');
-      if (dStr.includes(yearMonth)) {
-        if (l.id) matchedLeadIds.push(l.id);
-        return false;
-      }
-      return true;
-    });
-
-    // Also block active Calendly events from that month
+    // Suppress the Calendly events in that month so they do not reappear.
     const calendlyEvents = await fetchCalendlyScheduledEvents(true);
-    for (const ev of calendlyEvents) {
-      const dStr = String(ev.start_time || ev.createdAt || '');
-      if (dStr.includes(yearMonth)) {
-        const uri = ev.calendlyEventUri || ev.uri || ev.id;
-        if (uri && !store.deletedCalendlyUris.includes(uri)) {
-          store.deletedCalendlyUris.push(uri);
-        }
-      }
-    }
+    const urisToSuppress = calendlyEvents
+      .filter(ev => {
+        const d = new Date(ev.scheduledStartTime || ev.createdAt || 0);
+        return !isNaN(d.getTime()) && d >= rangeStart && d < rangeEnd;
+      })
+      .map(ev => ev.calendlyEventUri || ev.id)
+      .filter(Boolean);
 
-    store.deletedCalendlyUris = Array.from(new Set(store.deletedCalendlyUris));
-    writeLocalStore(store);
+    const doomed = await prisma.booking.findMany({
+      where: { createdAt: range },
+      select: { calendlyEventUri: true },
+    });
+    await addDeletedRefs([
+      ...urisToSuppress,
+      ...doomed.map(b => b.calendlyEventUri).filter(Boolean),
+    ]);
 
-    if (prisma) {
-      try {
-        if (matchedBookingIds.length > 0) {
-          await prisma.booking.deleteMany({ where: { id: { in: matchedBookingIds } } });
-        }
-        if (matchedLeadIds.length > 0) {
-          await prisma.lead.deleteMany({ where: { id: { in: matchedLeadIds } } });
-        }
-      } catch (e) {
-        console.warn('[Prisma Clear Month Error]', e.message);
-      }
-    }
+    const [bookingsDeleted, leadsDeleted] = await Promise.all([
+      prisma.booking.deleteMany({ where: { createdAt: range } }),
+      prisma.lead.deleteMany({ where: { createdAt: range } }),
+    ]);
 
-    return res.json({ success: true, message: `Data for ${yearMonth} cleared successfully.` });
+    scheduledEventsCache.expiresAt = 0;
+    return res.json({
+      success: true,
+      bookingsDeleted: bookingsDeleted.count,
+      leadsDeleted: leadsDeleted.count,
+      message: `Data for ${yearMonth} cleared successfully.`,
+    });
   } catch (err) {
-    console.error('[Clear Month Error]', err);
-    return res.status(500).json({ error: err.message || 'Failed to clear month data' });
+    console.error('[Clear Month Error]', err && err.stack ? err.stack : err);
+    return res.status(500).json({ success: false, error: 'Failed to clear month data' });
   }
 });
 
 // Clear selected rows (by array of IDs)
 app.post('/api/admin/clear-selected', async (req, res) => {
   try {
-    const { ids } = req.body; // Array of lead/booking IDs or URIs
+    const { ids } = req.body || {}; // Array of lead/booking IDs or URIs
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
       return res.status(400).json({ error: 'ids array is required' });
     }
 
-    const store = readLocalStore();
-    if (!store.deletedCalendlyUris) store.deletedCalendlyUris = [];
-
-    const idSet = new Set(ids);
-    ids.forEach(id => store.deletedCalendlyUris.push(id));
-    store.deletedCalendlyUris = Array.from(new Set(store.deletedCalendlyUris));
-
-    store.bookings = (store.bookings || []).filter(b => !idSet.has(b.id) && !idSet.has(b.calendlyEventUri));
-    store.leads = (store.leads || []).filter(l => !idSet.has(l.id));
-
-    writeLocalStore(store);
-
-    if (prisma) {
-      try {
-        await prisma.booking.deleteMany({ where: { id: { in: ids } } });
-        await prisma.lead.deleteMany({ where: { id: { in: ids } } });
-      } catch (e) {
-        console.warn('[Prisma Clear Selected Error]', e.message);
-      }
+    const clean = Array.from(new Set(ids.filter(Boolean).map(String)));
+    if (clean.length === 0) {
+      return res.status(400).json({ error: 'ids array is required' });
     }
 
-    return res.json({ success: true, message: `${ids.length} item(s) deleted successfully.` });
+    await addDeletedRefs(clean);
+
+    // Match on id OR calendlyEventUri so a row is removed whichever identifier
+    // the panel happened to be showing.
+    const [bookingsDeleted, leadsDeleted] = await Promise.all([
+      prisma.booking.deleteMany({
+        where: { OR: [{ id: { in: clean } }, { calendlyEventUri: { in: clean } }] },
+      }),
+      prisma.lead.deleteMany({ where: { id: { in: clean } } }),
+    ]);
+
+    scheduledEventsCache.expiresAt = 0;
+    return res.json({
+      success: true,
+      bookingsDeleted: bookingsDeleted.count,
+      leadsDeleted: leadsDeleted.count,
+      message: `${bookingsDeleted.count + leadsDeleted.count} item(s) deleted successfully.`,
+    });
   } catch (err) {
-    console.error('[Clear Selected Error]', err);
-    return res.status(500).json({ error: err.message || 'Failed to delete selected items' });
+    console.error('[Clear Selected Error]', err && err.stack ? err.stack : err);
+    return res.status(500).json({ success: false, error: 'Failed to delete selected items' });
   }
 });
 
 // Delete a lead record
 app.delete('/api/admin/leads/:id', async (req, res) => {
   try {
-    const id = req.params.id;
-    const store = readLocalStore();
-    store.leads = (store.leads || []).filter(l => l.id !== id);
-    writeLocalStore(store);
-
-    if (prisma) {
-      try {
-        await prisma.lead.deleteMany({ where: { id: id } });
-      } catch (e) {
-        console.warn('[Prisma Delete Lead Non-fatal]', e.message);
-      }
+    const id = String(req.params.id);
+    const result = await prisma.lead.deleteMany({ where: { id } });
+    if (result.count === 0) {
+      return res.status(404).json({ success: false, error: 'Lead not found', id });
     }
-
-    return res.json({ success: true });
+    return res.json({ success: true, deleted: result.count });
   } catch (error) {
-    return res.status(500).json({ error: error.message || 'Failed to delete lead' });
+    console.error('[Admin Delete Lead Error]', error && error.stack ? error.stack : error);
+    return res.status(500).json({ success: false, error: 'Failed to delete lead' });
+  }
+});
+
+// Read-only JSON export, generated from Postgres.
+// Replaces reading data/admin_store.json directly — that file is no longer
+// written and its contents are stale by definition.
+app.get('/api/admin/export', async (req, res) => {
+  try {
+    const snapshot = await buildStoreExport();
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    if (req.query.download === 'true') {
+      res.setHeader('Content-Disposition', `attachment; filename="amc_export_${Date.now()}.json"`);
+    }
+    return res.send(JSON.stringify(snapshot, null, 2));
+  } catch (err) {
+    console.error('[Admin Export Error]', err && err.stack ? err.stack : err);
+    return res.status(500).json({ success: false, error: 'Failed to build export' });
   }
 });
 
@@ -1769,12 +1851,35 @@ app.get('/api/calendly/month-availability', async (req, res) => {
 
     const tzName = resolveTimeZone(req.query.tz, process.env.CALENDLY_TIMEZONE || 'Asia/Kolkata');
     const counsellorScope = resolveCounsellorScope(req.query.counsellor);
-    const [uris1, uris2, c1Name, c2Name] = await Promise.all([
-      counsellorScope === 'counsellor2' ? Promise.resolve([]) : getAllActiveEventUris('counsellor1'),
-      counsellorScope === 'counsellor1' ? Promise.resolve([]) : getAllActiveEventUris('counsellor2'),
+
+    // allSettled, not all. getAllActiveEventUris throws when a counsellor's
+    // Calendly token is rejected, and with Promise.all one bad token 500'd the
+    // whole endpoint — taking down availability for the counsellor whose token
+    // was perfectly fine. Each counsellor now succeeds or fails on its own.
+    const [uriRes1, uriRes2, c1Name, c2Name] = await Promise.all([
+      counsellorScope === 'counsellor2' ? Promise.resolve([]) : settle(getAllActiveEventUris('counsellor1')),
+      counsellorScope === 'counsellor1' ? Promise.resolve([]) : settle(getAllActiveEventUris('counsellor2')),
       getCounsellorName('counsellor1'),
       getCounsellorName('counsellor2')
     ]);
+
+    const uris1 = unwrapUris(uriRes1);
+    const uris2 = unwrapUris(uriRes2);
+    const counsellorErrors = collectCounsellorErrors(uriRes1, uriRes2);
+    if (counsellorErrors.length > 0) {
+      console.warn('[Month Availability] degraded — some counsellors unavailable:',
+        counsellorErrors.map(e => `${e.counsellor}: ${e.error}`).join(' | '));
+    }
+
+    // Only a total failure is an error. Partial data is served with a flag.
+    if (counsellorErrors.length > 0 && uris1.length === 0 && uris2.length === 0) {
+      return res.status(502).json({
+        success: false,
+        error: 'Could not reach Calendly for either counsellor',
+        counsellorErrors,
+        availableDates: [],
+      });
+    }
 
     const now = Date.now();
     const chunks = [
@@ -1838,11 +1943,16 @@ app.get('/api/calendly/month-availability', async (req, res) => {
         counsellor1: c1Name,
         counsellor2: c2Name
       },
+      // true when at least one counsellor could not be reached, so the dates
+      // below are real but incomplete. The frontend surfaces this rather than
+      // inventing availability.
+      degraded: counsellorErrors.length > 0,
+      counsellorErrors,
       cached: false
     });
   } catch (error) {
-    console.error('[Month Availability API Error]', error);
-    return res.status(500).json({ error: 'Failed to fetch month availability' });
+    console.error('[Month Availability API Error]', error && error.stack ? error.stack : error);
+    return res.status(500).json({ success: false, error: 'Failed to fetch month availability' });
   }
 });
 
@@ -1873,8 +1983,28 @@ app.get('/api/calendly/availability', async (req, res) => {
       getCounsellorName('counsellor2')
     ]);
 
-    const uris1 = counsellorScope === 'counsellor2' ? [] : await getAllActiveEventUris('counsellor1');
-    const uris2 = counsellorScope === 'counsellor1' ? [] : await getAllActiveEventUris('counsellor2');
+    // Each counsellor is resolved independently: a rejected token for one must
+    // not deny the other's real slots.
+    const [uriRes1, uriRes2] = await Promise.all([
+      counsellorScope === 'counsellor2' ? Promise.resolve([]) : settle(getAllActiveEventUris('counsellor1')),
+      counsellorScope === 'counsellor1' ? Promise.resolve([]) : settle(getAllActiveEventUris('counsellor2')),
+    ]);
+    const uris1 = unwrapUris(uriRes1);
+    const uris2 = unwrapUris(uriRes2);
+    const counsellorErrors = collectCounsellorErrors(uriRes1, uriRes2);
+    if (counsellorErrors.length > 0) {
+      console.warn('[Availability] degraded — some counsellors unavailable:',
+        counsellorErrors.map(e => `${e.counsellor}: ${e.error}`).join(' | '));
+    }
+
+    if (counsellorErrors.length > 0 && uris1.length === 0 && uris2.length === 0) {
+      return res.status(502).json({
+        success: false,
+        error: 'Could not reach Calendly for either counsellor',
+        counsellorErrors,
+        timeSlots: [],
+      });
+    }
 
     // Build UTC query range from the selected local date in configured timezone offset.
     const { startIso: targetStartIso, endIso: targetEndIso } = getUtcRangeForLocalDate(date, tzOffset);
@@ -1950,7 +2080,7 @@ app.get('/api/calendly/availability', async (req, res) => {
     processSlots(slots2, 'counsellor2');
 
     // Enforce alternate load balancing: check history of last assigned counsellor
-    const lastAssigned = getLastAssignedCounsellor();
+    const lastAssigned = await getLastAssignedCounsellor();
     const primaryCounsellor = lastAssigned === 'counsellor1' ? 'counsellor2' : 'counsellor1';
     const secondaryCounsellor = primaryCounsellor === 'counsellor1' ? 'counsellor2' : 'counsellor1';
     console.log(`[Load Balance] Last assigned counsellor: ${lastAssigned || 'NONE'}. Priority assigned to: ${primaryCounsellor}`);
@@ -2074,6 +2204,8 @@ app.get('/api/calendly/availability', async (req, res) => {
         counsellor2: c2Name
       },
       nextAvailable: nextAvailable,
+      degraded: counsellorErrors.length > 0,
+      counsellorErrors,
       slots: {
         before_lunch: {
           available: beforeLunchCounsellors.length > 0,
@@ -2087,8 +2219,8 @@ app.get('/api/calendly/availability', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('[Availability API Error]', error);
-    return res.status(500).json({ error: 'Internal server error fetching availability' });
+    console.error('[Availability API Error]', error && error.stack ? error.stack : error);
+    return res.status(500).json({ success: false, error: 'Internal server error fetching availability' });
   }
 });
 
@@ -2171,8 +2303,14 @@ app.post('/api/calendly/confirm', async (req, res) => {
       });
     }
 
-    // Call fetch with retry (up to ~42s, checking every ~4.5s)
-    const eventResult = await fetchCalendlyEventWithRetry(eventUri, token, 42000, 4500);
+    // Short retry window, not 42 seconds.
+    //
+    // The event's start_time is available on the first call; only the Google
+    // Meet conference link may still be provisioning. Blocking the request for
+    // 42s held an Express connection (and a bogus or stale eventUri held it for
+    // the full duration) for something the frontend poller and the 2-minute
+    // background sweep are already built to resolve.
+    const eventResult = await fetchCalendlyEventWithRetry(eventUri, token, CONFIRM_RETRY_MS, CONFIRM_RETRY_INTERVAL_MS);
     const resource = eventResult.resource;
     const invitee = eventResult.invitee || null;
 
@@ -2205,168 +2343,143 @@ app.post('/api/calendly/confirm', async (req, res) => {
     const inviteeName = (invitee && invitee.name) || null;
     const inviteePhone = (invitee && invitee.text_reminder_number) || null;
 
-    // Update Local Store
-    const store = readLocalStore();
-    store.bookings = store.bookings || [];
-
-    // Step 1: Try to find by explicit bookingId or eventUri
-    let target = store.bookings.find(b => (bookingId && b.id === bookingId) || (eventUri && b.calendlyEventUri === eventUri));
-
-    // Step 2: If not found (race condition — bookingId may not have been set yet),
-    // search for the most recent pending booking intent that matches by contact info
-    if (!target && (inviteeEmail || inviteeName)) {
-      const recentPending = store.bookings.filter(b => {
-        if (b.calendlyEventUri) return false; // already confirmed
-        const age = Date.now() - new Date(b.createdAt || 0).getTime();
-        if (age > 10 * 60 * 1000) return false; // older than 10 min
-        return true;
-      });
-
-      // Match by email, then name, then phone
-      target = recentPending.find(b => inviteeEmail && b.email && b.email.toLowerCase() === inviteeEmail.toLowerCase());
-      if (!target) target = recentPending.find(b => inviteeName && b.name && b.name.toLowerCase() === inviteeName.toLowerCase());
-      if (!target) target = recentPending.find(b => inviteePhone && b.phone && String(b.phone).replace(/\D/g, '').slice(-10) === String(inviteePhone).replace(/\D/g, '').slice(-10));
-
-      if (target) {
-        console.log('[Calendly Confirm]   Matched pending intent by contact:', target.id, target.name, target.email);
-      }
-    }
-
-    console.log('[Calendly Confirm]   Target found:', !!target, target ? target.id : 'will create new');
-
+    // Resolve the counsellor name BEFORE touching the database, so no awaited
+    // network call sits between reading a record and writing it back. That gap
+    // was the one genuine read-modify-write race in this file.
     const resolvedName = await getCounsellorName(counsellorIdResolved);
+    const counsellorLabel = `Counsellor ${counsellorIdResolved === 'counsellor1' ? '1' : '2'} (${resolvedName})`;
+    const counsellorUrl = counsellorIdResolved === 'counsellor1' ? process.env.CALENDLY_URL_1 : process.env.CALENDLY_URL_2;
 
-    if (target) {
-      target.googleMeetUrl = googleMeetUrl || target.googleMeetUrl || null;
-      target.locationType = locationType;
-      target.calendlyEventUri = eventUri;
-      target.scheduledStartTime = resource.start_time || target.scheduledStartTime;
-      target.scheduledEndTime = resource.end_time || target.scheduledEndTime;
-      target.calendlyEventName = resource.name || target.calendlyEventName;
-      target.status = normalizeBookingStatus(resource.status || 'CONFIRMED');
-      // Merge invitee contact from Calendly if missing locally
-      if (inviteeEmail && !target.email) target.email = inviteeEmail;
-      if (inviteeName && !target.name) target.name = inviteeName;
-      target.updatedAt = new Date().toISOString();
-
-      // Ensure counsellor info is set
-      if (!target.selectedCounsellorId) target.selectedCounsellorId = counsellorIdResolved;
-      if (!target.selectedCounsellor) target.selectedCounsellor = `Counsellor ${counsellorIdResolved === 'counsellor1' ? '1' : '2'} (${resolvedName})`;
-      if (!target.selectedCounsellorUrl) target.selectedCounsellorUrl = counsellorIdResolved === 'counsellor1' ? process.env.CALENDLY_URL_1 : process.env.CALENDLY_URL_2;
-    } else {
-      target = {
-        id: bookingId || ('bk_' + Date.now()),
-        calendlyEventUri: eventUri,
-        calendlyEventName: resource.name || 'AMC Counselling Session',
-        scheduledStartTime: resource.start_time,
-        scheduledEndTime: resource.end_time,
-        googleMeetUrl: googleMeetUrl,
-        locationType: locationType,
-        // Always pull invitee contact from Calendly for new entries
-        name: inviteeName || null,
-        email: inviteeEmail || null,
-        status: normalizeBookingStatus(resource.status || 'CONFIRMED'),
-        notes: 'Confirmed from Calendly verification',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-
-        // Populate counsellor fields!
-        selectedCounsellorId: counsellorIdResolved,
-        selectedCounsellor: `Counsellor ${counsellorIdResolved === 'counsellor1' ? '1' : '2'} (${resolvedName})`,
-        selectedCounsellorUrl: counsellorIdResolved === 'counsellor1' ? process.env.CALENDLY_URL_1 : process.env.CALENDLY_URL_2
-      };
-      store.bookings.unshift(target);
+    // Step 1: locate the booking this confirmation belongs to.
+    let existing = null;
+    if (bookingId) {
+      existing = await prisma.booking.findUnique({ where: { id: String(bookingId) } });
+    }
+    if (!existing) {
+      existing = await prisma.booking.findUnique({ where: { calendlyEventUri: eventUri } });
     }
 
-    console.log('[Calendly Confirm]   Final target: id=' + target.id + ', email=' + target.email + ', name=' + target.name + ', meetUrl=' + (target.googleMeetUrl ? 'YES' : 'NONE'));
-    writeLocalStore(store);
-
-    // Update Prisma DB if available
-    if (prisma) {
-      try {
-        const where = bookingId ? { id: bookingId } : { calendlyEventUri: eventUri };
-        const existing = await prisma.booking.findFirst({ where });
+    // Step 2: fall back to the most recent unconfirmed intent matching this
+    // invitee's contact details. Narrowed by the database rather than by
+    // scanning every booking in memory.
+    if (!existing && (inviteeEmail || inviteeName || inviteePhone)) {
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+      const contactFilters = [];
+      if (inviteeEmail) contactFilters.push({ email: { equals: inviteeEmail, mode: 'insensitive' } });
+      if (inviteeName) contactFilters.push({ name: { equals: inviteeName, mode: 'insensitive' } });
+      if (inviteePhone) {
+        const tail = String(inviteePhone).replace(/\D/g, '').slice(-10);
+        if (tail) contactFilters.push({ phone: { endsWith: tail } });
+      }
+      if (contactFilters.length > 0) {
+        existing = await prisma.booking.findFirst({
+          where: {
+            calendlyEventUri: null,
+            createdAt: { gte: tenMinutesAgo },
+            OR: contactFilters,
+          },
+          orderBy: { createdAt: 'desc' },
+        });
         if (existing) {
-          await prisma.booking.update({
-            where: { id: existing.id },
-            data: {
-              calendlyEventUri: eventUri,
-              calendlyEventName: resource.name || existing.calendlyEventName,
-              scheduledStartTime: new Date(resource.start_time),
-              scheduledEndTime: resource.end_time ? new Date(resource.end_time) : existing.scheduledEndTime,
-              googleMeetUrl: googleMeetUrl || existing.googleMeetUrl,
-              locationType: locationType || existing.locationType,
-              status: normalizeBookingStatus(resource.status || existing.status || 'CONFIRMED'),
-              updatedAt: new Date(),
-              selectedCounsellor: existing.selectedCounsellor || `Counsellor ${counsellorIdResolved === 'counsellor1' ? '1' : '2'} (${resolvedName})`,
-              selectedCounsellorUrl: existing.selectedCounsellorUrl || (counsellorIdResolved === 'counsellor1' ? process.env.CALENDLY_URL_1 : process.env.CALENDLY_URL_2)
-            }
-          });
-        } else {
-          await prisma.booking.create({
-            data: {
-              calendlyEventUri: eventUri,
-              calendlyEventName: resource.name || 'AMC Counselling Session',
-              scheduledStartTime: new Date(resource.start_time),
-              scheduledEndTime: resource.end_time ? new Date(resource.end_time) : null,
-              googleMeetUrl: googleMeetUrl,
-              locationType: locationType,
-              status: normalizeBookingStatus(resource.status || 'CONFIRMED'),
-              notes: 'Inserted from verification callback',
-              selectedCounsellor: `Counsellor ${counsellorIdResolved === 'counsellor1' ? '1' : '2'} (${resolvedName})`,
-              selectedCounsellorUrl: counsellorIdResolved === 'counsellor1' ? process.env.CALENDLY_URL_1 : process.env.CALENDLY_URL_2
-            }
-          });
+          console.log('[Calendly Confirm]   Matched pending intent by contact:', existing.id, existing.name, existing.email);
         }
-      } catch (dbErr) {
-        console.warn('[Prisma Booking Verify Save Non-fatal]', dbErr.message);
       }
     }
+
+    console.log('[Calendly Confirm]   Target found:', Boolean(existing), existing ? existing.id : 'will create new');
+
+    const confirmData = {
+      calendlyEventUri: eventUri,
+      calendlyEventName: resource.name || 'AMC Counselling Session',
+      scheduledStartTime: new Date(resource.start_time),
+      scheduledEndTime: resource.end_time ? new Date(resource.end_time) : null,
+      googleMeetUrl: googleMeetUrl,
+      locationType: locationType,
+      status: normalizeBookingStatus(resource.status || 'CONFIRMED'),
+    };
+
+    let saved;
+    if (existing) {
+      saved = await prisma.booking.update({
+        where: { id: existing.id },
+        data: {
+          ...confirmData,
+          // Never blank out a value we already hold.
+          googleMeetUrl: googleMeetUrl || existing.googleMeetUrl,
+          scheduledEndTime: confirmData.scheduledEndTime || existing.scheduledEndTime,
+          email: existing.email || inviteeEmail || null,
+          name: existing.name || inviteeName || null,
+          selectedCounsellorId: existing.selectedCounsellorId || counsellorIdResolved,
+          selectedCounsellor: existing.selectedCounsellor || counsellorLabel,
+          selectedCounsellorUrl: existing.selectedCounsellorUrl || counsellorUrl,
+        },
+      });
+    } else {
+      // Atomic upsert keyed on the unique event uri: two confirmations racing
+      // for the same Calendly event converge on one row.
+      saved = await prisma.booking.upsert({
+        where: { calendlyEventUri: eventUri },
+        update: confirmData,
+        create: {
+          ...confirmData,
+          name: inviteeName || null,
+          email: inviteeEmail || null,
+          notes: 'Confirmed from Calendly verification',
+          selectedCounsellorId: counsellorIdResolved,
+          selectedCounsellor: counsellorLabel,
+          selectedCounsellorUrl: counsellorUrl,
+        },
+      });
+    }
+
+    console.log('[Calendly Confirm]   Saved: id=' + saved.id + ', email=' + saved.email + ', name=' + saved.name + ', meetUrl=' + (saved.googleMeetUrl ? 'YES' : 'NONE'));
 
     scheduledEventsCache.expiresAt = 0;
 
-    // Send booking confirmation email with Google Meet link (fire-and-forget — does not block response)
-    if (googleMeetUrl && target.email && !target.emailSent) {
-      console.log('[Calendly Confirm] Triggering booking confirmation email for', target.email);
+    // Send booking confirmation email with Google Meet link (does not block the response).
+    if (saved.googleMeetUrl && saved.email && !saved.emailSent) {
+      console.log('[Calendly Confirm] Triggering booking confirmation email for', saved.email);
       sendBookingConfirmationEmail({
-        id: target.id,
-        email: target.email,
-        name: target.name || 'Student',
-        googleMeetUrl: googleMeetUrl,
+        id: saved.id,
+        email: saved.email,
+        name: saved.name || 'Student',
+        googleMeetUrl: saved.googleMeetUrl,
         scheduledStartTime: resource.start_time,
         scheduledEndTime: resource.end_time,
-        selectedCounsellor: target.selectedCounsellor,
-        calendlyEventName: resource.name || target.calendlyEventName || 'AMC Counselling Session',
-        timezone: target.timezone
+        selectedCounsellor: saved.selectedCounsellor,
+        calendlyEventName: resource.name || saved.calendlyEventName || 'AMC Counselling Session',
+        timezone: saved.timezone,
       }).then(function (emailResult) {
-        if (emailResult.sent) {
-          try {
-            const freshStore = readLocalStore();
-            const bk = (freshStore.bookings || []).find(function (x) { return x.id === target.id; });
-            if (bk) { bk.emailSent = true; bk.emailSentAt = new Date().toISOString(); writeLocalStore(freshStore); }
-            console.log('[Calendly Confirm] emailSent flag saved for booking', target.id);
-          } catch (flagErr) { console.warn('[Calendly Confirm] Could not save emailSent flag:', flagErr.message); }
-        }
-      }).catch(function (err) { console.error('[Calendly Confirm] Email error (non-fatal):', err.message || err); });
+        if (!emailResult.sent) return;
+        // Scoped update — no whole-file rewrite, so nothing else can be clobbered.
+        return prisma.booking.update({
+          where: { id: saved.id },
+          data: { emailSent: true, emailSentAt: new Date() },
+        }).then(function () {
+          console.log('[Calendly Confirm] emailSent flag saved for booking', saved.id);
+        });
+      }).catch(function (err) {
+        console.error('[Calendly Confirm] Email/flag error:', err && err.stack ? err.stack : err);
+      });
     } else if (!googleMeetUrl) {
       console.log('[Calendly Confirm] Meet URL pending — confirmation email will send when link resolves via background sweep');
-    } else if (!target.email) {
-      console.warn('[Calendly Confirm] No email address available — cannot send confirmation email for booking', target.id);
+    } else if (!saved.email) {
+      console.warn('[Calendly Confirm] No email address available — cannot send confirmation email for booking', saved.id);
     }
 
     return res.json({
       success: true,
-      bookingId: target.id,
+      bookingId: saved.id,
       start_time: resource.start_time,
       end_time: resource.end_time,
       name: resource.name,
       status: resource.status,
-      googleMeetUrl: googleMeetUrl,
-      locationType: locationType
+      googleMeetUrl: saved.googleMeetUrl,
+      locationType: saved.locationType
     });
 
   } catch (error) {
-    console.error('[Server Error /api/calendly/confirm]', error);
+    console.error('[Server Error /api/calendly/confirm]', error && error.stack ? error.stack : error);
     return res.status(500).json({
       success: false,
       error: 'Internal server error verifying booking',
@@ -2381,27 +2494,15 @@ app.get('/api/bookings/:id/status', async (req, res) => {
     const rawId = decodeURIComponent(req.params.id || '').trim();
     if (!rawId) return res.status(400).json({ error: 'id parameter is required' });
 
-    const store = readLocalStore();
-    let b = (store.bookings || []).find(item => item.id === rawId || item.calendlyEventUri === rawId || (item.calendlyEventUri && item.calendlyEventUri.endsWith(rawId)));
-
-    if (prisma && (!b || !b.googleMeetUrl)) {
-      try {
-        const dbBooking = await prisma.booking.findFirst({
-          where: {
-            OR: [
-              { id: rawId },
-              { calendlyEventUri: rawId },
-              { calendlyEventUri: { contains: rawId } }
-            ]
-          }
-        });
-        if (dbBooking) {
-          b = Object.assign({}, b || {}, dbBooking);
-        }
-      } catch (dbErr) {
-        console.warn('[Prisma Status Lookup Non-fatal]', dbErr.message);
+    const b = await prisma.booking.findFirst({
+      where: {
+        OR: [
+          { id: rawId },
+          { calendlyEventUri: rawId },
+          { calendlyEventUri: { endsWith: rawId } }
+        ]
       }
-    }
+    });
 
     if (!b) {
       return res.status(404).json({ error: 'Booking not found' });
@@ -2419,108 +2520,165 @@ app.get('/api/bookings/:id/status', async (req, res) => {
       selectedSlot: b.selectedSlot
     });
   } catch (error) {
-    return res.status(500).json({ error: error.message || 'Status check failed' });
+    console.error('[Booking Status Lookup Error]', error && error.stack ? error.stack : error);
+    return res.status(500).json({ error: 'Status check failed' });
   }
 });
 
-// Periodic background sweep worker: checks any bookings created within the last 1 hour
-// whose Google Meet link is still pending, querying Calendly REST API
-async function runPendingMeetSweep() {
-  try {
-    const store = readLocalStore();
-    const now = Date.now();
-    const ONE_HOUR = 60 * 60 * 1000;
+// ──────────────────────────────────────────────────────
+// Periodic background sweep: bookings created in the last hour whose Google
+// Meet link has not resolved yet.
+//
+// Rewritten so that it never holds a snapshot of every booking across awaited
+// network calls. It queries the rows it needs, then updates each row
+// individually by primary key as it goes. Nothing is rewritten wholesale, so a
+// slow sweep cannot clobber a booking made while it was running.
+// ──────────────────────────────────────────────────────
+let sweepInFlight = false;
 
-    const pendingBookings = (store.bookings || []).filter(b => {
-      if (!b.calendlyEventUri) return false;
-      const createdTime = new Date(b.createdAt || b.updatedAt || 0).getTime();
-      const isWithinHour = (now - createdTime) < ONE_HOUR;
-      const isPendingMeet = !b.googleMeetUrl && (b.locationType === 'pending' || !b.locationType);
-      return isWithinHour && isPendingMeet;
+async function runPendingMeetSweep() {
+  // Re-entrancy guard: if the previous run overran the interval, skip this tick
+  // rather than starting a second sweep on top of it.
+  if (sweepInFlight) {
+    console.log('[Pending Meet Sweep] Previous run still in flight — skipping this tick.');
+    return;
+  }
+  sweepInFlight = true;
+
+  try {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+
+    const pendingBookings = await prisma.booking.findMany({
+      where: {
+        calendlyEventUri: { not: null },
+        googleMeetUrl: null,
+        createdAt: { gte: oneHourAgo },
+        OR: [{ locationType: 'pending' }, { locationType: null }],
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
     });
 
     if (pendingBookings.length === 0) return;
 
     console.log(`[Pending Meet Sweep] Checking ${pendingBookings.length} pending bookings against Calendly API...`);
-    const tokens = [process.env.CALENDLY_API_TOKEN_1, process.env.CALENDLY_API_TOKEN_2].filter(Boolean);
+    const tokens = [process.env.CALENDLY_API_TOKEN_1, process.env.CALENDLY_API_TOKEN_2]
+      .filter(t => t && !t.startsWith('your_'));
 
     for (const b of pendingBookings) {
       for (const token of tokens) {
-        if (!token || token.startsWith('your_')) continue;
-        const result = await fetchCalendlyEventWithRetry(b.calendlyEventUri, token, 6000, 2000);
-        if (result && result.googleMeetUrl) {
-          b.googleMeetUrl = result.googleMeetUrl;
-          b.locationType = result.locationType;
-          b.updatedAt = new Date().toISOString();
-          console.log(`[Pending Meet Sweep] Successfully resolved Google Meet link for booking ${b.id}: ${b.googleMeetUrl}`);
+        let result;
+        try {
+          result = await fetchCalendlyEventWithRetry(b.calendlyEventUri, token, 6000, 2000);
+        } catch (fetchErr) {
+          console.error('[Pending Meet Sweep] Calendly fetch failed for', b.id, '-', fetchErr && fetchErr.message);
+          continue;
+        }
 
-          writeLocalStore(store);
+        if (!result || !result.googleMeetUrl) continue;
 
-          if (prisma) {
-            try {
-              await prisma.booking.updateMany({
-                where: { OR: [{ id: b.id }, { calendlyEventUri: b.calendlyEventUri }] },
-                data: {
-                  googleMeetUrl: b.googleMeetUrl,
-                  locationType: b.locationType,
-                  updatedAt: new Date()
-                }
-              });
-            } catch (e) {
-              console.warn('[Prisma Sweep Update Non-fatal]', e.message);
-            }
-          }
+        console.log(`[Pending Meet Sweep] Resolved Google Meet link for booking ${b.id}: ${result.googleMeetUrl}`);
 
-          // Send confirmation email for newly resolved Google Meet link
-          if (!b.emailSent) {
-            const sweepEmail = b.email || (result.invitee && result.invitee.email) || null;
-            const sweepName = b.name || (result.invitee && result.invitee.name) || 'Student';
-            if (sweepEmail) {
-              try {
-                console.log('[Pending Meet Sweep] Sending confirmation email to', sweepEmail, 'for booking', b.id);
-                const emailResult = await sendBookingConfirmationEmail({
-                  id: b.id,
-                  email: sweepEmail,
-                  name: sweepName,
-                  googleMeetUrl: b.googleMeetUrl,
-                  scheduledStartTime: b.scheduledStartTime,
-                  selectedCounsellor: b.selectedCounsellor,
-                  calendlyEventName: b.calendlyEventName || 'AMC Counselling Session',
-                  timezone: b.timezone
-                });
-                if (emailResult.sent) {
-                  b.emailSent = true;
-                  b.emailSentAt = new Date().toISOString();
-                  writeLocalStore(store);
-                  console.log('[Pending Meet Sweep] ✅ Confirmation email sent for booking', b.id);
-                }
-              } catch (emailErr) {
-                console.error('[Pending Meet Sweep] Email send error (non-fatal):', emailErr.message || emailErr);
-              }
-            } else {
-              console.warn('[Pending Meet Sweep] No email address found for booking', b.id, '— cannot send confirmation');
-            }
-          }
-
+        // Scoped to this one row by primary key.
+        let updated;
+        try {
+          updated = await prisma.booking.update({
+            where: { id: b.id },
+            data: {
+              googleMeetUrl: result.googleMeetUrl,
+              locationType: result.locationType,
+            },
+          });
+        } catch (updateErr) {
+          console.error('[Pending Meet Sweep] Failed to persist Meet link for', b.id, '-',
+            updateErr && updateErr.stack ? updateErr.stack : updateErr);
           break;
         }
+
+        // Send confirmation email for the newly resolved link.
+        if (!updated.emailSent) {
+          const sweepEmail = updated.email || (result.invitee && result.invitee.email) || null;
+          const sweepName = updated.name || (result.invitee && result.invitee.name) || 'Student';
+          if (sweepEmail) {
+            try {
+              console.log('[Pending Meet Sweep] Sending confirmation email to', sweepEmail, 'for booking', updated.id);
+              const emailResult = await sendBookingConfirmationEmail({
+                id: updated.id,
+                email: sweepEmail,
+                name: sweepName,
+                googleMeetUrl: updated.googleMeetUrl,
+                scheduledStartTime: updated.scheduledStartTime,
+                selectedCounsellor: updated.selectedCounsellor,
+                calendlyEventName: updated.calendlyEventName || 'AMC Counselling Session',
+                timezone: updated.timezone,
+              });
+              if (emailResult.sent) {
+                await prisma.booking.update({
+                  where: { id: updated.id },
+                  data: { emailSent: true, emailSentAt: new Date() },
+                });
+                console.log('[Pending Meet Sweep] Confirmation email sent for booking', updated.id);
+              }
+            } catch (emailErr) {
+              console.error('[Pending Meet Sweep] Email send error for', updated.id, '-',
+                emailErr && emailErr.stack ? emailErr.stack : emailErr);
+            }
+          } else {
+            console.warn('[Pending Meet Sweep] No email address found for booking', updated.id, '— cannot send confirmation');
+          }
+        }
+
+        break; // resolved with this token; move to the next booking
       }
     }
   } catch (err) {
-    console.error('[Pending Meet Sweep Error]', err);
+    console.error('[Pending Meet Sweep Error]', err && err.stack ? err.stack : err);
+  } finally {
+    sweepInFlight = false;
   }
 }
 
-// Sweep every 2 minutes
-setInterval(runPendingMeetSweep, 2 * 60 * 1000);
+// Sweep every 2 minutes. The .catch is belt-and-braces: runPendingMeetSweep
+// already handles its own errors, but an async function handed to setInterval
+// with no catch is exactly the shape that kills a process silently.
+const sweepTimer = setInterval(() => {
+  runPendingMeetSweep().catch(err => {
+    console.error('[Pending Meet Sweep] Unhandled sweep failure:', err && err.stack ? err.stack : err);
+  });
+}, 2 * 60 * 1000);
+sweepTimer.unref?.();
 
 const server = app.listen(PORT, () => {
-  console.log(`Server is running at http://localhost:${PORT}`);
+  console.log('──────── SERVER STARTED ────────');
+  console.log('  pid        :', process.pid);
+  console.log('  time       :', new Date().toISOString());
+  console.log('  port       :', PORT);
+  console.log('  node       :', process.version);
+  console.log('  NODE_ENV   :', process.env.NODE_ENV || '(unset)');
+  console.log('  timezone   :', Intl.DateTimeFormat().resolvedOptions().timeZone, '| TZ =', process.env.TZ || '(unset)');
+  console.log('  store      : PostgreSQL via Prisma (single source of truth)');
+  console.log('────────────────────────────────');
 });
 
 server.on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
-    console.error(`\n❌ Error: Port ${PORT} is already in use by another process.`);
-    console.error(`💡 Tip: Run "Stop-Process -Id (Get-NetTCPConnection -LocalPort ${PORT}).OwningProcess -Force" in PowerShell to free port ${PORT}.\n`);
+    console.error(`\nError: Port ${PORT} is already in use by another process.`);
+    console.error(`Tip: Run "Stop-Process -Id (Get-NetTCPConnection -LocalPort ${PORT}).OwningProcess -Force" in PowerShell to free port ${PORT}.\n`);
+  } else {
+    console.error('[Server Error]', err && err.stack ? err.stack : err);
   }
+  process.exit(1);
 });
+
+// Close the database pool cleanly so a restart does not leave connections behind.
+for (const signal of ['SIGINT', 'SIGTERM']) {
+  process.on(signal, () => {
+    console.log(`[Shutdown] ${signal} received (pid ${process.pid}) — closing server and database pool.`);
+    clearInterval(sweepTimer);
+    server.close(() => {
+      prisma.$disconnect().finally(() => process.exit(0));
+    });
+    // Do not hang forever if a connection refuses to drain.
+    setTimeout(() => process.exit(0), 10000).unref();
+  });
+}

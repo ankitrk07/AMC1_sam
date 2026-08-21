@@ -16,16 +16,21 @@ model Lead {
   source      String
   sourceOther String?
   createdAt   DateTime @default(now())
+
+  @@index([phone])
+  @@index([createdAt])
 }
 
 model Booking {
   id                    String        @id @default(cuid())
   name                  String?
+  email                 String?
   phone                 String?
   countryCode           String?
   preferredDate         String?
   selectedSlot          String?
   selectedCounsellor    String?
+  selectedCounsellorId  String?
   selectedCounsellorUrl String?
   calendlyEventUri      String?       @unique
   scheduledStartTime    DateTime?
@@ -36,12 +41,31 @@ model Booking {
   notes                 String?
   googleMeetUrl         String?
   locationType          String?
+  leadSource            String?
+  source                String?
+  sourceOther           String?
+  emailSent             Boolean       @default(false)
+  emailSentAt           DateTime?
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
+
+  @@index([createdAt])
+  @@index([status])
+  @@index([phone])
+}
+
+// Records that must stay suppressed even though they still exist as live
+// Calendly events. Replaces the deletedCalendlyUris array that used to live
+// in data/admin_store.json, so deletions survive without the JSON file.
+model DeletedEvent {
+  id        String   @id @default(cuid())
+  ref       String   @unique
+  createdAt DateTime @default(now())
 }
 
 enum BookingStatus {
   PENDING
   CONFIRMED
   CANCELLED
+  COMPLETED
 }

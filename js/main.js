@@ -284,9 +284,12 @@ document.addEventListener('DOMContentLoaded', function () {
     var tzOffset = encodeURIComponent(getBrowserOffset());
     var apiUrl = getApiUrl('/api/calendly/availability?date=' + encodeURIComponent(date) + '&refresh=true&counsellor=' + primaryCounsellorScope + '&tz=' + tz + '&tzOffset=' + tzOffset);
     fetch(apiUrl)
-      .then(function (res) { return res.json(); })
-      .then(function (data) {
-        if (data.success) {
+      .then(function (res) {
+        return res.json().then(function (data) { return { ok: res.ok, data: data }; });
+      })
+      .then(function (result) {
+        var data = result.data || {};
+        if (result.ok && data.success) {
           if (data.urls) {
             counsellorUrls['counsellor1'] = data.urls.counsellor1 || '';
             counsellorUrls['counsellor2'] = data.urls.counsellor2 || '';
@@ -295,25 +298,45 @@ document.addEventListener('DOMContentLoaded', function () {
             resolvedCounsellorNames = data.counsellorNames;
           }
           fetchedTimeSlots = data.timeSlots || [];
-
-          renderTimeSlots(fetchedTimeSlots, data.nextAvailable);
+          if (data.degraded) {
+            console.warn('[Availability] degraded —', data.counsellorErrors);
+          }
+          renderTimeSlots(fetchedTimeSlots, data.nextAvailable, null);
         } else {
-          renderTimeSlots([], null);
+          // Distinguish "no slots that day" from "we could not ask Calendly".
+          console.error('[Availability] request failed:', data.error, data.counsellorErrors || '');
+          renderTimeSlots([], null, data.error || 'Could not load live availability.');
         }
       })
       .catch(function (err) {
         console.error('[Availability Check Error]', err);
-        renderTimeSlots([], null);
+        renderTimeSlots([], null, 'Could not reach the booking service.');
       });
   }
 
-  function renderTimeSlots(slots, nextAvailable) {
+  function renderTimeSlots(slots, nextAvailable, errorMessage) {
     var container = document.getElementById('timeSlotsContainer');
     if (!container) return;
 
     container.innerHTML = '';
     selectedCounsellorUrl = '';
     selectedCounsellorId = 'counsellor1';
+
+    // A service failure is not the same thing as a fully-booked day. Saying
+    // "no slots" when we never got an answer sends students away for no reason.
+    if (errorMessage) {
+      container.innerHTML =
+        '<div class="time-slots-placeholder" style="width:100%; padding:14px 12px; text-align:center; color:#b91c1c; background:#fef2f2; border:1px solid #fecaca; border-radius:8px;">'
+        + '<p style="margin:0 0 6px; font-weight:700;">Live availability is temporarily unavailable.</p>'
+        + '<span style="font-size:13px; color:#7f1d1d;">This is a problem on our side, not a fully-booked day. Please try again in a moment.</span>'
+        + '</div>';
+      if (counsellingFine) {
+        counsellingFine.textContent = 'We could not load live availability just now. Please try again shortly.';
+        counsellingFine.classList.add('is-error');
+        counsellingFine.classList.remove('is-success');
+      }
+      return;
+    }
 
     if (!slots || slots.length === 0) {
       var msgHtml = '<div class="time-slots-placeholder" style="width:100%;">';
@@ -464,45 +487,46 @@ document.addEventListener('DOMContentLoaded', function () {
     return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
   }
 
-  function fallbackWeekdayDates() {
-    var dateSet = new Set();
-    var now = new Date();
-    for (var i = 0; i < 60; i++) {
-      var d = new Date(now.getTime() + i * 86400000);
-      var dayOfWeek = d.getDay();
-      if (dayOfWeek !== 0) {
-        var y = d.getFullYear();
-        var m = String(d.getMonth() + 1).padStart(2, '0');
-        var day = String(d.getDate()).padStart(2, '0');
-        dateSet.add(y + '-' + m + '-' + day);
-      }
-    }
-    availableDateSet = dateSet;
-  }
+  // Set when the availability API could not be reached, or reported that it
+  // could not reach Calendly. The calendar shows an honest message instead of
+  // invented dates.
+  var availabilityError = null;
 
   function fetchMonthAvailability(callback) {
     var tz = encodeURIComponent(getBrowserTimezone());
     var apiUrl = getApiUrl('/api/calendly/month-availability?refresh=true&counsellor=' + primaryCounsellorScope + '&tz=' + tz);
     fetch(apiUrl)
-      .then(function (res) { return res.json(); })
-      .then(function (data) {
-        if (data.success) {
-          if (data.availableDates && Array.isArray(data.availableDates) && data.availableDates.length > 0) {
-            availableDateSet = new Set(data.availableDates);
-          } else {
-            fallbackWeekdayDates();
+      .then(function (res) {
+        return res.json().then(function (data) { return { ok: res.ok, data: data }; });
+      })
+      .then(function (result) {
+        var data = result.data || {};
+
+        if (!result.ok || !data.success) {
+          // This used to call fallbackWeekdayDates(), which marked EVERY weekday
+          // for the next 60 days as available. The calendar then looked normal,
+          // the student picked one of those invented dates, and got told there
+          // were no slots. An error is better than fabricated availability.
+          availabilityError = (data && data.error) || 'Could not load live availability.';
+          availableDateSet = new Set();
+          console.error('[Month Availability] request failed:', availabilityError, data.counsellorErrors || '');
+        } else {
+          availabilityError = null;
+          availableDateSet = new Set(data.availableDates || []);
+          if (data.degraded) {
+            // Partial data: one counsellor answered, the other did not.
+            console.warn('[Month Availability] degraded —', data.counsellorErrors);
           }
           if (data.counsellorNames) {
             resolvedCounsellorNames = data.counsellorNames;
           }
-        } else {
-          fallbackWeekdayDates();
         }
         if (callback) callback();
       })
       .catch(function (err) {
-        console.warn('[Month Availability Fetch Error]', err);
-        fallbackWeekdayDates();
+        console.error('[Month Availability Fetch Error]', err);
+        availabilityError = 'Could not reach the booking service.';
+        availableDateSet = new Set();
         if (callback) callback();
       });
   }
@@ -512,6 +536,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
     calMonthTitle.textContent = monthNames[month] + ' ' + year;
     calDaysGrid.innerHTML = '';
+
+    // Surface a real failure rather than rendering a grid of dates that were
+    // never confirmed to be available.
+    var existingNotice = document.getElementById('calAvailabilityNotice');
+    if (existingNotice) existingNotice.remove();
+    if (availabilityError) {
+      var notice = document.createElement('div');
+      notice.id = 'calAvailabilityNotice';
+      notice.style.cssText = 'grid-column: 1 / -1; padding: 14px 12px; text-align: center; color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; font-size: 13px; line-height: 1.5;';
+      notice.innerHTML = '<strong>Live availability is temporarily unavailable.</strong><br>'
+        + 'Please try again in a moment, or contact us directly to book your session.';
+      calDaysGrid.appendChild(notice);
+      return;
+    }
 
     var firstDay = new Date(year, month, 1);
     var startingDayOfWeek = (firstDay.getDay() + 6) % 7;
@@ -1102,19 +1140,11 @@ document.addEventListener('DOMContentLoaded', function () {
             });
             currentBookingState = updatedState;
 
-            postJson('/api/admin/bookings/confirm', {
-              bookingId: updatedState.bookingId,
-              calendlyEventUri: targetUri,
-              calendlyEventName: result.name,
-              scheduledStartTime: result.start_time,
-              scheduledEndTime: result.end_time,
-              googleMeetUrl: result.googleMeetUrl,
-              locationType: result.locationType,
-              status: result.status,
-              notes: 'Confirmed from Calendly verification'
-            }).catch(function (err) {
-              console.warn('[Booking Confirm Save Warning]', err);
-            });
+            // The second POST to /api/admin/bookings/confirm that used to fire
+            // here has been removed. /api/calendly/confirm already persisted
+            // this booking from Calendly's own authoritative response; sending
+            // the same record again through a different write path was how the
+            // two writes ended up disagreeing.
 
             updateCTAsToConfirmed(updatedState);
 
@@ -1482,8 +1512,14 @@ document.addEventListener('DOMContentLoaded', function () {
       sourceOther: savedLead.sourceOther || null,
       notes: 'Opened Calendly booking slot picker modal'
     }).then(function (intentRes) {
-      if (intentRes && intentRes.bookingId) {
-        currentBookingState.bookingId = intentRes.bookingId;
+      // postJson resolves to { ok, data } — reading intentRes.bookingId here was
+      // always undefined, so the booking id was never carried into the confirm
+      // call and the server had to guess which booking a confirmation belonged
+      // to by matching name/email/phone.
+      if (intentRes && intentRes.ok && intentRes.data && intentRes.data.bookingId) {
+        currentBookingState.bookingId = intentRes.data.bookingId;
+      } else {
+        console.warn('[Booking Intent] no bookingId returned', intentRes && intentRes.data);
       }
     }).catch(function (err) {
       console.warn('[Booking Intent Save Warning]', err);
@@ -2214,28 +2250,6 @@ function initCountryCodePicker(config) {
 }
 
 // Initialize main form country code picker
-initCountryCodePicker({
-  pickerId: 'countryCodePicker',
-  triggerId: 'countryCodeTrigger',
-  dropdownId: 'countryCodeDropdown',
-  searchInputId: 'countrySearchInput',
-  listId: 'countryOptionsList',
-  flagElId: 'selectedCountryFlag',
-  codeElId: 'selectedCountryCode',
-  hiddenInputId: 'countryCode'
-});
-
-// Initialize entry modal country code picker
-initCountryCodePicker({
-  pickerId: 'entryCountryCodePicker',
-  triggerId: 'entryCountryCodeTrigger',
-  dropdownId: 'entryCountryCodeDropdown',
-  searchInputId: 'entryCountrySearchInput',
-  listId: 'entryCountryOptionsList',
-  flagElId: 'entrySelectedCountryFlag',
-  codeElId: 'entrySelectedCountryCode',
-  hiddenInputId: 'entryCountryCode'
-});
 initCountryCodePicker({
   pickerId: 'countryCodePicker',
   triggerId: 'countryCodeTrigger',
