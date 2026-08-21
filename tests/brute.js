@@ -18,6 +18,7 @@
  *   --concurrency N   how many parallel writes in the race tests (default 50)
  *   --skip-calendly   skip tests that call the live Calendly API
  *   --quiet           only print the summary table
+ *   --admin-key KEY   secret for /api/admin/* routes (or BRUTE_ADMIN_KEY env var)
  */
 
 const path = require('path');
@@ -36,6 +37,7 @@ const STORE_PATH = arg('store', null);
 const DB_URL = arg('db', null);
 const CONCURRENCY = parseInt(arg('concurrency', '50'), 10);
 const SKIP_CALENDLY = has('skip-calendly');
+const ADMIN_KEY = arg('admin-key', process.env.BRUTE_ADMIN_KEY || null);
 const QUIET = has('quiet');
 
 // ── result table ──────────────────────────────────────────────────────────
@@ -62,15 +64,21 @@ function section(title) {
 }
 
 // ── http helpers ──────────────────────────────────────────────────────────
-async function req(method, endpoint, body, timeoutMs = 60000) {
+async function req(method, endpoint, body, timeoutMs = 60000, opts = {}) {
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), timeoutMs);
   const started = Date.now();
+  const headers = body ? { 'Content-Type': 'application/json' } : {};
+  // Admin routes require a shared secret. opts.noAuth deliberately omits it so
+  // the harness can prove the routes reject unauthenticated callers.
+  if (ADMIN_KEY && endpoint.startsWith('/api/admin') && !opts.noAuth) {
+    headers['X-Admin-Key'] = ADMIN_KEY;
+  }
   try {
     const res = await fetch(BASE + endpoint, {
       method,
       signal: controller.signal,
-      headers: body ? { 'Content-Type': 'application/json' } : {},
+      headers,
       body: body ? JSON.stringify(body) : undefined,
     });
     clearTimeout(t);
@@ -83,9 +91,9 @@ async function req(method, endpoint, body, timeoutMs = 60000) {
     return { status: 0, ok: false, json: null, text: String(err.message || err), ms: Date.now() - started, error: err };
   }
 }
-const post = (e, b, t) => req('POST', e, b, t);
-const get = (e, t) => req('GET', e, null, t);
-const del = (e, t) => req('DELETE', e, null, t);
+const post = (e, b, t, o) => req('POST', e, b, t, o);
+const get = (e, t, o) => req('GET', e, null, t, o);
+const del = (e, t, o) => req('DELETE', e, null, t, o);
 
 // ── store inspectors ──────────────────────────────────────────────────────
 function readJsonStore() {
@@ -126,6 +134,7 @@ async function main() {
   console.log('  json store  :', STORE_PATH || '(not inspected)');
   console.log('  database    :', DB_URL ? DB_URL.replace(/:[^:@]*@/, ':***@') : '(not inspected)');
   console.log('  calendly    :', SKIP_CALENDLY ? 'SKIPPED' : 'included');
+  console.log('  admin key   :', ADMIN_KEY ? 'provided' : 'NOT provided (admin routes will 401)');
   console.log('  started     :', new Date().toISOString());
   console.log('='.repeat(72));
 
@@ -159,7 +168,7 @@ async function main() {
   // ── admin panel access control ──────────────────────────────────────────
   section('1. ADMIN ACCESS CONTROL');
   {
-    const r = await get('/api/admin/dashboard?includeAvailability=false', 90000);
+    const r = await get('/api/admin/dashboard?includeAvailability=false', 90000, { noAuth: true });
     const isOpen = r.status === 200;
     record('Admin API auth', 'GET /api/admin/dashboard with NO credentials',
       'HTTP 401/403 if protected',
@@ -167,7 +176,7 @@ async function main() {
       !isOpen);
   }
   {
-    const r = await del('/api/admin/bookings/__nonexistent_probe__', 30000);
+    const r = await del('/api/admin/bookings/__nonexistent_probe__', 30000, { noAuth: true });
     record('Admin delete auth', 'DELETE /api/admin/bookings/:id with NO credentials',
       'HTTP 401/403 if protected', `HTTP ${r.status}`, r.status === 401 || r.status === 403);
   }
@@ -233,16 +242,21 @@ async function main() {
   // The critical divergence check: does the id the API returned actually exist
   // in BOTH stores? On a DB-enabled server the JSON keeps a bk_ id while the
   // API returns a cuid, so the JSON lookup misses.
-  if (intentId && STORE_PATH) {
+  if (STORE_PATH) {
+    // The legacy JSON file must not be a write target any more. If a booking
+    // write still lands there, the dual source of truth is back.
     const store = readJsonStore();
-    const inJson = (store && store.bookings || []).some(b => b.id === intentId);
-    record('ID consistency: JSON store', `look up returned id "${intentId}" in admin_store.json`,
-      'the returned id exists in the JSON store',
-      inJson ? 'found' : 'NOT FOUND — JSON holds a different id than the API returned',
-      inJson);
+    const exists = store && !store.__error;
+    const bookingCount = exists ? (store.bookings || []).length : 0;
+    const touched = exists && (store.bookings || []).some(b => b.id === intentId);
+    record('Legacy JSON store not written', 'create a booking, then inspect data/admin_store.json',
+      'the booking does NOT appear in the legacy JSON file',
+      exists
+        ? (touched ? `FOUND in JSON (${bookingCount} records) — JSON is still a write target` : `absent from JSON (file holds ${bookingCount} stale records)`)
+        : 'file does not exist (fully retired)',
+      !touched);
   } else {
-    record('ID consistency: JSON store', 'inspect admin_store.json for returned id',
-      'the returned id exists in the JSON store', 'skipped (no --store)', 'SKIP');
+    record('Legacy JSON store not written', 'inspect admin_store.json', 'booking absent from JSON', 'skipped (no --store)', 'SKIP');
   }
   if (intentId && prisma) {
     const row = await prisma.booking.findUnique({ where: { id: intentId } }).catch(() => null);
@@ -304,22 +318,20 @@ async function main() {
   }
   if (intentId) {
     // COMPLETED is producible by normalizeBookingStatus but absent from the Prisma enum.
+    // COMPLETED exists in the enum now. The assertion is simply that the API
+    // reports success AND the database actually holds the new value — the
+    // combination that used to be impossible.
     const r = await post('/api/admin/bookings/status', { id: intentId, status: 'COMPLETED' });
-    let dbStatus = 'not checked', jsonStatus = 'not checked';
+    let dbStatus = 'not checked';
     if (prisma) {
       const row = await prisma.booking.findUnique({ where: { id: intentId } }).catch(() => null);
       dbStatus = row ? row.status : 'row missing';
     }
-    if (STORE_PATH) {
-      const store = readJsonStore();
-      const b = (store && store.bookings || []).find(x => x.id === intentId);
-      jsonStatus = b ? b.status : 'not in json';
-    }
-    const agree = dbStatus === 'not checked' || jsonStatus === 'not checked' || dbStatus === jsonStatus;
+    const persisted = dbStatus === 'not checked' || dbStatus === 'COMPLETED';
     record('Status -> COMPLETED (enum gap)', 'POST /api/admin/bookings/status {status:"COMPLETED"}',
-      'API reports success AND both stores agree',
-      `HTTP ${r.status}, db=${dbStatus}, json=${jsonStatus}` + (agree ? '' : ' — STORES DISAGREE'),
-      r.status === 200 && agree);
+      'HTTP 200 AND the database reads COMPLETED',
+      `HTTP ${r.status}, db=${dbStatus}` + (persisted ? '' : ' — REPORTED SUCCESS BUT DID NOT PERSIST'),
+      r.status === 200 && persisted);
   }
   {
     const r = await post('/api/admin/bookings/status', { status: 'CONFIRMED' });
@@ -364,6 +376,7 @@ async function main() {
       post('/api/admin/bookings/confirm', body),
       post('/api/admin/bookings/confirm', body),
     ]);
+    [a, b].forEach(r => { if (r.json && r.json.bookingId) createdBookingIds.push(r.json.bookingId); });
     let dbCount = 'not checked';
     if (prisma) {
       dbCount = await prisma.booking.count({ where: { calendlyEventUri: uri } }).catch(() => 'error');
@@ -412,15 +425,14 @@ async function main() {
       const all = (store && store.bookings) || [];
       const mine = all.filter(b => b.notes === tag || (b.name && String(b.name).startsWith(tag)));
       const jsonAfter = all.length;
-      const lost = CONCURRENCY - mine.length;
-      record('JSON store lost-update check',
-        `count records tagged ${tag} in admin_store.json after ${CONCURRENCY} parallel writes`,
-        `${CONCURRENCY} records present (count ${jsonBefore} -> ${jsonBefore + CONCURRENCY})`,
-        `${mine.length} present (count ${jsonBefore} -> ${jsonAfter}) — ${lost} LOST`,
-        lost === 0);
+      record('JSON untouched under concurrency',
+        `${CONCURRENCY} parallel writes, then inspect admin_store.json`,
+        'the legacy JSON file is not written at all',
+        `${mine.length} of this run's records in JSON (file count ${jsonBefore} -> ${jsonAfter})`,
+        mine.length === 0 && jsonAfter === jsonBefore);
     } else {
-      record('JSON store lost-update check', 'inspect admin_store.json after parallel writes',
-        `${CONCURRENCY} records present`, 'skipped (no --store)', 'SKIP');
+      record('JSON untouched under concurrency', 'inspect admin_store.json after parallel writes',
+        'legacy JSON not written', 'skipped (no --store)', 'SKIP');
     }
 
     if (prisma) {
@@ -438,18 +450,23 @@ async function main() {
     }
 
     // Cross-store agreement — the fingerprint of a dual source of truth.
-    if (STORE_PATH && prisma) {
-      const store = readJsonStore();
-      const jsonMine = ((store && store.bookings) || []).filter(b => b.notes === tag).length;
-      const dbMine = await prisma.booking.count({ where: { notes: tag } }).catch(() => -1);
-      record('JSON vs Postgres agreement',
-        `compare tagged record counts in both stores`,
-        'both stores hold the same number of records',
-        `json=${jsonMine}, postgres=${dbMine}` + (jsonMine === dbMine ? '' : ' — DIVERGED'),
-        jsonMine === dbMine);
+    if (prisma) {
+      // With one store there is nothing to diverge. Assert every accepted write
+      // is retrievable through the API by the id it handed back.
+      const sample = createdBookingIds.slice(-10);
+      let resolvable = 0;
+      for (const id of sample) {
+        const r = await get('/api/bookings/' + encodeURIComponent(id) + '/status', 20000);
+        if (r.status === 200) resolvable++;
+      }
+      record('Every returned id is resolvable',
+        `take ${sample.length} ids the API returned and read each back via /api/bookings/:id/status`,
+        'every id resolves to a booking',
+        `${resolvable}/${sample.length} resolved`,
+        resolvable === sample.length);
     } else {
-      record('JSON vs Postgres agreement', 'compare both stores', 'identical counts',
-        'skipped (needs both --store and --db)', 'SKIP');
+      record('Every returned id is resolvable', 'read back returned ids', 'all resolve',
+        'skipped (no --db)', 'SKIP');
     }
   }
 
@@ -625,6 +642,7 @@ async function main() {
     let nested = { v: 1 };
     for (let i = 0; i < 500; i++) nested = { v: nested };
     const r = await post('/api/admin/bookings/intent', { name: 'deep', phone: '1', notes: RUN_TAG, deep: nested });
+    if (r.json && r.json.bookingId) createdBookingIds.push(r.json.bookingId);
     record('Deeply nested payload', 'POST intent with 500-level nested object',
       'handled, never 500/crash', `HTTP ${r.status}`, r.status !== 500 && r.status !== 0);
   }

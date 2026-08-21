@@ -190,6 +190,32 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// ──────────────────────────────────────────────────────
+// Strip NUL bytes from incoming text.
+//
+// PostgreSQL cannot store U+0000 in a text column — it rejects the whole
+// statement with "22021 invalid byte sequence for encoding UTF8: 0x00". A NUL
+// arriving in a name or note field therefore turned a routine form post into a
+// 500. It has no legitimate use in any of these fields, so it is stripped
+// rather than rejected: the rest of the submission is still good data.
+// ──────────────────────────────────────────────────────
+function stripNulls(value, depth = 0) {
+  if (depth > 20) return value;
+  if (typeof value === 'string') return value.replace(/ /g, '');
+  if (Array.isArray(value)) return value.map(v => stripNulls(v, depth + 1));
+  if (value && typeof value === 'object') {
+    for (const key of Object.keys(value)) {
+      value[key] = stripNulls(value[key], depth + 1);
+    }
+  }
+  return value;
+}
+
+app.use((req, res, next) => {
+  if (req.body) req.body = stripNulls(req.body);
+  next();
+});
+
 // Ensure all HTML, JS, CSS, and API requests bypass stale browser caches
 app.use((req, res, next) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
