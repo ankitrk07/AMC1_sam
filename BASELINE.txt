@@ -1,0 +1,931 @@
+====================================================================================================
+BASELINE.txt — Phase 3 harness results against the UNFIXED code
+captured: 2026-08-21T13:15:52.888Z
+harness : tests/brute.js  (60 checks, concurrency 50)
+====================================================================================================
+
+Two runs of the SAME code against the SAME harness, differing only in whether
+DATABASE_URL is set — i.e. laptop configuration vs live-server configuration.
+
+  MODE A "LAPTOP"  : DATABASE_URL unset  -> server.js:34 makes prisma = null
+  MODE B "SERVER"  : DATABASE_URL set    -> server.js:34 makes prisma = a real client
+
+  MODE A totals: TOTAL: 60   PASS: 47   FAIL: 8   SKIP: 5
+  MODE B totals: TOTAL: 60   PASS: 47   FAIL: 13   SKIP: 0
+
+====================================================================================================
+DIVERGENCE — checks whose result CHANGES between the two modes
+These are the "works on my laptop" bugs. Nothing else differs.
+====================================================================================================
+
+  ID consistency: JSON store
+      MODE A (laptop): PASS  found
+      MODE B (server): FAIL  NOT FOUND — JSON holds a different id than the API returned
+
+  ID consistency: Postgres
+      MODE A (laptop): SKIP  skipped (no --db)
+      MODE B (server): PASS  found
+
+  Booking.email persisted to DB
+      MODE A (laptop): SKIP  skipped (no --db)
+      MODE B (server): FAIL  Booking table has NO email column — email cannot be stored
+
+  Booking email visible in admin
+      MODE A (laptop): PASS  email="brute_mt2z0tvs@example.test"
+      MODE B (server): FAIL  email=undefined
+
+  Status -> COMPLETED (enum gap)
+      MODE A (laptop): PASS  HTTP 200, db=not checked, json=COMPLETED
+      MODE B (server): FAIL  HTTP 200, db=PENDING, json=not in json — STORES DISAGREE
+
+  Postgres lost-update check
+      MODE A (laptop): SKIP  skipped (no --db)
+      MODE B (server): PASS  50 present (count 6 -> 56) — 0 LOST
+
+  JSON vs Postgres agreement
+      MODE A (laptop): SKIP  skipped (needs both --store and --db)
+      MODE B (server): PASS  json=50, postgres=50
+
+  Cleanup removed DB rows
+      MODE A (laptop): SKIP  skipped (no --db)
+      MODE B (server): FAIL  3 remain
+
+====================================================================================================
+FAILURES PRESENT IN BOTH MODES (environment-independent bugs)
+====================================================================================================
+
+  Admin API auth
+      HTTP 200 — endpoint is PUBLIC, no auth required
+
+  Admin delete auth
+      HTTP 200
+
+  Month availability
+      HTTP 500, 0 dates, 371ms
+
+  Availability repeatability
+      statuses=[500,500,500], date counts=[0,0,0]
+
+  Availability under concurrency
+      date counts=[0,0,0,0,0,0,0,0], 8 returned EMPTY
+
+  Day availability
+      HTTP 500, 0 slots, 1575ms
+
+  Day availability: bad date
+      HTTP 500
+
+  Calendly confirm: unknown event
+      HTTP 404 after 41070ms — BLOCKED THE CONNECTION
+
+====================================================================================================
+MULTI-PROCESS HAZARD TEST (simulates pm2 cluster mode, instances = 2)
+====================================================================================================
+
+  Two server instances sharing ONE data/admin_store.json and ONE Postgres DB.
+  40 booking-intent writes fired concurrently, alternating between instances.
+
+    writes accepted by the API : 40 / 40   (every one returned HTTP 200 + a bookingId)
+    landed in admin_store.json : 26        <-- 14 LOST (35%)
+    landed in Postgres         : 40        <-- 0 lost
+    stores agree               : NO — json=26 vs postgres=40
+
+  Same test with a SINGLE instance: 50/50 writes landed in BOTH stores, 0 lost.
+  => The JSON file loses writes ONLY when more than one process writes to it.
+  => Postgres never loses writes in either case.
+
+====================================================================================================
+FULL RUN OUTPUT — MODE A (LAPTOP, DATABASE_URL unset)
+====================================================================================================
+========================================================================
+BRUTE HARNESS
+  base URL    : http://localhost:3000
+  run tag     : BRUTE_MT2Z0TVS
+  concurrency : 50
+  json store  : ./data/admin_store.json
+  database    : (not inspected)
+  calendly    : included
+  started     : 2026-08-21T13:14:15.499Z
+========================================================================
+
+────────────────────────────────────────────────────────────────────────
+0. REACHABILITY
+────────────────────────────────────────────────────────────────────────
+[PASS] Server reachable
+        did      : GET http://localhost:3000/index.html
+        expected : HTTP 200
+        actual   : HTTP 200 (74ms)
+[PASS] Cache headers on static
+        did      : GET /index.html, read Cache-Control
+        expected : contains no-store
+        actual   : no-store, no-cache, must-revalidate, private
+[PASS] Admin panel served
+        did      : GET /admin.html
+        expected : HTTP 200
+        actual   : HTTP 200
+[PASS] Audit page served
+        did      : GET /audit.html
+        expected : HTTP 200
+        actual   : HTTP 200
+
+────────────────────────────────────────────────────────────────────────
+1. ADMIN ACCESS CONTROL
+────────────────────────────────────────────────────────────────────────
+[FAIL] Admin API auth
+        did      : GET /api/admin/dashboard with NO credentials
+        expected : HTTP 401/403 if protected
+        actual   : HTTP 200 — endpoint is PUBLIC, no auth required
+[FAIL] Admin delete auth
+        did      : DELETE /api/admin/bookings/:id with NO credentials
+        expected : HTTP 401/403 if protected
+        actual   : HTTP 200
+
+────────────────────────────────────────────────────────────────────────
+2. LEAD CAPTURE
+────────────────────────────────────────────────────────────────────────
+[PASS] Lead create (valid)
+        did      : POST /api/admin/leads with full payload
+        expected : HTTP 200 + leadId
+        actual   : HTTP 200, leadId=lead_1787318059902_7qvu7a
+[PASS] Lead reject: missing name
+        did      : POST /api/admin/leads {"email":"a@b.co","phone":"123","source":"x"}
+        expected : HTTP 400
+        actual   : HTTP 400
+[PASS] Lead reject: missing email
+        did      : POST /api/admin/leads {"name":"x","phone":"123","source":"x"}
+        expected : HTTP 400
+        actual   : HTTP 400
+[PASS] Lead reject: empty object
+        did      : POST /api/admin/leads {}
+        expected : HTTP 400
+        actual   : HTTP 400
+[PASS] Lead reject: nulls
+        did      : POST /api/admin/leads {"name":null,"email":null,"phone":null,"source":null}
+        expected : HTTP 400
+        actual   : HTTP 400
+[PASS] Lead reject: wrong types
+        did      : POST /api/admin/leads {"name":123,"email":[],"phone":{},"source":true}
+        expected : HTTP 400
+        actual   : HTTP 400
+[PASS] Lead hostile input
+        did      : POST /api/admin/leads with XSS/SQL/emoji/2KB string
+        expected : HTTP 200 or 400, never 500
+        actual   : HTTP 200
+
+────────────────────────────────────────────────────────────────────────
+3. BOOKING INTENT  (+ cross-store ID consistency)
+────────────────────────────────────────────────────────────────────────
+[PASS] Booking intent create
+        did      : POST /api/admin/bookings/intent
+        expected : HTTP 200 + bookingId
+        actual   : HTTP 200, bookingId=bk_1787318059947_zdts4m
+[PASS] ID consistency: JSON store
+        did      : look up returned id "bk_1787318059947_zdts4m" in admin_store.json
+        expected : the returned id exists in the JSON store
+        actual   : found
+[SKIP] ID consistency: Postgres
+        did      : inspect Booking table for returned id
+        expected : the returned id exists as a DB row
+        actual   : skipped (no --db)
+[PASS] Status endpoint resolves intent id
+        did      : GET /api/bookings/bk_1787318059947_zdts4m/status
+        expected : HTTP 200 with the booking
+        actual   : HTTP 200
+
+────────────────────────────────────────────────────────────────────────
+4. FIELD SURVIVAL ACROSS STORES
+────────────────────────────────────────────────────────────────────────
+[SKIP] Booking.email persisted to DB
+        did      : read created booking row from Postgres
+        expected : row carries the submitted email
+        actual   : skipped (no --db)
+[PASS] Booking email visible in admin
+        did      : GET /api/admin/dashboard, find this run's booking, read .email
+        expected : the submitted email is present
+        actual   : email="brute_mt2z0tvs@example.test"
+
+────────────────────────────────────────────────────────────────────────
+5. BOOKING STATUS TRANSITIONS
+────────────────────────────────────────────────────────────────────────
+[PASS] Status -> CONFIRMED
+        did      : POST /api/admin/bookings/status {status:"CONFIRMED"}
+        expected : HTTP 200 and DB row reads CONFIRMED
+        actual   : HTTP 200, db=not checked
+[PASS] Status -> CANCELLED
+        did      : POST /api/admin/bookings/status {status:"CANCELLED"}
+        expected : HTTP 200 and DB row reads CANCELLED
+        actual   : HTTP 200, db=not checked
+[PASS] Status -> PENDING
+        did      : POST /api/admin/bookings/status {status:"PENDING"}
+        expected : HTTP 200 and DB row reads PENDING
+        actual   : HTTP 200, db=not checked
+[PASS] Status -> COMPLETED (enum gap)
+        did      : POST /api/admin/bookings/status {status:"COMPLETED"}
+        expected : API reports success AND both stores agree
+        actual   : HTTP 200, db=not checked, json=COMPLETED
+[PASS] Status reject: no id
+        did      : POST /api/admin/bookings/status with no id
+        expected : HTTP 400
+        actual   : HTTP 400
+[PASS] Status on missing booking
+        did      : POST /api/admin/bookings/status for unknown id
+        expected : HTTP 404 (or 200 no-op), never 500
+        actual   : HTTP 200
+
+────────────────────────────────────────────────────────────────────────
+6. ADMIN BOOKING CONFIRM
+────────────────────────────────────────────────────────────────────────
+[PASS] Confirm reject: empty
+        did      : POST /api/admin/bookings/confirm {}
+        expected : HTTP 400
+        actual   : HTTP 400
+[PASS] Confirm by eventUri
+        did      : POST /api/admin/bookings/confirm with a fresh eventUri
+        expected : HTTP 200 + bookingId
+        actual   : HTTP 200, id=bk_1787318062781
+[PASS] Double-click idempotency
+        did      : fire the SAME eventUri confirm twice in parallel
+        expected : both HTTP 200 and exactly 1 DB row
+        actual   : a=200 b=200, db rows for that uri=not checked
+
+────────────────────────────────────────────────────────────────────────
+7. CONCURRENCY — 50 PARALLEL WRITES (lost-update detection)
+────────────────────────────────────────────────────────────────────────
+[PASS] Concurrent intents accepted
+        did      : 50 parallel POST /api/admin/bookings/intent (401ms)
+        expected : 50 responses with HTTP 200 + bookingId
+        actual   : 50 x HTTP200, 50 carried a bookingId
+[PASS] JSON store lost-update check
+        did      : count records tagged BRUTE_MT2Z0TVS_RACE in admin_store.json after 50 parallel writes
+        expected : 50 records present (count 119 -> 169)
+        actual   : 50 present (count 119 -> 169) — 0 LOST
+[SKIP] Postgres lost-update check
+        did      : count rows after parallel writes
+        expected : 50 rows present
+        actual   : skipped (no --db)
+[SKIP] JSON vs Postgres agreement
+        did      : compare both stores
+        expected : identical counts
+        actual   : skipped (needs both --store and --db)
+
+────────────────────────────────────────────────────────────────────────
+8. STATUS ENDPOINT UNDER LOAD
+────────────────────────────────────────────────────────────────────────
+[PASS] Rapid status polling
+        did      : 40 parallel GET /api/bookings/:id/status (169ms)
+        expected : 40 x HTTP 200, zero 5xx
+        actual   : 40 x 200, 0 x 5xx/network
+[PASS] Status endpoint consistency
+        did      : compare all 40 concurrent responses to each other
+        expected : every concurrent read returns identical data
+        actual   : 1 distinct payload(s) observed
+[PASS] Status endpoint: unknown id
+        did      : GET /api/bookings/__no_such_booking__/status
+        expected : HTTP 404
+        actual   : HTTP 404
+[PASS] Status endpoint: traversal-ish id
+        did      : GET status with ../../etc/passwd as id
+        expected : HTTP 404, never 500
+        actual   : HTTP 404
+
+────────────────────────────────────────────────────────────────────────
+9. ADMIN DASHBOARD
+────────────────────────────────────────────────────────────────────────
+[PASS] Dashboard loads
+        did      : GET /api/admin/dashboard?includeAvailability=false
+        expected : HTTP 200 with metrics + bookings + leads
+        actual   : HTTP 200, bookings=107, leads=2, 3673ms
+[PASS] Dashboard reports storage mode
+        did      : read .storageMode / .dbConnected from dashboard
+        expected : reports which stores are active
+        actual   : storageMode=Persistent Local Storage (Active), dbConnected=false
+[PASS] Dashboard concurrent loads
+        did      : 5 parallel dashboard loads (4339ms)
+        expected : 5 x HTTP 200, identical booking counts
+        actual   : 5 x 200, booking counts=[107,107,107,107,107]
+
+────────────────────────────────────────────────────────────────────────
+10. CALENDLY-BACKED ENDPOINTS
+────────────────────────────────────────────────────────────────────────
+[FAIL] Month availability
+        did      : GET /api/calendly/month-availability
+        expected : HTTP 200 with a non-empty availableDates array
+        actual   : HTTP 500, 0 dates, 339ms
+[FAIL] Availability repeatability
+        did      : call month-availability 3x sequentially, compare date counts
+        expected : all three calls return the same non-empty result
+        actual   : statuses=[500,500,500], date counts=[0,0,0]
+[FAIL] Availability under concurrency
+        did      : 8 parallel month-availability calls (328ms)
+        expected : all 8 return the same non-empty date list
+        actual   : date counts=[0,0,0,0,0,0,0,0], 8 returned EMPTY
+[FAIL] Day availability
+        did      : GET /api/calendly/availability?date=2026-08-24
+        expected : HTTP 200 with timeSlots
+        actual   : HTTP 500, 0 slots, 1915ms
+[FAIL] Day availability: bad date
+        did      : GET /api/calendly/availability?date=not-a-date
+        expected : HTTP 400
+        actual   : HTTP 500
+[PASS] Check-scheduled poll
+        did      : GET /api/calendly/check-scheduled
+        expected : HTTP 200 with scheduled flag
+        actual   : HTTP 200, scheduled=false
+
+────────────────────────────────────────────────────────────────────────
+11. GRACEFUL DEGRADATION (Calendly failure path)
+────────────────────────────────────────────────────────────────────────
+[PASS] Calendly confirm: no eventUri
+        did      : POST /api/calendly/confirm {}
+        expected : HTTP 400
+        actual   : HTTP 400
+[FAIL] Calendly confirm: unknown event
+        did      : POST /api/calendly/confirm with a nonexistent event uri
+        expected : fails fast with 404, does not block for ~42s
+        actual   : HTTP 404 after 37617ms — BLOCKED THE CONNECTION
+
+────────────────────────────────────────────────────────────────────────
+12. MALFORMED & HOSTILE PAYLOADS
+────────────────────────────────────────────────────────────────────────
+[PASS] Hostile intent: very long string
+        did      : POST intent with very long string in text fields
+        expected : HTTP 200 or 400, never 500/network error
+        actual   : HTTP 200
+[PASS] Hostile intent: unicode + emoji
+        did      : POST intent with unicode + emoji in text fields
+        expected : HTTP 200 or 400, never 500/network error
+        actual   : HTTP 200
+[PASS] Hostile intent: quotes/brackets
+        did      : POST intent with quotes/brackets in text fields
+        expected : HTTP 200 or 400, never 500/network error
+        actual   : HTTP 200
+[PASS] Hostile intent: sql-ish
+        did      : POST intent with sql-ish in text fields
+        expected : HTTP 200 or 400, never 500/network error
+        actual   : HTTP 200
+[PASS] Hostile intent: script-ish
+        did      : POST intent with script-ish in text fields
+        expected : HTTP 200 or 400, never 500/network error
+        actual   : HTTP 200
+[PASS] Hostile intent: null bytes
+        did      : POST intent with null bytes in text fields
+        expected : HTTP 200 or 400, never 500/network error
+        actual   : HTTP 200
+[PASS] Invalid JSON body
+        did      : POST intent with malformed JSON text
+        expected : HTTP 400, never 500 or crash
+        actual   : HTTP 400
+[PASS] Deeply nested payload
+        did      : POST intent with 500-level nested object
+        expected : handled, never 500/crash
+        actual   : HTTP 200
+
+────────────────────────────────────────────────────────────────────────
+13. PROCESS LIVENESS
+────────────────────────────────────────────────────────────────────────
+[PASS] Server alive after all tests
+        did      : GET /index.html after every hostile/concurrent test
+        expected : HTTP 200 — process never died
+        actual   : HTTP 200
+[PASS] Dashboard alive after tests
+        did      : GET dashboard after every hostile/concurrent test
+        expected : HTTP 200
+        actual   : HTTP 200
+
+────────────────────────────────────────────────────────────────────────
+14. CLEANUP + EMPTY STATE
+────────────────────────────────────────────────────────────────────────
+[PASS] Clear selected (cleanup)
+        did      : POST /api/admin/clear-selected with 60 ids created by this run
+        expected : HTTP 200
+        actual   : HTTP 200
+[SKIP] Cleanup removed DB rows
+        did      : count remaining tagged rows
+        expected : 0 remain
+        actual   : skipped (no --db)
+[PASS] Clear selected: empty array
+        did      : POST /api/admin/clear-selected {ids:[]}
+        expected : HTTP 400
+        actual   : HTTP 400
+
+========================================================================
+SUMMARY TABLE
+========================================================================
+STATUS  FEATURE                             ACTUAL
+------------------------------------------------------------------------
+PASS    Server reachable                    HTTP 200 (74ms)
+PASS    Cache headers on static             no-store, no-cache, must-revalidate, private
+PASS    Admin panel served                  HTTP 200
+PASS    Audit page served                   HTTP 200
+FAIL    Admin API auth                      HTTP 200 — endpoint is PUBLIC, no auth required
+FAIL    Admin delete auth                   HTTP 200
+PASS    Lead create (valid)                 HTTP 200, leadId=lead_1787318059902_7qvu7a
+PASS    Lead reject: missing name           HTTP 400
+PASS    Lead reject: missing email          HTTP 400
+PASS    Lead reject: empty object           HTTP 400
+PASS    Lead reject: nulls                  HTTP 400
+PASS    Lead reject: wrong types            HTTP 400
+PASS    Lead hostile input                  HTTP 200
+PASS    Booking intent create               HTTP 200, bookingId=bk_1787318059947_zdts4m
+PASS    ID consistency: JSON store          found
+SKIP    ID consistency: Postgres            skipped (no --db)
+PASS    Status endpoint resolves intent id  HTTP 200
+SKIP    Booking.email persisted to DB       skipped (no --db)
+PASS    Booking email visible in admin      email="brute_mt2z0tvs@example.test"
+PASS    Status -> CONFIRMED                 HTTP 200, db=not checked
+PASS    Status -> CANCELLED                 HTTP 200, db=not checked
+PASS    Status -> PENDING                   HTTP 200, db=not checked
+PASS    Status -> COMPLETED (enum gap)      HTTP 200, db=not checked, json=COMPLETED
+PASS    Status reject: no id                HTTP 400
+PASS    Status on missing booking           HTTP 200
+PASS    Confirm reject: empty               HTTP 400
+PASS    Confirm by eventUri                 HTTP 200, id=bk_1787318062781
+PASS    Double-click idempotency            a=200 b=200, db rows for that uri=not checked
+PASS    Concurrent intents accepted         50 x HTTP200, 50 carried a bookingId
+PASS    JSON store lost-update check        50 present (count 119 -> 169) — 0 LOST
+SKIP    Postgres lost-update check          skipped (no --db)
+SKIP    JSON vs Postgres agreement          skipped (needs both --store and --db)
+PASS    Rapid status polling                40 x 200, 0 x 5xx/network
+PASS    Status endpoint consistency         1 distinct payload(s) observed
+PASS    Status endpoint: unknown id         HTTP 404
+PASS    Status endpoint: traversal-ish id   HTTP 404
+PASS    Dashboard loads                     HTTP 200, bookings=107, leads=2, 3673ms
+PASS    Dashboard reports storage mode      storageMode=Persistent Local Storage (Active), dbConnected=false
+PASS    Dashboard concurrent loads          5 x 200, booking counts=[107,107,107,107,107]
+FAIL    Month availability                  HTTP 500, 0 dates, 339ms
+FAIL    Availability repeatability          statuses=[500,500,500], date counts=[0,0,0]
+FAIL    Availability under concurrency      date counts=[0,0,0,0,0,0,0,0], 8 returned EMPTY
+FAIL    Day availability                    HTTP 500, 0 slots, 1915ms
+FAIL    Day availability: bad date          HTTP 500
+PASS    Check-scheduled poll                HTTP 200, scheduled=false
+PASS    Calendly confirm: no eventUri       HTTP 400
+FAIL    Calendly confirm: unknown event     HTTP 404 after 37617ms — BLOCKED THE CONNECTION
+PASS    Hostile intent: very long string    HTTP 200
+PASS    Hostile intent: unicode + emoji     HTTP 200
+PASS    Hostile intent: quotes/brackets     HTTP 200
+PASS    Hostile intent: sql-ish             HTTP 200
+PASS    Hostile intent: script-ish          HTTP 200
+PASS    Hostile intent: null bytes          HTTP 200
+PASS    Invalid JSON body                   HTTP 400
+PASS    Deeply nested payload               HTTP 200
+PASS    Server alive after all tests        HTTP 200
+PASS    Dashboard alive after tests         HTTP 200
+PASS    Clear selected (cleanup)            HTTP 200
+SKIP    Cleanup removed DB rows             skipped (no --db)
+PASS    Clear selected: empty array         HTTP 400
+------------------------------------------------------------------------
+TOTAL: 60   PASS: 47   FAIL: 8   SKIP: 5
+finished: 2026-08-21T13:15:22.546Z
+========================================================================
+
+FAILURES:
+  - Admin API auth
+      expected: HTTP 401/403 if protected
+      actual  : HTTP 200 — endpoint is PUBLIC, no auth required
+  - Admin delete auth
+      expected: HTTP 401/403 if protected
+      actual  : HTTP 200
+  - Month availability
+      expected: HTTP 200 with a non-empty availableDates array
+      actual  : HTTP 500, 0 dates, 339ms
+  - Availability repeatability
+      expected: all three calls return the same non-empty result
+      actual  : statuses=[500,500,500], date counts=[0,0,0]
+  - Availability under concurrency
+      expected: all 8 return the same non-empty date list
+      actual  : date counts=[0,0,0,0,0,0,0,0], 8 returned EMPTY
+  - Day availability
+      expected: HTTP 200 with timeSlots
+      actual  : HTTP 500, 0 slots, 1915ms
+  - Day availability: bad date
+      expected: HTTP 400
+      actual  : HTTP 500
+  - Calendly confirm: unknown event
+      expected: fails fast with 404, does not block for ~42s
+      actual  : HTTP 404 after 37617ms — BLOCKED THE CONNECTION
+
+
+====================================================================================================
+FULL RUN OUTPUT — MODE B (SERVER, DATABASE_URL set)
+====================================================================================================
+========================================================================
+BRUTE HARNESS
+  base URL    : http://localhost:3000
+  run tag     : BRUTE_MT2YYOSV
+  concurrency : 50
+  json store  : ./data/admin_store.json
+  database    : postgresql://postgres:***@127.0.0.1:5432/amc_repro?schema=public
+  calendly    : included
+  started     : 2026-08-21T13:12:35.603Z
+========================================================================
+
+────────────────────────────────────────────────────────────────────────
+0. REACHABILITY
+────────────────────────────────────────────────────────────────────────
+[PASS] Server reachable
+        did      : GET http://localhost:3000/index.html
+        expected : HTTP 200
+        actual   : HTTP 200 (50ms)
+[PASS] Cache headers on static
+        did      : GET /index.html, read Cache-Control
+        expected : contains no-store
+        actual   : no-store, no-cache, must-revalidate, private
+[PASS] Admin panel served
+        did      : GET /admin.html
+        expected : HTTP 200
+        actual   : HTTP 200
+[PASS] Audit page served
+        did      : GET /audit.html
+        expected : HTTP 200
+        actual   : HTTP 200
+
+────────────────────────────────────────────────────────────────────────
+1. ADMIN ACCESS CONTROL
+────────────────────────────────────────────────────────────────────────
+[FAIL] Admin API auth
+        did      : GET /api/admin/dashboard with NO credentials
+        expected : HTTP 401/403 if protected
+        actual   : HTTP 200 — endpoint is PUBLIC, no auth required
+[FAIL] Admin delete auth
+        did      : DELETE /api/admin/bookings/:id with NO credentials
+        expected : HTTP 401/403 if protected
+        actual   : HTTP 200
+
+────────────────────────────────────────────────────────────────────────
+2. LEAD CAPTURE
+────────────────────────────────────────────────────────────────────────
+[PASS] Lead create (valid)
+        did      : POST /api/admin/leads with full payload
+        expected : HTTP 200 + leadId
+        actual   : HTTP 200, leadId=lead_1787317959134_zosa0j
+[PASS] Lead reject: missing name
+        did      : POST /api/admin/leads {"email":"a@b.co","phone":"123","source":"x"}
+        expected : HTTP 400
+        actual   : HTTP 400
+[PASS] Lead reject: missing email
+        did      : POST /api/admin/leads {"name":"x","phone":"123","source":"x"}
+        expected : HTTP 400
+        actual   : HTTP 400
+[PASS] Lead reject: empty object
+        did      : POST /api/admin/leads {}
+        expected : HTTP 400
+        actual   : HTTP 400
+[PASS] Lead reject: nulls
+        did      : POST /api/admin/leads {"name":null,"email":null,"phone":null,"source":null}
+        expected : HTTP 400
+        actual   : HTTP 400
+[PASS] Lead reject: wrong types
+        did      : POST /api/admin/leads {"name":123,"email":[],"phone":{},"source":true}
+        expected : HTTP 400
+        actual   : HTTP 400
+[PASS] Lead hostile input
+        did      : POST /api/admin/leads with XSS/SQL/emoji/2KB string
+        expected : HTTP 200 or 400, never 500
+        actual   : HTTP 200
+
+────────────────────────────────────────────────────────────────────────
+3. BOOKING INTENT  (+ cross-store ID consistency)
+────────────────────────────────────────────────────────────────────────
+[PASS] Booking intent create
+        did      : POST /api/admin/bookings/intent
+        expected : HTTP 200 + bookingId
+        actual   : HTTP 200, bookingId=cmt2yyrk7002dq78d2e4wzya9
+[FAIL] ID consistency: JSON store
+        did      : look up returned id "cmt2yyrk7002dq78d2e4wzya9" in admin_store.json
+        expected : the returned id exists in the JSON store
+        actual   : NOT FOUND — JSON holds a different id than the API returned
+[PASS] ID consistency: Postgres
+        did      : look up returned id "cmt2yyrk7002dq78d2e4wzya9" in Booking table
+        expected : the returned id exists as a DB row
+        actual   : found
+[PASS] Status endpoint resolves intent id
+        did      : GET /api/bookings/cmt2yyrk7002dq78d2e4wzya9/status
+        expected : HTTP 200 with the booking
+        actual   : HTTP 200
+
+────────────────────────────────────────────────────────────────────────
+4. FIELD SURVIVAL ACROSS STORES
+────────────────────────────────────────────────────────────────────────
+[FAIL] Booking.email persisted to DB
+        did      : read the created booking row from Postgres
+        expected : row carries the submitted email
+        actual   : Booking table has NO email column — email cannot be stored
+[FAIL] Booking email visible in admin
+        did      : GET /api/admin/dashboard, find this run's booking, read .email
+        expected : the submitted email is present
+        actual   : email=undefined
+
+────────────────────────────────────────────────────────────────────────
+5. BOOKING STATUS TRANSITIONS
+────────────────────────────────────────────────────────────────────────
+[PASS] Status -> CONFIRMED
+        did      : POST /api/admin/bookings/status {status:"CONFIRMED"}
+        expected : HTTP 200 and DB row reads CONFIRMED
+        actual   : HTTP 200, db=CONFIRMED
+[PASS] Status -> CANCELLED
+        did      : POST /api/admin/bookings/status {status:"CANCELLED"}
+        expected : HTTP 200 and DB row reads CANCELLED
+        actual   : HTTP 200, db=CANCELLED
+[PASS] Status -> PENDING
+        did      : POST /api/admin/bookings/status {status:"PENDING"}
+        expected : HTTP 200 and DB row reads PENDING
+        actual   : HTTP 200, db=PENDING
+[FAIL] Status -> COMPLETED (enum gap)
+        did      : POST /api/admin/bookings/status {status:"COMPLETED"}
+        expected : API reports success AND both stores agree
+        actual   : HTTP 200, db=PENDING, json=not in json — STORES DISAGREE
+[PASS] Status reject: no id
+        did      : POST /api/admin/bookings/status with no id
+        expected : HTTP 400
+        actual   : HTTP 400
+[PASS] Status on missing booking
+        did      : POST /api/admin/bookings/status for unknown id
+        expected : HTTP 404 (or 200 no-op), never 500
+        actual   : HTTP 200
+
+────────────────────────────────────────────────────────────────────────
+6. ADMIN BOOKING CONFIRM
+────────────────────────────────────────────────────────────────────────
+[PASS] Confirm reject: empty
+        did      : POST /api/admin/bookings/confirm {}
+        expected : HTTP 400
+        actual   : HTTP 400
+[PASS] Confirm by eventUri
+        did      : POST /api/admin/bookings/confirm with a fresh eventUri
+        expected : HTTP 200 + bookingId
+        actual   : HTTP 200, id=bk_1787317963794
+[PASS] Double-click idempotency
+        did      : fire the SAME eventUri confirm twice in parallel
+        expected : both HTTP 200 and exactly 1 DB row
+        actual   : a=200 b=200, db rows for that uri=1
+
+────────────────────────────────────────────────────────────────────────
+7. CONCURRENCY — 50 PARALLEL WRITES (lost-update detection)
+────────────────────────────────────────────────────────────────────────
+[PASS] Concurrent intents accepted
+        did      : 50 parallel POST /api/admin/bookings/intent (304ms)
+        expected : 50 responses with HTTP 200 + bookingId
+        actual   : 50 x HTTP200, 50 carried a bookingId
+[PASS] JSON store lost-update check
+        did      : count records tagged BRUTE_MT2YYOSV_RACE in admin_store.json after 50 parallel writes
+        expected : 50 records present (count 61 -> 111)
+        actual   : 50 present (count 61 -> 111) — 0 LOST
+[PASS] Postgres lost-update check
+        did      : count rows with notes='BRUTE_MT2YYOSV_RACE' after 50 parallel writes
+        expected : 50 rows present (count 6 -> 56)
+        actual   : 50 present (count 6 -> 56) — 0 LOST
+[PASS] JSON vs Postgres agreement
+        did      : compare tagged record counts in both stores
+        expected : both stores hold the same number of records
+        actual   : json=50, postgres=50
+
+────────────────────────────────────────────────────────────────────────
+8. STATUS ENDPOINT UNDER LOAD
+────────────────────────────────────────────────────────────────────────
+[PASS] Rapid status polling
+        did      : 40 parallel GET /api/bookings/:id/status (143ms)
+        expected : 40 x HTTP 200, zero 5xx
+        actual   : 40 x 200, 0 x 5xx/network
+[PASS] Status endpoint consistency
+        did      : compare all 40 concurrent responses to each other
+        expected : every concurrent read returns identical data
+        actual   : 1 distinct payload(s) observed
+[PASS] Status endpoint: unknown id
+        did      : GET /api/bookings/__no_such_booking__/status
+        expected : HTTP 404
+        actual   : HTTP 404
+[PASS] Status endpoint: traversal-ish id
+        did      : GET status with ../../etc/passwd as id
+        expected : HTTP 404, never 500
+        actual   : HTTP 404
+
+────────────────────────────────────────────────────────────────────────
+9. ADMIN DASHBOARD
+────────────────────────────────────────────────────────────────────────
+[PASS] Dashboard loads
+        did      : GET /api/admin/dashboard?includeAvailability=false
+        expected : HTTP 200 with metrics + bookings + leads
+        actual   : HTTP 200, bookings=106, leads=4, 4234ms
+[PASS] Dashboard reports storage mode
+        did      : read .storageMode / .dbConnected from dashboard
+        expected : reports which stores are active
+        actual   : storageMode=Prisma Postgres + Persistent JSON, dbConnected=true
+[PASS] Dashboard concurrent loads
+        did      : 5 parallel dashboard loads (7233ms)
+        expected : 5 x HTTP 200, identical booking counts
+        actual   : 5 x 200, booking counts=[106,106,106,106,106]
+
+────────────────────────────────────────────────────────────────────────
+10. CALENDLY-BACKED ENDPOINTS
+────────────────────────────────────────────────────────────────────────
+[FAIL] Month availability
+        did      : GET /api/calendly/month-availability
+        expected : HTTP 200 with a non-empty availableDates array
+        actual   : HTTP 500, 0 dates, 371ms
+[FAIL] Availability repeatability
+        did      : call month-availability 3x sequentially, compare date counts
+        expected : all three calls return the same non-empty result
+        actual   : statuses=[500,500,500], date counts=[0,0,0]
+[FAIL] Availability under concurrency
+        did      : 8 parallel month-availability calls (680ms)
+        expected : all 8 return the same non-empty date list
+        actual   : date counts=[0,0,0,0,0,0,0,0], 8 returned EMPTY
+[FAIL] Day availability
+        did      : GET /api/calendly/availability?date=2026-08-24
+        expected : HTTP 200 with timeSlots
+        actual   : HTTP 500, 0 slots, 1575ms
+[FAIL] Day availability: bad date
+        did      : GET /api/calendly/availability?date=not-a-date
+        expected : HTTP 400
+        actual   : HTTP 500
+[PASS] Check-scheduled poll
+        did      : GET /api/calendly/check-scheduled
+        expected : HTTP 200 with scheduled flag
+        actual   : HTTP 200, scheduled=false
+
+────────────────────────────────────────────────────────────────────────
+11. GRACEFUL DEGRADATION (Calendly failure path)
+────────────────────────────────────────────────────────────────────────
+[PASS] Calendly confirm: no eventUri
+        did      : POST /api/calendly/confirm {}
+        expected : HTTP 400
+        actual   : HTTP 400
+[FAIL] Calendly confirm: unknown event
+        did      : POST /api/calendly/confirm with a nonexistent event uri
+        expected : fails fast with 404, does not block for ~42s
+        actual   : HTTP 404 after 41070ms — BLOCKED THE CONNECTION
+
+────────────────────────────────────────────────────────────────────────
+12. MALFORMED & HOSTILE PAYLOADS
+────────────────────────────────────────────────────────────────────────
+[PASS] Hostile intent: very long string
+        did      : POST intent with very long string in text fields
+        expected : HTTP 200 or 400, never 500/network error
+        actual   : HTTP 200
+[PASS] Hostile intent: unicode + emoji
+        did      : POST intent with unicode + emoji in text fields
+        expected : HTTP 200 or 400, never 500/network error
+        actual   : HTTP 200
+[PASS] Hostile intent: quotes/brackets
+        did      : POST intent with quotes/brackets in text fields
+        expected : HTTP 200 or 400, never 500/network error
+        actual   : HTTP 200
+[PASS] Hostile intent: sql-ish
+        did      : POST intent with sql-ish in text fields
+        expected : HTTP 200 or 400, never 500/network error
+        actual   : HTTP 200
+[PASS] Hostile intent: script-ish
+        did      : POST intent with script-ish in text fields
+        expected : HTTP 200 or 400, never 500/network error
+        actual   : HTTP 200
+[PASS] Hostile intent: null bytes
+        did      : POST intent with null bytes in text fields
+        expected : HTTP 200 or 400, never 500/network error
+        actual   : HTTP 200
+[PASS] Invalid JSON body
+        did      : POST intent with malformed JSON text
+        expected : HTTP 400, never 500 or crash
+        actual   : HTTP 400
+[PASS] Deeply nested payload
+        did      : POST intent with 500-level nested object
+        expected : handled, never 500/crash
+        actual   : HTTP 200
+
+────────────────────────────────────────────────────────────────────────
+13. PROCESS LIVENESS
+────────────────────────────────────────────────────────────────────────
+[PASS] Server alive after all tests
+        did      : GET /index.html after every hostile/concurrent test
+        expected : HTTP 200 — process never died
+        actual   : HTTP 200
+[PASS] Dashboard alive after tests
+        did      : GET dashboard after every hostile/concurrent test
+        expected : HTTP 200
+        actual   : HTTP 200
+
+────────────────────────────────────────────────────────────────────────
+14. CLEANUP + EMPTY STATE
+────────────────────────────────────────────────────────────────────────
+[PASS] Clear selected (cleanup)
+        did      : POST /api/admin/clear-selected with 60 ids created by this run
+        expected : HTTP 200
+        actual   : HTTP 200
+[FAIL] Cleanup removed DB rows
+        did      : count Booking rows still tagged BRUTE_MT2YYOSV
+        expected : 0 rows remain
+        actual   : 3 remain
+[PASS] Clear selected: empty array
+        did      : POST /api/admin/clear-selected {ids:[]}
+        expected : HTTP 400
+        actual   : HTTP 400
+
+========================================================================
+SUMMARY TABLE
+========================================================================
+STATUS  FEATURE                             ACTUAL
+------------------------------------------------------------------------
+PASS    Server reachable                    HTTP 200 (50ms)
+PASS    Cache headers on static             no-store, no-cache, must-revalidate, private
+PASS    Admin panel served                  HTTP 200
+PASS    Audit page served                   HTTP 200
+FAIL    Admin API auth                      HTTP 200 — endpoint is PUBLIC, no auth required
+FAIL    Admin delete auth                   HTTP 200
+PASS    Lead create (valid)                 HTTP 200, leadId=lead_1787317959134_zosa0j
+PASS    Lead reject: missing name           HTTP 400
+PASS    Lead reject: missing email          HTTP 400
+PASS    Lead reject: empty object           HTTP 400
+PASS    Lead reject: nulls                  HTTP 400
+PASS    Lead reject: wrong types            HTTP 400
+PASS    Lead hostile input                  HTTP 200
+PASS    Booking intent create               HTTP 200, bookingId=cmt2yyrk7002dq78d2e4wzya9
+FAIL    ID consistency: JSON store          NOT FOUND — JSON holds a different id than the API returned
+PASS    ID consistency: Postgres            found
+PASS    Status endpoint resolves intent id  HTTP 200
+FAIL    Booking.email persisted to DB       Booking table has NO email column — email cannot be stored
+FAIL    Booking email visible in admin      email=undefined
+PASS    Status -> CONFIRMED                 HTTP 200, db=CONFIRMED
+PASS    Status -> CANCELLED                 HTTP 200, db=CANCELLED
+PASS    Status -> PENDING                   HTTP 200, db=PENDING
+FAIL    Status -> COMPLETED (enum gap)      HTTP 200, db=PENDING, json=not in json — STORES DISAGREE
+PASS    Status reject: no id                HTTP 400
+PASS    Status on missing booking           HTTP 200
+PASS    Confirm reject: empty               HTTP 400
+PASS    Confirm by eventUri                 HTTP 200, id=bk_1787317963794
+PASS    Double-click idempotency            a=200 b=200, db rows for that uri=1
+PASS    Concurrent intents accepted         50 x HTTP200, 50 carried a bookingId
+PASS    JSON store lost-update check        50 present (count 61 -> 111) — 0 LOST
+PASS    Postgres lost-update check          50 present (count 6 -> 56) — 0 LOST
+PASS    JSON vs Postgres agreement          json=50, postgres=50
+PASS    Rapid status polling                40 x 200, 0 x 5xx/network
+PASS    Status endpoint consistency         1 distinct payload(s) observed
+PASS    Status endpoint: unknown id         HTTP 404
+PASS    Status endpoint: traversal-ish id   HTTP 404
+PASS    Dashboard loads                     HTTP 200, bookings=106, leads=4, 4234ms
+PASS    Dashboard reports storage mode      storageMode=Prisma Postgres + Persistent JSON, dbConnected=true
+PASS    Dashboard concurrent loads          5 x 200, booking counts=[106,106,106,106,106]
+FAIL    Month availability                  HTTP 500, 0 dates, 371ms
+FAIL    Availability repeatability          statuses=[500,500,500], date counts=[0,0,0]
+FAIL    Availability under concurrency      date counts=[0,0,0,0,0,0,0,0], 8 returned EMPTY
+FAIL    Day availability                    HTTP 500, 0 slots, 1575ms
+FAIL    Day availability: bad date          HTTP 500
+PASS    Check-scheduled poll                HTTP 200, scheduled=false
+PASS    Calendly confirm: no eventUri       HTTP 400
+FAIL    Calendly confirm: unknown event     HTTP 404 after 41070ms — BLOCKED THE CONNECTION
+PASS    Hostile intent: very long string    HTTP 200
+PASS    Hostile intent: unicode + emoji     HTTP 200
+PASS    Hostile intent: quotes/brackets     HTTP 200
+PASS    Hostile intent: sql-ish             HTTP 200
+PASS    Hostile intent: script-ish          HTTP 200
+PASS    Hostile intent: null bytes          HTTP 200
+PASS    Invalid JSON body                   HTTP 400
+PASS    Deeply nested payload               HTTP 200
+PASS    Server alive after all tests        HTTP 200
+PASS    Dashboard alive after tests         HTTP 200
+PASS    Clear selected (cleanup)            HTTP 200
+FAIL    Cleanup removed DB rows             3 remain
+PASS    Clear selected: empty array         HTTP 400
+------------------------------------------------------------------------
+TOTAL: 60   PASS: 47   FAIL: 13   SKIP: 0
+finished: 2026-08-21T13:13:52.261Z
+========================================================================
+
+FAILURES:
+  - Admin API auth
+      expected: HTTP 401/403 if protected
+      actual  : HTTP 200 — endpoint is PUBLIC, no auth required
+  - Admin delete auth
+      expected: HTTP 401/403 if protected
+      actual  : HTTP 200
+  - ID consistency: JSON store
+      expected: the returned id exists in the JSON store
+      actual  : NOT FOUND — JSON holds a different id than the API returned
+  - Booking.email persisted to DB
+      expected: row carries the submitted email
+      actual  : Booking table has NO email column — email cannot be stored
+  - Booking email visible in admin
+      expected: the submitted email is present
+      actual  : email=undefined
+  - Status -> COMPLETED (enum gap)
+      expected: API reports success AND both stores agree
+      actual  : HTTP 200, db=PENDING, json=not in json — STORES DISAGREE
+  - Month availability
+      expected: HTTP 200 with a non-empty availableDates array
+      actual  : HTTP 500, 0 dates, 371ms
+  - Availability repeatability
+      expected: all three calls return the same non-empty result
+      actual  : statuses=[500,500,500], date counts=[0,0,0]
+  - Availability under concurrency
+      expected: all 8 return the same non-empty date list
+      actual  : date counts=[0,0,0,0,0,0,0,0], 8 returned EMPTY
+  - Day availability
+      expected: HTTP 200 with timeSlots
+      actual  : HTTP 500, 0 slots, 1575ms
+  - Day availability: bad date
+      expected: HTTP 400
+      actual  : HTTP 500
+  - Calendly confirm: unknown event
+      expected: fails fast with 404, does not block for ~42s
+      actual  : HTTP 404 after 41070ms — BLOCKED THE CONNECTION
+  - Cleanup removed DB rows
+      expected: 0 rows remain
+      actual  : 3 remain
