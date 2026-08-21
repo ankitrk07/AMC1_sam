@@ -371,13 +371,15 @@ const counsellorProfileCache = {
   counsellor2: { name: null, email: null, expiresAt: 0 }
 };
 
-// Cache for Month Availability to keep response instantaneous
-let monthAvailCache = {
-  availableDates: [],
-  c1Map: {},
-  c2Map: {},
-  expiresAt: 0
-};
+// Cache for Month Availability to keep response instantaneous.
+// Keyed by timezone + counsellor scope, because the computed dates depend on
+// both. Previously this object was assigned but NEVER READ, so every single
+// request rebuilt it from scratch — see MONTH_CACHE_TTL below.
+let monthAvailCache = new Map();
+
+function monthCacheKey(tzName, scope) {
+  return `${tzName}|${scope}`;
+}
 const MONTH_CACHE_TTL = 30 * 60 * 1000; // 30 minutes cache TTL
 
 // Cache for live scheduled events from Calendly
