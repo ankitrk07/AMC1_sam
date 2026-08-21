@@ -1,0 +1,8 @@
+# Keep line endings deterministic. The server is Linux; the repo stores LF.
+# Without this, edits made on Windows can silently rewrite whole files as CRLF,
+# which buries a real change in thousands of no-op line diffs.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.mp4 binary

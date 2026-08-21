@@ -201,7 +201,7 @@ app.use(express.urlencoded({ extended: true }));
 // ──────────────────────────────────────────────────────
 function stripNulls(value, depth = 0) {
   if (depth > 20) return value;
-  if (typeof value === 'string') return value.replace(/ /g, '');
+  if (typeof value === 'string') return value.replace(/\u0000/g, '');
   if (Array.isArray(value)) return value.map(v => stripNulls(v, depth + 1));
   if (value && typeof value === 'object') {
     for (const key of Object.keys(value)) {
