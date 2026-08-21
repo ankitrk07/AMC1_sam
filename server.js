@@ -2731,16 +2731,28 @@ async function runPendingMeetSweep() {
 
         console.log(`[Pending Meet Sweep] Resolved Google Meet link for booking ${b.id}: ${result.googleMeetUrl}`);
 
-        // Scoped to this one row by primary key.
+        // Conditional write, scoped to this one row.
+        //
+        // The row was read before a network call that can take seconds, so a
+        // confirmation could have resolved the same link in the meantime. The
+        // googleMeetUrl: null guard makes Postgres decide: if the field is no
+        // longer empty this matches nothing and we leave the winner's value
+        // alone, instead of overwriting it on the strength of a stale read.
         let updated;
         try {
-          updated = await prisma.booking.update({
-            where: { id: b.id },
+          const claimed = await prisma.booking.updateMany({
+            where: { id: b.id, googleMeetUrl: null },
             data: {
               googleMeetUrl: result.googleMeetUrl,
               locationType: result.locationType,
             },
           });
+          if (claimed.count === 0) {
+            console.log('[Pending Meet Sweep] Booking', b.id, 'was already resolved elsewhere — leaving it alone.');
+            break;
+          }
+          updated = await prisma.booking.findUnique({ where: { id: b.id } });
+          if (!updated) break;
         } catch (updateErr) {
           console.error('[Pending Meet Sweep] Failed to persist Meet link for', b.id, '-',
             updateErr && updateErr.stack ? updateErr.stack : updateErr);
@@ -2748,10 +2760,26 @@ async function runPendingMeetSweep() {
         }
 
         // Send confirmation email for the newly resolved link.
-        if (!updated.emailSent) {
-          const sweepEmail = updated.email || (result.invitee && result.invitee.email) || null;
-          const sweepName = updated.name || (result.invitee && result.invitee.name) || 'Student';
-          if (sweepEmail) {
+        //
+        // Claim the send BEFORE dispatching it. Every process runs its own copy
+        // of this sweep, so two of them can hold the same booking with
+        // emailSent=false at the same moment and both send. Flipping the flag
+        // first, conditionally, means Postgres picks exactly one winner; the
+        // loser's updateMany matches nothing and it skips. If the send then
+        // fails the claim is released so a later sweep can retry.
+        const sweepEmail = updated.email || (result.invitee && result.invitee.email) || null;
+        const sweepName = updated.name || (result.invitee && result.invitee.name) || 'Student';
+
+        if (!updated.emailSent && sweepEmail) {
+          const claimedEmail = await prisma.booking.updateMany({
+            where: { id: updated.id, emailSent: false },
+            data: { emailSent: true, emailSentAt: new Date() },
+          });
+
+          if (claimedEmail.count === 0) {
+            console.log('[Pending Meet Sweep] Confirmation email for', updated.id, 'already claimed elsewhere — skipping.');
+          } else {
+            let sent = false;
             try {
               console.log('[Pending Meet Sweep] Sending confirmation email to', sweepEmail, 'for booking', updated.id);
               const emailResult = await sendBookingConfirmationEmail({
@@ -2764,20 +2792,31 @@ async function runPendingMeetSweep() {
                 calendlyEventName: updated.calendlyEventName || 'AMC Counselling Session',
                 timezone: updated.timezone,
               });
-              if (emailResult.sent) {
-                await prisma.booking.update({
-                  where: { id: updated.id },
-                  data: { emailSent: true, emailSentAt: new Date() },
-                });
+              sent = Boolean(emailResult && emailResult.sent);
+              if (sent) {
                 console.log('[Pending Meet Sweep] Confirmation email sent for booking', updated.id);
+              } else {
+                console.warn('[Pending Meet Sweep] Email not sent for', updated.id, '- reason:',
+                  emailResult && emailResult.reason);
               }
             } catch (emailErr) {
               console.error('[Pending Meet Sweep] Email send error for', updated.id, '-',
                 emailErr && emailErr.stack ? emailErr.stack : emailErr);
             }
-          } else {
-            console.warn('[Pending Meet Sweep] No email address found for booking', updated.id, '— cannot send confirmation');
+
+            if (!sent) {
+              // Release the claim so a later sweep can try again.
+              await prisma.booking.updateMany({
+                where: { id: updated.id },
+                data: { emailSent: false, emailSentAt: null },
+              }).catch(releaseErr => {
+                console.error('[Pending Meet Sweep] Could not release email claim for', updated.id, '-',
+                  releaseErr && releaseErr.message);
+              });
+            }
           }
+        } else if (!updated.emailSent && !sweepEmail) {
+          console.warn('[Pending Meet Sweep] No email address found for booking', updated.id, '— cannot send confirmation');
         }
 
         break; // resolved with this token; move to the next booking
