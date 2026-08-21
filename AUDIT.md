@@ -527,3 +527,84 @@ node tests/brute.js --base http://localhost:3000 --store ./data/admin_store.json
 
 then set `DATABASE_URL`, restart, and run it again with `--db "<url>"`. The
 `Booking email visible in admin` check flips from PASS to FAIL.
+
+---
+
+# PHASE 6–7 — FIXES AND VERIFICATION
+
+## Result
+
+| | Before | After |
+|---|---|---|
+| Harness, server mode | 47 PASS / 13 FAIL | **60 PASS / 0 FAIL** |
+| Two processes, 40 concurrent writes | 14 lost (35%) in JSON | **0 lost** |
+| Availability with a dead counsellor-2 token | HTTP 500, 0 dates | **HTTP 200, 50 dates** (degraded flag) |
+| Confirm with a stale event URI | blocked 40.7 s | **6.9 s, HTTP 404** |
+| `/api/admin/*` without credentials | HTTP 200, full lead database | **HTTP 401** |
+| `GET /data/admin_store.json` | HTTP 200, full lead database | **HTTP 404** |
+
+## Every previously failing check, and what it does now
+
+| Check | Before | After |
+|---|---|---|
+| Admin API auth | FAIL — public | PASS — 401 |
+| Admin delete auth | FAIL — public | PASS — 401 |
+| Booking email visible in admin | FAIL — `email=undefined` | PASS — email present |
+| Booking.email persisted to DB | FAIL — no column | PASS — column added |
+| ID consistency | FAIL — JSON held a different id | PASS — one store, one id |
+| Status -> COMPLETED | FAIL — db stayed PENDING | PASS — db reads COMPLETED |
+| Cleanup removed DB rows | FAIL — 3 orphans | PASS — 0 remain |
+| Month availability | FAIL — HTTP 500 | PASS — HTTP 200, 50 dates |
+| Availability repeatability | FAIL — 500,500,500 | PASS — 200,200,200 |
+| Availability under concurrency | FAIL — 8/8 empty | PASS — 8/8 identical |
+| Day availability | FAIL — HTTP 500 | PASS — HTTP 200 |
+| Day availability: bad date | FAIL — HTTP 500 | PASS — HTTP 400 |
+| Calendly confirm: unknown event | FAIL — 40.7 s block | PASS — 6.9 s, 404 |
+
+## Regressions found in my own work, and fixed
+
+**NUL bytes → HTTP 500.** Making Postgres the only store surfaced something the
+old code had been hiding: PostgreSQL cannot store `U+0000` in a text column
+(`22021 invalid byte sequence for encoding UTF8: 0x00`). Previously the JSON
+file accepted it and Prisma's failure was swallowed by a non-fatal catch that
+still returned HTTP 200. Fixed by stripping NUL from request bodies.
+Verified: `"abc\0def"` now returns 200 and stores `abcdef`.
+
+**Sweep still wrote on a stale read.** Found while re-auditing my own diff.
+Both of the sweep's writes are now conditional (`googleMeetUrl: null` and
+`emailSent: false` guards), so Postgres picks the winner. This also closes a
+duplicate-email path that would have appeared with more than one process.
+
+## Verified by execution
+
+- Full harness, 60/60, against instance A **and** against instance B while both
+  were running.
+- Two processes sharing one database: 40/40 writes landed, 0 lost, legacy JSON
+  never written.
+- Fail-closed startup: `.env` without `DATABASE_URL` → exit 1, no port bound.
+  `.env` without `ADMIN_API_KEY` → exit 1, no port bound. Complete `.env` → starts.
+- Admin panel in a real browser: login overlay gates the page (0 rows, metrics
+  `--`), login succeeds, 51 rows render, Sync fires `refresh=true`, no console
+  errors, no 401s after login. Cookie is invisible to JS (HttpOnly holds).
+- All 13 admin actions through the session cookie alone.
+- Filename-case check re-run: still 0 mismatches.
+
+## A subtlety worth knowing
+
+`require('@prisma/client')` **auto-loads the `.env` next to
+`prisma/schema.prisma`**, before line 7's `require('dotenv').config()` and
+before the environment check. This is why an early attempt to test the
+fail-closed path by changing the working directory did not work: Prisma had
+already injected `DATABASE_URL` from the repo's `.env` regardless of `cwd`.
+The guarantee itself holds — proven by removing the key from `.env` — but
+the precedence is not obvious.
+
+## Still not verified from here
+
+- Whether the server runs more than one pm2 instance (decides how much of the
+  multi-process hazard was firing live).
+- Whether the server's `CALENDLY_API_TOKEN_2` is also stale.
+- The server's Node major version. `package.json` still declares no `engines`.
+- Cloudflare edge caching behaviour on the live domain.
+- Real end-to-end Calendly booking with a real invitee: every Calendly test here
+  was read-only, plus one non-existent event id. Nothing booked a real slot.
