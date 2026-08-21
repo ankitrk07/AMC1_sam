@@ -46,6 +46,7 @@ process.on('uncaughtException', (err, origin) => {
 // ──────────────────────────────────────────────────────
 const REQUIRED_ENV = [
   { key: 'DATABASE_URL', why: 'PostgreSQL connection string — the single source of truth for leads and bookings' },
+  { key: 'ADMIN_API_KEY', why: 'shared secret protecting every /api/admin/* route — without it the admin API would expose every lead' },
 ];
 
 const OPTIONAL_ENV = [
@@ -197,15 +198,140 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.static(path.join(__dirname), {
+// ──────────────────────────────────────────────────────
+// Static file surface.
+//
+// This used to be express.static(__dirname), which served the ENTIRE repo
+// root. GET /data/admin_store.json returned HTTP 200 with every lead's name,
+// email and phone to anyone who asked — no credentials, no knowledge of the
+// API required. /package.json and /prisma/schema.prisma were public too.
+// (.env happened to be safe only because express.static ignores dotfiles.)
+//
+// Only the directories and files that are genuinely public are served now.
+// ──────────────────────────────────────────────────────
+const staticOptions = {
   etag: false,
   maxAge: 0,
+  dotfiles: 'deny',
+  index: false,
   setHeaders: (res) => {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
   }
-}));
+};
+
+app.use('/css', express.static(path.join(__dirname, 'css'), staticOptions));
+app.use('/js', express.static(path.join(__dirname, 'js'), staticOptions));
+app.use('/assets', express.static(path.join(__dirname, 'assets'), staticOptions));
+
+// The three public HTML entry points, served explicitly.
+const PUBLIC_PAGES = {
+  '/': 'index.html',
+  '/index.html': 'index.html',
+  '/admin.html': 'admin.html',
+  '/audit.html': 'audit.html',
+};
+
+for (const [route, file] of Object.entries(PUBLIC_PAGES)) {
+  app.get(route, (req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.sendFile(path.join(__dirname, file));
+  });
+}
+
+// ──────────────────────────────────────────────────────
+// Admin authentication.
+//
+// Every /api/admin/* route was completely unauthenticated: anyone could read
+// the full lead database or delete bookings. This gate fails CLOSED — the
+// startup check refuses to boot without ADMIN_API_KEY, so there is no
+// configuration in which these routes are reachable without a secret.
+//
+// The secret may be presented three ways, all equivalent:
+//   Authorization: Bearer <key>
+//   X-Admin-Key: <key>
+//   Cookie: amc_admin=<key>        (set by POST /api/admin/login)
+// ──────────────────────────────────────────────────────
+const crypto = require('crypto');
+
+function timingSafeEqual(a, b) {
+  const bufA = Buffer.from(String(a || ''), 'utf8');
+  const bufB = Buffer.from(String(b || ''), 'utf8');
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
+function extractAdminKey(req) {
+  const auth = req.headers.authorization;
+  if (auth && auth.startsWith('Bearer ')) return auth.slice(7).trim();
+  if (req.headers['x-admin-key']) return String(req.headers['x-admin-key']).trim();
+
+  const cookieHeader = req.headers.cookie;
+  if (cookieHeader) {
+    for (const part of cookieHeader.split(';')) {
+      const [name, ...rest] = part.trim().split('=');
+      if (name === 'amc_admin') return decodeURIComponent(rest.join('='));
+    }
+  }
+  return null;
+}
+
+function requireAdmin(req, res, next) {
+  const expected = process.env.ADMIN_API_KEY;
+
+  // Defensive: startup already guarantees this, but never fail open.
+  if (!expected || !expected.trim()) {
+    console.error('[Admin Auth] ADMIN_API_KEY is not configured — denying access.');
+    return res.status(503).json({ success: false, error: 'Admin API is not configured' });
+  }
+
+  const presented = extractAdminKey(req);
+  if (!presented || !timingSafeEqual(presented, expected)) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+  return next();
+}
+
+// Exchange the shared secret for a session cookie so admin.html can call the
+// API normally. The cookie holds the same secret; it is HttpOnly so page
+// scripts cannot read it, and SameSite=Strict so other sites cannot use it.
+app.post('/api/admin/login', (req, res) => {
+  const expected = process.env.ADMIN_API_KEY;
+  const presented = (req.body && req.body.key) ? String(req.body.key) : extractAdminKey(req);
+
+  if (!presented || !timingSafeEqual(presented, expected)) {
+    return res.status(401).json({ success: false, error: 'Invalid admin key' });
+  }
+
+  const secure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+  res.setHeader('Set-Cookie', [
+    `amc_admin=${encodeURIComponent(presented)}`,
+    'Path=/',
+    'HttpOnly',
+    'SameSite=Strict',
+    'Max-Age=' + (12 * 60 * 60), // 12 hours
+    secure ? 'Secure' : '',
+  ].filter(Boolean).join('; '));
+
+  return res.json({ success: true });
+});
+
+app.post('/api/admin/logout', (req, res) => {
+  res.setHeader('Set-Cookie', 'amc_admin=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0');
+  return res.json({ success: true });
+});
+
+// Lets admin.html discover whether the browser already holds a valid session.
+app.get('/api/admin/session', (req, res) => {
+  const expected = process.env.ADMIN_API_KEY;
+  const presented = extractAdminKey(req);
+  const authenticated = Boolean(presented && expected && timingSafeEqual(presented, expected));
+  return res.json({ success: true, authenticated });
+});
+
+// Everything else under /api/admin/* requires the secret.
+app.use('/api/admin', requireAdmin);
 
 // Cache for event type URIs
 const eventTypeCache = {

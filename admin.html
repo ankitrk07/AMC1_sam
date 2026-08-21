@@ -2924,6 +2924,10 @@
         var tz = encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
         var url = '/api/admin/dashboard?includeAvailability=true&tz=' + tz + (forceRefresh ? '&refresh=true' : '');
         var res = await fetch(url);
+        if (res.status === 401) {
+          if (window.handleAdminUnauthorized) window.handleAdminUnauthorized();
+          return;
+        }
         if (!res.ok) throw new Error('Dashboard error (Status ' + res.status + ')');
         var data = await res.json();
 
@@ -3482,9 +3486,109 @@
       });
     }
 
-    // Initial Load
-    loadDashboard(false);
-    setupAutoRefresh();
+    // ──────────────────────────────────────────────────────
+    // Admin authentication gate.
+    //
+    // Every /api/admin/* route now requires a shared secret. The secret is
+    // exchanged once for an HttpOnly session cookie, which the browser then
+    // attaches to the existing fetch() calls automatically (same-origin
+    // requests send cookies by default), so no other call sites change.
+    // ──────────────────────────────────────────────────────
+    function buildLoginOverlay() {
+      var existing = document.getElementById('adminLoginOverlay');
+      if (existing) return existing;
+
+      var overlay = document.createElement('div');
+      overlay.id = 'adminLoginOverlay';
+      overlay.style.cssText = 'position:fixed; inset:0; z-index:99999; background:#0f172a; display:flex; align-items:center; justify-content:center; padding:20px;';
+      overlay.innerHTML = ''
+        + '<form id="adminLoginForm" style="background:#ffffff; border-radius:14px; padding:32px 28px; width:100%; max-width:380px; box-shadow:0 20px 60px rgba(0,0,0,0.35); font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,Helvetica,Arial,sans-serif;">'
+        + '  <h2 style="margin:0 0 6px; font-size:19px; font-weight:800; color:#0f172a;">Admin Access</h2>'
+        + '  <p style="margin:0 0 20px; font-size:13px; color:#64748b; line-height:1.5;">Enter the admin key to view bookings and leads.</p>'
+        + '  <input id="adminKeyInput" type="password" autocomplete="current-password" placeholder="Admin key" '
+        + '    style="width:100%; box-sizing:border-box; padding:11px 13px; font-size:14px; border:1.5px solid #cbd5e1; border-radius:8px; outline:none; margin-bottom:12px;">'
+        + '  <div id="adminLoginError" style="display:none; color:#b91c1c; font-size:13px; margin-bottom:12px;"></div>'
+        + '  <button type="submit" id="adminLoginBtn" '
+        + '    style="width:100%; padding:11px; font-size:14px; font-weight:700; color:#fff; background:#BF1D4B; border:none; border-radius:8px; cursor:pointer;">Unlock</button>'
+        + '</form>';
+      document.body.appendChild(overlay);
+
+      var form = overlay.querySelector('#adminLoginForm');
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var input = document.getElementById('adminKeyInput');
+        var errorEl = document.getElementById('adminLoginError');
+        var btn = document.getElementById('adminLoginBtn');
+        var key = (input.value || '').trim();
+        if (!key) return;
+
+        btn.disabled = true;
+        btn.textContent = 'Checking...';
+        errorEl.style.display = 'none';
+
+        fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: key })
+        })
+          .then(function (res) { return res.json().then(function (d) { return { ok: res.ok, data: d }; }); })
+          .then(function (result) {
+            if (result.ok && result.data.success) {
+              overlay.remove();
+              startAdminApp();
+            } else {
+              errorEl.textContent = (result.data && result.data.error) || 'Invalid admin key.';
+              errorEl.style.display = 'block';
+              input.value = '';
+              input.focus();
+            }
+          })
+          .catch(function (err) {
+            errorEl.textContent = 'Could not reach the server: ' + err.message;
+            errorEl.style.display = 'block';
+          })
+          .finally(function () {
+            btn.disabled = false;
+            btn.textContent = 'Unlock';
+          });
+      });
+
+      setTimeout(function () {
+        var input = document.getElementById('adminKeyInput');
+        if (input) input.focus();
+      }, 50);
+
+      return overlay;
+    }
+
+    var adminAppStarted = false;
+    function startAdminApp() {
+      if (adminAppStarted) return;
+      adminAppStarted = true;
+      loadDashboard(false);
+      setupAutoRefresh();
+    }
+
+    // If a request is rejected mid-session (cookie expired), re-prompt rather
+    // than leaving the panel showing stale data.
+    window.handleAdminUnauthorized = function () {
+      if (state.autoRefreshInterval) clearInterval(state.autoRefreshInterval);
+      adminAppStarted = false;
+      buildLoginOverlay();
+    };
+
+    fetch('/api/admin/session')
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data && data.authenticated) {
+          startAdminApp();
+        } else {
+          buildLoginOverlay();
+        }
+      })
+      .catch(function () {
+        buildLoginOverlay();
+      });
   </script>
 </body>
 
