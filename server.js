@@ -1403,7 +1403,86 @@ async function fetchCalendlyScheduledEvents(forceRefresh = false, minCreatedAtIs
     };
   }
 
+  // Calendly-made bookings used to exist only in memory: getUnifiedBookings
+  // merged them at read time and nothing ever wrote them to Postgres. But
+  // getNextCounsellor() balances by counting Booking rows, so every booking
+  // that arrived straight from Calendly was invisible to the rotation. It was
+  // balancing a subset while the panel showed the full set, which is how one
+  // counsellor sat at 3 bookings while the other climbed to 7.
+  //
+  // Writing them here costs no extra Calendly calls — these events have just
+  // been fetched — and makes Postgres hold what actually exists.
+  await persistCalendlyEvents(allEvents);
+
   return allEvents;
+}
+
+// Mirror fetched Calendly events into Postgres so the rotation can count them.
+//
+// Only fields Calendly owns are written. Phone, countryCode, leadSource and
+// sourceOther are deliberately never touched: those come from the visitor's
+// Lead record, and a sync that only knows what Calendly returned would wipe
+// them. Nulls are stripped from the update for the same reason — an event
+// whose Google Meet link has not appeared yet must not erase one the sweep
+// already found.
+async function persistCalendlyEvents(events) {
+  if (!Array.isArray(events) || events.length === 0) return;
+
+  let deletedRefs;
+  try {
+    deletedRefs = await getDeletedRefs();
+  } catch (err) {
+    console.warn('[Calendly Persist] could not load deleted refs:', err && err.message);
+    return;
+  }
+
+  for (const ev of events) {
+    if (!ev || !ev.calendlyEventUri) continue;
+    // A booking the admin deleted must not be resurrected by the next sync.
+    if (deletedRefs.has(ev.calendlyEventUri) || deletedRefs.has(ev.id)) continue;
+
+    const owned = {
+      name: ev.name || null,
+      email: ev.email || null,
+      scheduledStartTime: ev.scheduledStartTime ? new Date(ev.scheduledStartTime) : null,
+      scheduledEndTime: ev.scheduledEndTime ? new Date(ev.scheduledEndTime) : null,
+      calendlyEventName: ev.calendlyEventName || null,
+      googleMeetUrl: ev.googleMeetUrl || null,
+      locationType: ev.locationType || null,
+      selectedCounsellor: ev.selectedCounsellor || null,
+      selectedCounsellorId: ev.selectedCounsellorId || null,
+      selectedCounsellorUrl: ev.selectedCounsellorUrl || null,
+    };
+
+    const update = {};
+    for (const [k, v] of Object.entries(owned)) {
+      if (v !== null && v !== undefined) update[k] = v;
+    }
+
+    // Calendly is authoritative for cancellation only. Writing CONFIRMED back
+    // on every sync would revert an admin's COMPLETED — the exact "I changed
+    // it and it changed back on its own" behaviour recorded in AUDIT.md.
+    if (ev.status === 'CANCELLED') update.status = 'CANCELLED';
+
+    try {
+      await prisma.booking.upsert({
+        where: { calendlyEventUri: ev.calendlyEventUri },
+        update,
+        create: {
+          ...owned,
+          calendlyEventUri: ev.calendlyEventUri,
+          preferredDate: ev.preferredDate || null,
+          selectedSlot: ev.selectedSlot || null,
+          status: ev.status === 'CANCELLED' ? 'CANCELLED' : 'CONFIRMED',
+          source: ev.source || 'Calendly Live',
+          createdAt: ev.createdAt ? new Date(ev.createdAt) : undefined,
+        },
+      });
+    } catch (err) {
+      // Never let a mirror write break availability or the dashboard.
+      console.warn('[Calendly Persist] skipped', ev.calendlyEventUri, err && err.message);
+    }
+  }
 }
 
 // Get unified bookings: stored bookings (Postgres) merged with live Calendly events.
