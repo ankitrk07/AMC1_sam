@@ -356,8 +356,21 @@ app.get('/api/admin/session', (req, res) => {
   return res.json({ success: true, authenticated });
 });
 
+// Two routes under /api/admin/* are not admin routes at all: they are the
+// public site's write path. A visitor submitting the Get Started form or
+// picking a time slot has no admin key and never can, because js/main.js is
+// served to the browser. Guarding them made every lead submission 401, so
+// names, emails, phones and the "where did you hear about us" channel were
+// silently discarded. They stay exempt by METHOD as well as path, so reading
+// leads (dashboard) and deleting them (/leads/:id) still require the secret.
+const PUBLIC_ADMIN_POSTS = new Set(['/leads', '/bookings/intent']);
+
 // Everything else under /api/admin/* requires the secret.
-app.use('/api/admin', requireAdmin);
+app.use('/api/admin', (req, res, next) => {
+  const path = req.path.length > 1 ? req.path.replace(/\/$/, '') : req.path;
+  if (req.method === 'POST' && PUBLIC_ADMIN_POSTS.has(path)) return next();
+  return requireAdmin(req, res, next);
+});
 
 // Cache for event type URIs
 const eventTypeCache = {
