@@ -9,10 +9,37 @@ document.addEventListener('DOMContentLoaded', function () {
   }
   document.body.style.overflow = '';
 
-  try {
-    localStorage.removeItem('amc_entry_submitted');
-    localStorage.removeItem('amc_lead_submitted');
-  } catch (e) { }
+  // Whether this visitor has already completed the Get Started form.
+  //
+  // This block used to do the exact opposite: it called
+  //   localStorage.removeItem('amc_entry_submitted');
+  //   localStorage.removeItem('amc_lead_submitted');
+  // on every page load, deleting the very flags that exist to remember the
+  // visitor. Combined with hasSubmittedOnVisit being an in-memory variable,
+  // the popup reappeared on every visit no matter how many times someone had
+  // filled it in. Nothing in the codebase ever set those flags — they were
+  // only ever removed — so the removal was almost certainly leftover debug
+  // code for forcing the modal open during development.
+  //
+  // amc_lead_user is also accepted as proof, so visitors who already submitted
+  // before this fix shipped are not asked again.
+  function hasAlreadySubmittedLead() {
+    try {
+      if (localStorage.getItem('amc_entry_submitted') === 'true') return true;
+      var existing = localStorage.getItem('amc_lead_user');
+      if (!existing) return false;
+      var parsed = JSON.parse(existing);
+      return Boolean(parsed && (parsed.email || parsed.phone));
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function markLeadSubmitted() {
+    try {
+      localStorage.setItem('amc_entry_submitted', 'true');
+    } catch (e) { }
+  }
 
   var fnEl = document.getElementById('fullName');
   if (fnEl) fnEl.value = '';
@@ -1729,9 +1756,14 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  // Pre-fill on initial page load if lead exists in session
+  // Pre-fill on initial page load if we know this visitor.
+  // Falls back to localStorage: sessionStorage is empty in a new browser
+  // session, so a returning visitor used to land on an empty form with the
+  // modal suppressed and no way to recover their own details.
   try {
-    var storedLead = JSON.parse(sessionStorage.getItem('amc_lead_user') || 'null');
+    var storedLead = JSON.parse(
+      sessionStorage.getItem('amc_lead_user') || localStorage.getItem('amc_lead_user') || 'null'
+    );
     if (storedLead) {
       autofillEnrollmentForm(storedLead);
     }
@@ -1744,7 +1776,8 @@ document.addEventListener('DOMContentLoaded', function () {
   var pageContent = document.getElementById('pageContent');
 
   if (entryModal && entryForm && pageContent) {
-    var hasSubmittedOnVisit = false;
+    // Seeded from persistent storage, so a returning visitor is never asked again.
+    var hasSubmittedOnVisit = hasAlreadySubmittedLead();
     var modalTimer = null;
 
     var openModal = function () {
@@ -1790,8 +1823,10 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     };
 
-    // Open entry popup immediately on landing page load (400ms delay)
-    modalTimer = setTimeout(openModal, 400);
+    // Open entry popup on landing, but only for visitors we have not met.
+    if (!hasSubmittedOnVisit) {
+      modalTimer = setTimeout(openModal, 400);
+    }
 
     var entryNameInput = document.getElementById('entryName');
     var entryPhoneInput = document.getElementById('entryPhone');
@@ -1988,8 +2023,10 @@ document.addEventListener('DOMContentLoaded', function () {
       // Also invoke helper
       autofillEnrollmentForm(leadPayload);
 
-      // 2. Mark submitted on this visit so it does not pop up again while browsing
+      // 2. Mark submitted — persistently, so the popup does not return on the
+      //    visitor's next visit either.
       hasSubmittedOnVisit = true;
+      markLeadSubmitted();
       if (modalTimer) {
         clearTimeout(modalTimer);
         modalTimer = null;
