@@ -371,15 +371,21 @@ const counsellorProfileCache = {
   counsellor2: { name: null, email: null, expiresAt: 0 }
 };
 
-// Cache for Month Availability to keep response instantaneous.
-// Keyed by timezone + counsellor scope, because the computed dates depend on
-// both. Previously this object was assigned but NEVER READ, so every single
-// request rebuilt it from scratch — see MONTH_CACHE_TTL below.
-let monthAvailCache = new Map();
-
-function monthCacheKey(tzName, scope) {
-  return `${tzName}|${scope}`;
-}
+// Cache for Month Availability.
+//
+// NOTE: this object is assigned but never read, so it currently has no effect —
+// every month-availability request rebuilds the result from ~12 live Calendly
+// calls. Combined with resetCalendlyCaches() running on each request, that is
+// what pushes the app into Calendly's rate limit (HTTP 429) under real traffic.
+// Making this cache actually serve reads is a deliberate behaviour change
+// (slots could be up to MONTH_CACHE_TTL stale), so it is left inert here rather
+// than switched on as a side effect of an unrelated fix.
+let monthAvailCache = {
+  availableDates: [],
+  c1Map: {},
+  c2Map: {},
+  expiresAt: 0
+};
 const MONTH_CACHE_TTL = 30 * 60 * 1000; // 30 minutes cache TTL
 
 // Cache for live scheduled events from Calendly
