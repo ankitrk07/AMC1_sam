@@ -1551,7 +1551,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var c1Name = resolvedCounsellorNames.counsellor1 || 'Counsellor 1';
     var c2Name = resolvedCounsellorNames.counsellor2 || 'Counsellor 2';
-    var counsellorName = (selectedCounsellorId === 'counsellor2' || selectedCounsellorId === 'aryan') ? ('Counsellor 2 (' + c2Name + ')') : ('Counsellor 1 (' + c1Name + ')');
+    var counsellorName = (selectedCounsellorId === 'counsellor2') ? ('Counsellor 2 (' + c2Name + ')') : ('Counsellor 1 (' + c1Name + ')');
 
     postJson('/api/admin/bookings/intent', {
       // Reuse this visitor's existing intent instead of creating a new row on

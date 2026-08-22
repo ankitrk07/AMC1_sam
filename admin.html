@@ -2286,6 +2286,23 @@
       });
     }
 
+    // One counsellor name for the whole panel, always the live name resolved
+    // from that Calendly account.
+    //
+    // The stored selectedCounsellor is not consistent: Calendly sync writes the
+    // bare name ("manasvi") while the confirm path writes a label
+    // ("Counsellor 1 (Samir)"), so rendering the stored string showed two
+    // different formats side by side. Deriving from the id instead makes every
+    // row read the same and survives a counsellor being renamed or replaced.
+    function counsellorNameFor(booking) {
+      var b = booking || {};
+      var isC2 = b.selectedCounsellorId === 'counsellor2'
+        || /counsellor\s*2/i.test(b.selectedCounsellor || '');
+      var names = (state.health && state.health.counsellorNames) || {};
+      if (isC2) return names.counsellor2 || 'Counsellor 2';
+      return names.counsellor1 || 'Counsellor 1';
+    }
+
     function fmt(dateVal) {
       if (!dateVal) return '--';
       var d = new Date(dateVal);
@@ -2470,8 +2487,10 @@
         var matchesStatus = (st === 'ALL') || (b.status === st);
         var matchesCounsellor = (counsellor === 'ALL') ||
           (b.selectedCounsellorId === counsellor) ||
-          (counsellor === 'counsellor1' && (b.selectedCounsellor || '').toLowerCase().includes('counsellor 1')) ||
-          (counsellor === 'counsellor2' && (b.selectedCounsellor || '').toLowerCase().includes('aryan'));
+          // Legacy rows may carry only a label. Match on the counsellor NUMBER,
+          // never on a person's name — names come from Calendly and change.
+          (counsellor === 'counsellor1' && /counsellor\s*1/i.test(b.selectedCounsellor || '')) ||
+          (counsellor === 'counsellor2' && /counsellor\s*2/i.test(b.selectedCounsellor || ''));
 
         var textPool = [
           b.name, b.email, b.phone, b.selectedCounsellor,
@@ -2793,7 +2812,7 @@
           '<div class="modal-field">' +
           '<span class="modal-field-label">Assigned Counsellor</span>' +
           '<div style="display:flex; align-items:center; gap:8px;">' +
-          '<span class="modal-field-val" style="font-weight:700;">' + esc(b.selectedCounsellor || '--') + '</span>' +
+          '<span class="modal-field-val" style="font-weight:700;">' + esc(counsellorNameFor(b)) + '</span>' +
           (b.selectedCounsellorUrl ? ('<a href="' + esc(b.selectedCounsellorUrl) + '" target="_blank" class="counsellor-url" style="font-size:12px;">(Calendly Page ↗)</a>') : '') +
           '</div>' +
           '</div>' +
@@ -3024,7 +3043,7 @@
         var dObj = new Date(key + 'T00:00:00');
         if (dObj.getFullYear() !== year || dObj.getMonth() !== month) return;
 
-        var isC2 = (b.selectedCounsellorId === 'counsellor2' || (b.selectedCounsellor || '').toLowerCase().includes('aryan'));
+        var isC2 = (b.selectedCounsellorId === 'counsellor2' || /counsellor\s*2/i.test(b.selectedCounsellor || ''));
         if (isC2) {
           countC2++;
           if (!bookingsMapC2[key]) bookingsMapC2[key] = [];
@@ -3232,7 +3251,7 @@
               '    </div>' +
               '    <div style="min-width:0;">' +
               '      <span style="font-size:10px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:0.06em; display:block; margin-bottom:2px;">👤 COUNSELLOR</span>' +
-              '      <span style="font-size:13.5px; font-weight:800; color:#f8fafc; display:block; word-break:break-word;">' + esc(b.selectedCounsellor || counsellorCode) + '</span>' +
+              '      <span style="font-size:13.5px; font-weight:800; color:#f8fafc; display:block; word-break:break-word;">' + esc(counsellorCode) + '</span>' +
               '      <div style="font-size:11px; color:#cbd5e1; font-weight:600; margin-top:2px; word-break:break-word;">Channel: ' + esc(b.leadSource || b.source || 'Website') + '</div>' +
               '    </div>' +
               '  </div>' +

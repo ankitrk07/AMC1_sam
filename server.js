@@ -2546,15 +2546,19 @@ app.post('/api/calendly/confirm', async (req, res) => {
       return res.status(400).json({ error: 'eventUri is required' });
     }
 
-    // Fix: Match counsellor by display name OR ID (frontend sends display name like "Counsellor 2 (Aryan Raj)")
+    // Match on the counsellor id, or on the counsellor NUMBER inside a display
+    // label. This used to also match hardcoded people's names ("aryan",
+    // "manasvi", "samir"). Those names come from Calendly and change whenever a
+    // counsellor is renamed or replaced, at which point a booking would be
+    // attributed to — and confirmed with the token of — the wrong counsellor.
     let token = process.env.CALENDLY_API_TOKEN_1;
     let counsellorIdResolved = 'counsellor1';
     const counsellorStr = String(counsellor || '').toLowerCase();
-    if (counsellorStr === 'counsellor2' || counsellorStr.includes('counsellor 2') || counsellorStr.includes('aryan') || counsellorStr.includes('manasvi')) {
+    if (counsellorStr === 'counsellor2' || counsellorStr.includes('counsellor 2')) {
       token = process.env.CALENDLY_API_TOKEN_2;
       counsellorIdResolved = 'counsellor2';
       console.log('[Calendly Confirm]   Using Token 2 (Counsellor 2)');
-    } else if (counsellorStr === 'counsellor1' || counsellorStr.includes('counsellor 1') || counsellorStr.includes('samir')) {
+    } else if (counsellorStr === 'counsellor1' || counsellorStr.includes('counsellor 1')) {
       token = process.env.CALENDLY_API_TOKEN_1;
       counsellorIdResolved = 'counsellor1';
       console.log('[Calendly Confirm]   Using Token 1 (Counsellor 1)');
