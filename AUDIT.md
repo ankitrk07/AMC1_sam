@@ -608,3 +608,102 @@ the precedence is not obvious.
 - Cloudflare edge caching behaviour on the live domain.
 - Real end-to-end Calendly booking with a real invitee: every Calendly test here
   was read-only, plus one non-existent event id. Nothing booked a real slot.
+
+---
+
+# FOUR LIVE-SITE BUGS (reported after deploy)
+
+All four were real defects with specific causes. None required a rewrite.
+
+## 1. Counsellor 2 shown as "Aryan Raj" — CONFIRMED, fixed
+
+`admin.html` hardcoded both counsellors' names in two places and ignored the
+names the API resolves from each Calendly account:
+
+```js
+// admin.html:3135 (before)
+var counsellorTag = (rootId && rootId.includes('C2')) ? 'Counsellor 2 (Aryan Raj)' : 'Counsellor 1 (starsamir9955)';
+// admin.html:3158 (before) — same, per booking row
+```
+
+Replaced with `liveCounsellorName()` / `liveCounsellorLabel()`, reading
+`state.health.counsellorNames`. Every hardcoded name is gone from admin.html,
+js/main.js and index.html; fallbacks are neutral ("Counsellor 1"/"Counsellor 2").
+Two hardcoded Calendly scheduling URLs were also removed from js/main.js — a
+stale link there would have booked a visitor into the wrong calendar.
+
+**Verified:** page source contains 0 hardcoded names; the panel renders whatever
+the API returns (live: `counsellor2: "manasvi"`).
+
+## 2. Bookings did not alternate between counsellors — CONFIRMED, fixed
+
+Two independent causes:
+
+- The old `getLastAssignedCounsellor()` counted **PENDING intents**, and an
+  intent was inserted on *every date and time-slot click*. Browsing the form
+  therefore moved the "last assigned" pointer, usually back to the counsellor
+  the page had already selected, pinning the rotation in place.
+- Alternating from a single most-recent row cannot recover from a skew: once
+  one counsellor is two ahead, strict alternation preserves that gap forever.
+
+Replaced with `getNextCounsellor()`: counts **CONFIRMED** bookings only, gives
+the next booking to whoever has fewer, and uses the most recent confirmed
+booking purely as a tie-break. The intent endpoint now *updates* the visitor's
+existing PENDING row instead of inserting a new one per click.
+
+**Verified by execution:**
+
+| State | Next counsellor | Correct |
+|---|---|---|
+| no bookings | counsellor1 | yes |
+| c1=1, c2=0 | counsellor2 | alternates |
+| c1=1, c2=1 (last=c2) | counsellor1 | alternates |
+| c1=3, c2=1 | counsellor2 | self-corrects the skew |
+| + 5 PENDING intents for c2 | **unchanged** | intents correctly ignored |
+
+That last row is the bug: those intents used to flip the answer.
+
+## 3. Fresh dates/times reappeared after booking — CONFIRMED, fixed
+
+On confirmation the code called `fetchMonthAvailability()` + `checkAvailability()`,
+repainting a fully bookable calendar directly beneath the "Session Booked" card
+and inviting a second accidental booking. That call is removed, and a
+`bookingConfirmed` flag now short-circuits `checkAvailability()`,
+`fetchMonthAvailability()`, `handleDateOrTimeSelection()` and the date-picker
+trigger.
+
+**Verified:** all five guards present in the JS the server actually serves.
+
+## 4. "Where did you hear about us" wrong in the admin panel — CONFIRMED, fixed
+
+Two causes:
+
+- Lead matching used **phone and name only**. Calendly reliably supplies the
+  invitee's *email*, while `text_reminder_number` is usually null and the name
+  is free text. A visitor who entered "Priya Sharma" on the form and typed
+  "Priya" on Calendly could not be matched, so the channel fell back to
+  "Calendly". Lookup now tries **email first**, then phone, then name.
+- `/api/calendly/confirm` created bookings with no `leadSource`, `phone` or
+  `countryCode` at all. It now reads them from the matching Lead.
+
+**Verified:** Instagram / YouTube / WhatsApp leads against bookings holding only
+an email → 3/3 channels resolve, phone backfilled. The pre-fix matcher returns
+NO MATCH on the differing-name case, confirming email matching is what fixes it.
+
+## Regression status
+
+53/53 non-Calendly harness checks pass. The 4 Calendly checks are skipped
+locally because this laptop is rate-limited (HTTP 429) after repeated runs.
+
+## Known remaining issue — your decision
+
+`monthAvailCache` is assigned but **never read**, and `resetCalendlyCaches()`
+runs on every availability request, so each page load costs ~12 live Calendly
+API calls. That is what drives the HTTP 429s. It was observed live: the
+production site returned `degraded: true` with counsellor 1 failing, while
+still serving 51 real dates from counsellor 2 — the `allSettled` fix absorbing
+a failure that would previously have been a 500.
+
+Turning the cache on would cut Calendly calls per page load to near zero, but
+slots could be up to the cache TTL stale. That is a real freshness tradeoff, so
+it has been left inert and documented rather than flipped silently.
