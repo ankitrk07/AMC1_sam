@@ -231,9 +231,12 @@ document.addEventListener('DOMContentLoaded', function () {
   var selectedCounsellorUrl = '';
   var selectedCounsellorId = 'counsellor1';
   var primaryCounsellorScope = 'both';
+  // Neutral placeholders only. These are replaced by the live names the API
+  // resolves from each Calendly account. Hardcoding real names here meant a
+  // counsellor change silently kept showing the old person's name forever.
   var resolvedCounsellorNames = {
-    counsellor1: 'starsamir9955',
-    counsellor2: 'Aryan Raj'
+    counsellor1: 'Counsellor 1',
+    counsellor2: 'Counsellor 2'
   };
 
   function getBrowserTimezone() {
@@ -266,6 +269,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function checkAvailability() {
+    if (bookingConfirmed) return; // session already booked — form is locked
     if (!prefDateInput) return;
     var date = prefDateInput.value;
     if (!date) return;
@@ -493,6 +497,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var availabilityError = null;
 
   function fetchMonthAvailability(callback) {
+    if (bookingConfirmed) return; // session already booked — do not offer new dates
     var tz = encodeURIComponent(getBrowserTimezone());
     var apiUrl = getApiUrl('/api/calendly/month-availability?refresh=true&counsellor=' + primaryCounsellorScope + '&tz=' + tz);
     fetch(apiUrl)
@@ -628,6 +633,7 @@ document.addEventListener('DOMContentLoaded', function () {
   if (customDateTrigger) {
     customDateTrigger.addEventListener('click', function (e) {
       e.stopPropagation();
+      if (bookingConfirmed) return; // date picker is closed for business
       var isOpen = customDatePicker.classList.contains('is-open');
       if (!isOpen) {
         customDatePicker.classList.add('is-open');
@@ -677,7 +683,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
   var currentBookingState = null;
 
+  // Once a session is booked the form is finished. Every path that would fetch
+  // or repaint availability checks this, so the visitor is never shown a fresh
+  // set of bookable dates and times under their own confirmation.
+  var bookingConfirmed = false;
+
   function updateCTAsToConfirmed(data) {
+    bookingConfirmed = true;
     data = data || currentBookingState || {};
 
     // Fallback values for instant UI response before server confirmation completes
@@ -1148,11 +1160,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
             updateCTAsToConfirmed(updatedState);
 
-            // Fetch fresh availability and reload slots without using cache
-            fetchMonthAvailability(function () {
-              renderCalendarGrid(currentCalYear, currentCalMonth);
-              checkAvailability();
-            });
+            // Deliberately NOT re-fetching availability here.
+            //
+            // This used to call fetchMonthAvailability() + checkAvailability(),
+            // which repainted the date picker and a fresh list of bookable time
+            // slots directly underneath the "Session Booked" confirmation. The
+            // visitor had just booked, so offering them a new set of times was
+            // confusing and invited a second, accidental booking.
+            // updateCTAsToConfirmed() has already locked the form into its
+            // confirmed state; leave it there.
           }
         })
         .catch(function (err) {
@@ -1240,7 +1256,18 @@ document.addEventListener('DOMContentLoaded', function () {
       calendlyWidgetContainer.innerHTML = '';
     }
 
-    var rawUrl = targetUrl || selectedCounsellorUrl || counsellorUrls[selectedCounsellorId] || counsellorUrls['counsellor1'] || 'https://calendly.com/starsamir9955/new-meeting';
+    // No hardcoded Calendly URL fallback. If the API has not supplied a
+    // scheduling URL we must not guess: a stale hardcoded link would book the
+    // visitor into the wrong counsellor's calendar, which is worse than failing.
+    var rawUrl = targetUrl || selectedCounsellorUrl || counsellorUrls[selectedCounsellorId] || counsellorUrls['counsellor1'] || '';
+    if (!rawUrl) {
+      console.error('[Calendly] no scheduling URL available for', selectedCounsellorId);
+      if (counsellingFine) {
+        counsellingFine.textContent = 'Booking is temporarily unavailable. Please try again in a moment.';
+        counsellingFine.classList.add('is-error');
+      }
+      return;
+    }
     var finalBookingUrl = rawUrl;
     try {
       var savedLeadObj = {};
@@ -1471,6 +1498,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function handleDateOrTimeSelection() {
+    if (bookingConfirmed) return; // already booked — do not reopen the flow
     var validation = validateCounsellingInputs();
     if (!validation) return;
 
@@ -1487,18 +1515,23 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     }
 
-    var targetUrl = selectedCounsellorUrl || counsellorUrls[selectedCounsellorId] || counsellorUrls['counsellor1'] || 'https://calendly.com/starsamir9955/new-meeting';
+    var targetUrl = selectedCounsellorUrl || counsellorUrls[selectedCounsellorId] || counsellorUrls['counsellor1'] || '';
 
     var savedLead = {};
     try {
       savedLead = JSON.parse(sessionStorage.getItem('amc_lead_user') || localStorage.getItem('amc_lead_user') || '{}');
     } catch (e) { }
 
-    var c1Name = resolvedCounsellorNames.counsellor1 || 'starsamir9955';
-    var c2Name = resolvedCounsellorNames.counsellor2 || 'Aryan Raj';
+    var c1Name = resolvedCounsellorNames.counsellor1 || 'Counsellor 1';
+    var c2Name = resolvedCounsellorNames.counsellor2 || 'Counsellor 2';
     var counsellorName = (selectedCounsellorId === 'counsellor2' || selectedCounsellorId === 'aryan') ? ('Counsellor 2 (' + c2Name + ')') : ('Counsellor 1 (' + c1Name + ')');
 
     postJson('/api/admin/bookings/intent', {
+      // Reuse this visitor's existing intent instead of creating a new row on
+      // every date/slot click. Each click used to insert another PENDING
+      // booking, which both littered the admin panel and skewed the counsellor
+      // rotation, since the rotation reads recent bookings.
+      bookingId: (currentBookingState && currentBookingState.bookingId) || null,
       name: validation.name,
       email: savedLead.email || null,
       phone: validation.phone,
@@ -1506,9 +1539,10 @@ document.addEventListener('DOMContentLoaded', function () {
       preferredDate: prettyDate,
       selectedSlot: slot,
       selectedCounsellor: counsellorName,
+      selectedCounsellorId: selectedCounsellorId,
       selectedCounsellorUrl: targetUrl,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata',
-      source: savedLead.source || 'Website Lead Modal',
+      source: savedLead.source || null,
       sourceOther: savedLead.sourceOther || null,
       notes: 'Opened Calendly booking slot picker modal'
     }).then(function (intentRes) {

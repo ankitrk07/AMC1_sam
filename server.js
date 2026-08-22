@@ -450,34 +450,78 @@ function isSupportedBookingStatus(value) {
   return SUPPORTED_BOOKING_STATUSES.includes(aliases[raw] || raw);
 }
 
-async function getLastAssignedCounsellor() {
+// Resolve which counsellor a stored booking belongs to.
+// Prefers the explicit id; falls back to parsing the display label only because
+// older rows may predate selectedCounsellorId being populated.
+function resolveCounsellorId(booking) {
+  const explicit = String(booking.selectedCounsellorId || '').toLowerCase().trim();
+  if (explicit === 'counsellor1' || explicit === 'counsellor2') return explicit;
+
+  const label = String(booking.selectedCounsellor || '').toLowerCase();
+  if (label.includes('counsellor 2') || label.includes('counsellor2')) return 'counsellor2';
+  if (label.includes('counsellor 1') || label.includes('counsellor1')) return 'counsellor1';
+  return null;
+}
+
+// ──────────────────────────────────────────────────────
+// Which counsellor should take the next booking.
+//
+// The previous version looked at the single most recent booking of ANY kind and
+// handed the next one to the other counsellor. That did not alternate in
+// practice, for two reasons:
+//
+//   1. It counted PENDING intents. A booking intent is written every time a
+//      visitor picks a date or a time slot, so simply browsing the form moved
+//      the "last assigned" pointer — usually to the counsellor the page had
+//      already chosen, which pinned the rotation in place.
+//
+//   2. Alternating from the last row cannot recover from a skew. If one
+//      counsellor ends up two bookings ahead, strict alternation preserves that
+//      gap forever.
+//
+// This counts CONFIRMED bookings only and gives the next one to whoever has
+// fewer, using the most recent confirmed booking purely as a tie-break. That
+// alternates naturally when the counts are level and self-corrects when they
+// are not.
+// ──────────────────────────────────────────────────────
+async function getNextCounsellor() {
   try {
-    // Most recent booking that names a counsellor, resolved by the database
-    // rather than by scanning a whole JSON array in memory.
-    const lastBooking = await prisma.booking.findFirst({
+    const confirmed = await prisma.booking.findMany({
       where: {
+        status: { in: ['CONFIRMED', 'COMPLETED'] },
         OR: [
           { selectedCounsellorId: { not: null } },
           { selectedCounsellor: { not: null } },
         ],
       },
       orderBy: { createdAt: 'desc' },
-      select: { selectedCounsellorId: true, selectedCounsellor: true },
+      select: { selectedCounsellorId: true, selectedCounsellor: true, createdAt: true },
+      take: 500,
     });
 
-    if (lastBooking) {
-      const counsellorStr = String(lastBooking.selectedCounsellorId || lastBooking.selectedCounsellor || '').toLowerCase();
-      if (counsellorStr.includes('counsellor2') || counsellorStr.includes('aryan') || counsellorStr.includes('manasvi')) {
-        return 'counsellor2';
-      }
-      if (counsellorStr.includes('counsellor1') || counsellorStr.includes('samir')) {
-        return 'counsellor1';
-      }
+    let c1 = 0;
+    let c2 = 0;
+    let lastAssigned = null;
+
+    for (const booking of confirmed) {
+      const id = resolveCounsellorId(booking);
+      if (!id) continue;
+      if (id === 'counsellor1') c1++; else c2++;
+      // findMany is ordered newest first, so the first resolvable row wins.
+      if (!lastAssigned) lastAssigned = id;
     }
+
+    let next;
+    if (c1 < c2) next = 'counsellor1';
+    else if (c2 < c1) next = 'counsellor2';
+    else next = lastAssigned === 'counsellor1' ? 'counsellor2' : 'counsellor1';
+
+    console.log(`[Load Balance] confirmed bookings — c1=${c1} c2=${c2}, last=${lastAssigned || 'NONE'} => next=${next}`);
+    return { next, counts: { counsellor1: c1, counsellor2: c2 }, lastAssigned };
   } catch (err) {
-    console.error('[getLastAssignedCounsellor Error]', err && err.stack ? err.stack : err);
+    console.error('[getNextCounsellor Error]', err && err.stack ? err.stack : err);
+    return { next: 'counsellor1', counts: { counsellor1: 0, counsellor2: 0 }, lastAssigned: null };
   }
-  return null;
 }
 
 async function getCounsellorName(counsellorId) {
@@ -1357,6 +1401,13 @@ async function getUnifiedBookings(forceRefresh = false) {
   // Create lookup maps by phone (last 10 digits) and by name
   const leadPhoneMap = new Map();
   const leadNameMap = new Map();
+  // Email is the most reliable join key between a Lead and a Calendly booking:
+  // Calendly always returns the invitee's email, but text_reminder_number
+  // (phone) is usually null and the invitee name is free text. Without this
+  // map, Calendly-originated bookings could not be matched to the lead that
+  // created them, so their "where did you hear about us" fell back to
+  // "Calendly" instead of Instagram / WhatsApp / YouTube.
+  const leadEmailMap = new Map();
   for (const l of leads) {
     if (l.phone) {
       const cleanPhone = String(l.phone).replace(/\D/g, '').slice(-10);
@@ -1365,6 +1416,30 @@ async function getUnifiedBookings(forceRefresh = false) {
     if (l.name) {
       leadNameMap.set(l.name.trim().toLowerCase(), l);
     }
+    if (l.email) {
+      leadEmailMap.set(String(l.email).trim().toLowerCase(), l);
+    }
+  }
+
+  // Email first, then phone, then name — most reliable key to least.
+  function findLeadFor(record) {
+    if (!record) return null;
+    if (record.email) {
+      const hit = leadEmailMap.get(String(record.email).trim().toLowerCase());
+      if (hit) return hit;
+    }
+    if (record.phone) {
+      const cleanPhone = String(record.phone).replace(/\D/g, '').slice(-10);
+      if (cleanPhone) {
+        const hit = leadPhoneMap.get(cleanPhone);
+        if (hit) return hit;
+      }
+    }
+    if (record.name) {
+      const hit = leadNameMap.get(String(record.name).trim().toLowerCase());
+      if (hit) return hit;
+    }
+    return null;
   }
 
   const calendlyEvents = await fetchCalendlyScheduledEvents(forceRefresh);
@@ -1377,10 +1452,9 @@ async function getUnifiedBookings(forceRefresh = false) {
     if (deletedUris.has(ev.calendlyEventUri) || deletedUris.has(ev.id) || deletedUris.has(ev.uri)) {
       continue;
     }
-    let matchedLead = null;
-    if (ev.name && leadNameMap.has(ev.name.trim().toLowerCase())) {
-      matchedLead = leadNameMap.get(ev.name.trim().toLowerCase());
-    }
+    // Match on email first — Calendly reliably supplies the invitee's email,
+    // and matching on name alone missed most real bookings.
+    const matchedLead = findLeadFor(ev);
     if (matchedLead) {
       eventMap.set(ev.calendlyEventUri, {
         ...ev,
@@ -1402,14 +1476,7 @@ async function getUnifiedBookings(forceRefresh = false) {
     if (deletedUris.has(lb.id) || deletedUris.has(lb.calendlyEventUri)) {
       continue;
     }
-    let matchedLead = null;
-    if (lb.phone) {
-      const cleanPhone = String(lb.phone).replace(/\D/g, '').slice(-10);
-      if (cleanPhone && leadPhoneMap.has(cleanPhone)) matchedLead = leadPhoneMap.get(cleanPhone);
-    }
-    if (!matchedLead && lb.name && leadNameMap.has(lb.name.trim().toLowerCase())) {
-      matchedLead = leadNameMap.get(lb.name.trim().toLowerCase());
-    }
+    const matchedLead = findLeadFor(lb);
 
     let leadPlatform = null;
     if (matchedLead && matchedLead.source && matchedLead.source !== 'Website Form' && matchedLead.source !== 'Website Lead Modal') {
@@ -1504,20 +1571,28 @@ async function getUnifiedBookings(forceRefresh = false) {
 
   const list = Array.from(eventMap.values());
 
-  // Automatic Lead Enrichment for missing emails or lead sources
+  // Automatic Lead Enrichment for missing emails, phones or lead sources.
+  // Now matches on email first (see findLeadFor), which is what makes the
+  // "where did you hear about us" channel survive on Calendly-made bookings.
   for (const b of list) {
-    const cleanPhone = b.phone ? String(b.phone).replace(/\D/g, '').slice(-10) : '';
-    const cleanName = b.name ? String(b.name).trim().toLowerCase() : '';
-    const matchedLead = (cleanPhone && leadPhoneMap.get(cleanPhone)) || (cleanName && leadNameMap.get(cleanName));
+    const matchedLead = findLeadFor(b);
+    if (!matchedLead) continue;
 
-    if (matchedLead) {
-      if (!b.email || b.email === 'null') b.email = matchedLead.email;
-      const isPlaceholderSource = !b.leadSource || b.leadSource === 'Website Form' || b.leadSource === 'Website Lead Modal' || b.leadSource === 'Website Booking Intent' || b.leadSource === 'Calendly' || b.leadSource === 'Website Lead';
-      if (isPlaceholderSource && matchedLead.source) {
-        b.leadSource = matchedLead.source;
-        b.sourceOther = matchedLead.sourceOther || b.sourceOther;
-      }
-      if (!b.countryCode) b.countryCode = matchedLead.countryCode;
+    if (!b.email || b.email === 'null') b.email = matchedLead.email;
+    if (!b.phone) b.phone = matchedLead.phone;
+    if (!b.countryCode) b.countryCode = matchedLead.countryCode;
+
+    const isPlaceholderSource = !b.leadSource
+      || b.leadSource === 'Website Form'
+      || b.leadSource === 'Website Lead Modal'
+      || b.leadSource === 'Website Booking Intent'
+      || b.leadSource === 'Calendly'
+      || b.leadSource === 'Calendly Live'
+      || b.leadSource === 'Website Lead';
+
+    if (isPlaceholderSource && matchedLead.source) {
+      b.leadSource = matchedLead.source;
+      b.sourceOther = matchedLead.sourceOther || b.sourceOther;
     }
   }
 
@@ -1594,26 +1669,46 @@ app.post('/api/admin/bookings/intent', async (req, res) => {
       }
     }
 
+    const intentData = {
+      name: payload.name ? String(payload.name).trim() : null,
+      email: email,
+      phone: payload.phone ? String(payload.phone).trim() : null,
+      countryCode: payload.countryCode ? String(payload.countryCode).trim() : null,
+      preferredDate: payload.preferredDate ? String(payload.preferredDate).trim() : null,
+      selectedSlot: payload.selectedSlot ? String(payload.selectedSlot).trim() : null,
+      selectedCounsellor: payload.selectedCounsellor ? String(payload.selectedCounsellor).trim() : null,
+      selectedCounsellorId: payload.selectedCounsellorId ? String(payload.selectedCounsellorId).trim() : null,
+      selectedCounsellorUrl: payload.selectedCounsellorUrl ? String(payload.selectedCounsellorUrl).trim() : null,
+      timezone: payload.timezone ? String(payload.timezone).trim() : null,
+      leadSource: leadSource,
+      sourceOther: sourceOther,
+      notes: payload.notes ? String(payload.notes).trim() : null,
+      source: 'Website Booking Intent',
+    };
+
+    // If this visitor already has an unconfirmed intent, update it in place.
+    // Previously every date or time-slot click inserted a new PENDING row, so
+    // one visitor browsing the form could create half a dozen bookings — which
+    // cluttered the admin panel and skewed the counsellor rotation.
+    const existingId = payload.bookingId ? String(payload.bookingId).trim() : null;
+    if (existingId) {
+      const reusable = await prisma.booking.findFirst({
+        where: { id: existingId, status: 'PENDING', calendlyEventUri: null },
+      });
+      if (reusable) {
+        const updated = await prisma.booking.update({
+          where: { id: reusable.id },
+          data: intentData,
+        });
+        return res.json({ success: true, bookingId: updated.id, reused: true });
+      }
+    }
+
     const created = await prisma.booking.create({
-      data: {
-        name: payload.name ? String(payload.name).trim() : null,
-        email: email,
-        phone: payload.phone ? String(payload.phone).trim() : null,
-        countryCode: payload.countryCode ? String(payload.countryCode).trim() : null,
-        preferredDate: payload.preferredDate ? String(payload.preferredDate).trim() : null,
-        selectedSlot: payload.selectedSlot ? String(payload.selectedSlot).trim() : null,
-        selectedCounsellor: payload.selectedCounsellor ? String(payload.selectedCounsellor).trim() : null,
-        selectedCounsellorUrl: payload.selectedCounsellorUrl ? String(payload.selectedCounsellorUrl).trim() : null,
-        timezone: payload.timezone ? String(payload.timezone).trim() : null,
-        leadSource: leadSource,
-        sourceOther: sourceOther,
-        notes: payload.notes ? String(payload.notes).trim() : null,
-        status: 'PENDING',
-        source: 'Website Booking Intent',
-      },
+      data: { ...intentData, status: 'PENDING' },
     });
 
-    return res.json({ success: true, bookingId: created.id });
+    return res.json({ success: true, bookingId: created.id, reused: false });
   } catch (error) {
     console.error('[Admin Booking Intent Error]', error && error.stack ? error.stack : error);
     return res.status(500).json({ success: false, error: 'Failed to save booking intent' });
@@ -2233,17 +2328,20 @@ app.get('/api/calendly/availability', async (req, res) => {
     processSlots(slots1, 'counsellor1');
     processSlots(slots2, 'counsellor2');
 
-    // Enforce alternate load balancing: check history of last assigned counsellor
-    const lastAssigned = await getLastAssignedCounsellor();
-    const primaryCounsellor = lastAssigned === 'counsellor1' ? 'counsellor2' : 'counsellor1';
+    // Alternate between counsellors, based on confirmed bookings only.
+    const balance = await getNextCounsellor();
+    const primaryCounsellor = balance.next;
     const secondaryCounsellor = primaryCounsellor === 'counsellor1' ? 'counsellor2' : 'counsellor1';
-    console.log(`[Load Balance] Last assigned counsellor: ${lastAssigned || 'NONE'}. Priority assigned to: ${primaryCounsellor}`);
 
     for (const timeLabel in timeSlotMap) {
       const slotObj = timeSlotMap[timeLabel];
       if (slotObj.counsellors && slotObj.counsellors.length > 1) {
+        // Both are free at this time — put whoever is due next in front, since
+        // the frontend books counsellors[0].
         slotObj.counsellors = [primaryCounsellor, secondaryCounsellor];
       }
+      // When only one counsellor is free the list is left alone: availability
+      // wins over rotation, otherwise the slot could not be booked at all.
     }
 
     for (const slot of slots1) {
@@ -2569,6 +2667,28 @@ app.post('/api/calendly/confirm', async (req, res) => {
         },
       });
     } else {
+      // No pending intent matched, so this booking is being created fresh from
+      // Calendly's data. Pull the visitor's channel ("where did you hear about
+      // us"), phone and country code off their Lead record — otherwise the row
+      // is created with no leadSource and the admin panel shows "Calendly"
+      // instead of Instagram / WhatsApp / YouTube.
+      let lead = null;
+      try {
+        const orFilters = [];
+        if (inviteeEmail) orFilters.push({ email: { equals: inviteeEmail, mode: 'insensitive' } });
+        if (inviteeName) orFilters.push({ name: { equals: inviteeName, mode: 'insensitive' } });
+        if (inviteePhone) {
+          const tail = String(inviteePhone).replace(/\D/g, '').slice(-10);
+          if (tail) orFilters.push({ phone: { endsWith: tail } });
+        }
+        if (orFilters.length > 0) {
+          lead = await prisma.lead.findFirst({ where: { OR: orFilters }, orderBy: { createdAt: 'desc' } });
+          if (lead) console.log('[Calendly Confirm]   Matched lead for channel:', lead.source);
+        }
+      } catch (leadErr) {
+        console.warn('[Calendly Confirm] Lead lookup failed:', leadErr && leadErr.message);
+      }
+
       // Atomic upsert keyed on the unique event uri: two confirmations racing
       // for the same Calendly event converge on one row.
       saved = await prisma.booking.upsert({
@@ -2576,8 +2696,13 @@ app.post('/api/calendly/confirm', async (req, res) => {
         update: confirmData,
         create: {
           ...confirmData,
-          name: inviteeName || null,
-          email: inviteeEmail || null,
+          name: inviteeName || (lead && lead.name) || null,
+          email: inviteeEmail || (lead && lead.email) || null,
+          phone: inviteePhone || (lead && lead.phone) || null,
+          countryCode: (lead && lead.countryCode) || null,
+          leadSource: (lead && lead.source) || null,
+          sourceOther: (lead && lead.sourceOther) || null,
+          source: 'Calendly Confirmed',
           notes: 'Confirmed from Calendly verification',
           selectedCounsellorId: counsellorIdResolved,
           selectedCounsellor: counsellorLabel,

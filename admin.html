@@ -2005,8 +2005,8 @@
 
           <select class="filter-select" id="counsellorFilterSelect">
             <option value="ALL">All Counsellors</option>
-            <option value="counsellor1" id="counsellor1Option">Counsellor 1 (starsamir9955)</option>
-            <option value="counsellor2" id="counsellor2Option">Counsellor 2 (Aryan Raj)</option>
+            <option value="counsellor1" id="counsellor1Option">Counsellor 1</option>
+            <option value="counsellor2" id="counsellor2Option">Counsellor 2</option>
           </select>
         </div>
       </div>
@@ -2112,7 +2112,7 @@
         <!-- Counsellor 1 Calendar -->
         <div>
           <div class="calendar-counsellor-header">
-            <h4 id="counsellor1Header">Counsellor 1 (starsamir9955)</h4>
+            <h4 id="counsellor1Header">Counsellor 1</h4>
             <span class="tab-count" id="c1CalBookingsCount">0 Bookings</span>
           </div>
           <div class="custom-admin-calendar-wrapper">
@@ -2134,7 +2134,7 @@
         <!-- Counsellor 2 Calendar -->
         <div>
           <div class="calendar-counsellor-header">
-            <h4 id="counsellor2Header">Counsellor 2 (Aryan Raj)</h4>
+            <h4 id="counsellor2Header">Counsellor 2</h4>
             <span class="tab-count" id="c2CalBookingsCount">0 Bookings</span>
           </div>
           <div class="custom-admin-calendar-wrapper">
@@ -2938,8 +2938,8 @@
 
         // Dynamic Counselor Name population from env/API
         if (data.counsellorNames) {
-          var c1Name = data.counsellorNames.counsellor1 || 'starsamir9955';
-          var c2Name = data.counsellorNames.counsellor2 || 'Aryan Raj';
+          var c1Name = data.counsellorNames.counsellor1 || 'Counsellor 1';
+          var c2Name = data.counsellorNames.counsellor2 || 'Counsellor 2';
 
           var opt1 = document.getElementById('counsellor1Option');
           if (opt1) opt1.textContent = 'Counsellor 1 (' + c1Name + ')';
@@ -3132,7 +3132,19 @@
           }
         }
 
-        var counsellorTag = (rootId && rootId.includes('C2')) ? 'Counsellor 2 (Aryan Raj)' : 'Counsellor 1 (starsamir9955)';
+        // Live counsellor names, resolved by the API from each Calendly account.
+        // These were hardcoded to specific people, so replacing or renaming a
+        // counsellor left the previous name showing here forever.
+        function liveCounsellorName(counsellorId) {
+          var names = (state.health && state.health.counsellorNames) || {};
+          if (counsellorId === 'counsellor2') return names.counsellor2 || 'Counsellor 2';
+          return names.counsellor1 || 'Counsellor 1';
+        }
+        function liveCounsellorLabel(counsellorId) {
+          var num = counsellorId === 'counsellor2' ? '2' : '1';
+          return 'Counsellor ' + num + ' (' + liveCounsellorName(counsellorId) + ')';
+        }
+        var counsellorTag = liveCounsellorLabel((rootId && rootId.includes('C2')) ? 'counsellor2' : 'counsellor1');
         var count = dayBookings ? dayBookings.length : 0;
 
         if (titleEl) titleEl.textContent = 'Enrollments for ' + formattedDate;
@@ -3155,7 +3167,8 @@
           var html = sortedBookings.map(function (eb) {
             var b = eb.booking;
             var displayTime = getCleanTime(b.scheduledStartTime, b.selectedSlot).replace(/\s*\(.*\)/, '');
-            var counsellorCode = (b.selectedCounsellorId === 'counsellor2' || (b.selectedCounsellor || '').toLowerCase().includes('aryan')) ? 'Aryan Raj' : 'starsamir9955';
+            var counsellorCode = liveCounsellorName(
+              (b.selectedCounsellorId === 'counsellor2' || /counsellor\s*2/i.test(b.selectedCounsellor || '')) ? 'counsellor2' : 'counsellor1');
 
             var status = String(b.status || 'PENDING').toUpperCase();
             var statusBadgeBg = '#f59e0b';
