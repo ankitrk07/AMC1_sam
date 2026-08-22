@@ -3363,6 +3363,12 @@ input[type="date"] *,
   margin-bottom: 12px;
 }
 
+/* Wider than the shared 640px cap so the strapline (~683px) stays on one line.
+   Narrow viewports still wrap it naturally rather than overflowing. */
+.proof-gallery .section-head {
+  max-width: 760px;
+}
+
 .proof-gallery .section-head h2 {
   color: #0f172a;
   font-size: clamp(28px, 4vw, 40px);
@@ -3410,9 +3416,9 @@ input[type="date"] *,
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 980px;
+  max-width: 1080px;
   margin: 80px auto 30px;
-  min-height: 380px;
+  min-height: 420px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3422,7 +3428,7 @@ input[type="date"] *,
 .proof-3d-stage {
   position: relative;
   width: 100%;
-  height: 360px;
+  height: 400px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3457,21 +3463,21 @@ input[type="date"] *,
   object-fit: contain;
 }
 
-/* COMPACT CARD SIZES IN 3D STAGE */
+/* CARD SIZES IN 3D STAGE */
 .card-portrait-tall {
-  width: 210px;
+  width: 265px;
 }
 
 .card-portrait-medium {
-  width: 235px;
+  width: 295px;
 }
 
 .card-landscape {
-  width: 300px;
+  width: 375px;
 }
 
 .card-wide-banner {
-  width: 350px;
+  width: 435px;
 }
 
 /* 3D POSITIONING STATES (SCALED FOR COMPACT LAYOUT) */
@@ -3486,26 +3492,26 @@ input[type="date"] *,
 
 /* NEXT CARD (RIGHT): Coming up & forward next */
 .proof-card.pos-next-1 {
-  transform: translate(-50%, -50%) translate3d(200px, 8px, -30px) scale(0.80) rotateY(-20deg) !important;
+  transform: translate(-50%, -50%) translate3d(220px, 8px, -30px) scale(0.80) rotateY(-20deg) !important;
   z-index: 50 !important;
   opacity: 0.8 !important;
 }
 
 .proof-card.pos-next-2 {
-  transform: translate(-50%, -50%) translate3d(360px, 20px, -140px) scale(0.62) rotateY(-30deg) !important;
+  transform: translate(-50%, -50%) translate3d(390px, 20px, -140px) scale(0.62) rotateY(-30deg) !important;
   z-index: 20 !important;
   opacity: 0.45 !important;
 }
 
 /* PREVIOUS CARD (LEFT): Receding down and to the left */
 .proof-card.pos-prev-1 {
-  transform: translate(-50%, -50%) translate3d(-200px, 8px, -30px) scale(0.80) rotateY(20deg) !important;
+  transform: translate(-50%, -50%) translate3d(-220px, 8px, -30px) scale(0.80) rotateY(20deg) !important;
   z-index: 50 !important;
   opacity: 0.8 !important;
 }
 
 .proof-card.pos-prev-2 {
-  transform: translate(-50%, -50%) translate3d(-360px, 20px, -140px) scale(0.62) rotateY(30deg) !important;
+  transform: translate(-50%, -50%) translate3d(-390px, 20px, -140px) scale(0.62) rotateY(30deg) !important;
   z-index: 20 !important;
   opacity: 0.45 !important;
 }
@@ -4618,9 +4624,9 @@ input[type="date"] *,
   .card-portrait-medium,
   .card-portrait-tall {
     position: static !important;
-    flex: 0 0 220px !important;
-    width: 220px !important;
-    max-width: 220px !important;
+    flex: 0 0 260px !important;
+    width: 260px !important;
+    max-width: 260px !important;
     height: auto !important;
     scroll-snap-align: start !important;
     transform: none !important;
